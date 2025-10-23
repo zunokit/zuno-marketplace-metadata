@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.opensea.io)",
+      "WebFetch(domain:docs.magiceden.io)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

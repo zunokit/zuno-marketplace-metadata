@@ -1,0 +1,7 @@
+https://orm.drizzle.team/docs/tutorials/drizzle-with-supabase
+https://supabase.com/docs/guides/getting-started 
+https://docs.pinata.cloud/quickstart
+https://docs.bullmq.io/
+https://upstash.com/docs/introduction
+https://context7.com/websites/upstash-vector/llms.txt?tokens=50000
+https://imagekit.io/docs/overview
