@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1761216268583,
+      "tag": "20251023104428_parched_madrox",
+      "breakpoints": true
+    }
+  ]
+}
