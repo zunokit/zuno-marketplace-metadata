@@ -16,24 +16,10 @@ https://imagekit.io/docs/overview
 export const mediaTypeEnum = pgEnum("media_type", [
   "IMAGE",
   "VIDEO",
-  "AUDIO",
   "GIF",
-  "HTML",
   "MODEL_3D",
 ]);
 
-export const storageProviderEnum = pgEnum("storage_provider", [
-  "SUPABASE",
-  "IPFS",
-  "IMAGEKIT",
-]);
-
-export const storageStatusEnum = pgEnum("storage_status", [
-  "UPLOADING",
-  "ACTIVE",
-  "FAILED",
-  "DELETED",
-]);
 
 // ============= USER ,AUTH VIA SUPEBASE=============
 export const users = pgTable(
@@ -117,12 +103,6 @@ export const apiKeys = pgTable(
     .$onUpdate(() => new Date()),
 
   },
-  (table) => ({
-    userIdIdx: index("api_keys_user_id_idx").on(table.userId),
-    enabledIdx: index("api_keys_enabled_idx").on(table.enabled),
-    expiresAtIdx: index("api_keys_expires_at_idx").on(table.expiresAt),
-    keyIdx: index("api_keys_key_idx").on(table.key),
-  })
 );
 
 
@@ -172,7 +152,7 @@ Animation_url also supports HTML pages, allowing you to build rich experiences a
     // Media info (extracted for quick filter)
     mediaType: mediaTypeEnum("media_type").default("IMAGE").notNull(),
 
-    // IPFS Storage
+    // Storage (simplified)
     ipfsHash: text("ipfs_hash").unique(),
     ipfsUrl: text("ipfs_url"),
     isPinned: boolean("is_pinned").default(false).notNull(),
@@ -198,14 +178,6 @@ Animation_url also supports HTML pages, allowing you to build rich experiences a
       .notNull()
       .$onUpdate(() => new Date()),
   },
-  (table) => ({
-    identifierIdx: index("metadata_identifier_idx").on(table.identifier),
-    mediaTypeIdx: index("metadata_media_type_idx").on(table.mediaType),
-    ipfsHashIdx: index("metadata_ipfs_hash_idx").on(table.ipfsHash),
-    versionIdx: index("metadata_version_idx").on(table.version),
-    isLockedIdx: index("metadata_is_locked_idx").on(table.isLocked),
-    createdAtIdx: index("metadata_created_at_idx").on(table.createdAt),
-  })
 );
 
 // ============= MEDIA STORAGE =============
@@ -223,7 +195,7 @@ export const media = pgTable(
     mediaType: mediaTypeEnum("media_type").notNull(),
 
     // Storage URLs
-    url: text("url").notNull(), // ImageKit/Supabase URL
+    url: text("url").notNull(), // Primary URL (ImageKit/Supabase)
     ipfsHash: text("ipfs_hash").unique(),
     ipfsUrl: text("ipfs_url"),
 
@@ -239,95 +211,8 @@ export const media = pgTable(
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => ({
-    mediaTypeIdx: index("media_media_type_idx").on(table.mediaType),
-    mimeTypeIdx: index("media_mime_type_idx").on(table.mimeType),
-    ipfsHashIdx: index("media_ipfs_hash_idx").on(table.ipfsHash),
-    createdAtIdx: index("media_created_at_idx").on(table.createdAt),
-  })
 );
 
-// ============= STORAGE LINKS =============
-export const storageLinks = pgTable(
-  "storage_links",
-  {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-
-    // Link to media or metadata
-    mediaId: text("media_id").references(() => media.id, { onDelete: "cascade" }),
-    metadataId: text("metadata_id").references(() => metadata.id, { onDelete: "cascade" }),
-
-    // Storage Provider Info
-    provider: storageProviderEnum("provider").notNull(),
-    status: storageStatusEnum("status").default("ACTIVE").notNull(),
-
-    // Storage URLs
-    url: text("url").notNull(), // Primary URL for this storage
-    publicUrl: text("public_url"), // Public facing URL (if different)
-    cdnUrl: text("cdn_url"), // CDN URL (if applicable)
-
-    // IPFS/Pinata specific
-    ipfsHash: text("ipfs_hash"), // CID for IPFS
-    ipfsGateway: text("ipfs_gateway"), // e.g., 'https://gateway.pinata.cloud/ipfs/'
-    isPinned: boolean("is_pinned").default(false),
-    pinnedAt: timestamp("pinned_at"),
-
-    // Supabase specific
-    bucketName: text("bucket_name"), // Supabase bucket name
-    objectPath: text("object_path"), // Path within bucket
-
-    // Provider metadata
-    providerMetadata: text("provider_metadata").$type<{
-      // Supabase
-      bucketId?: string;
-      publicBucket?: boolean;
-      
-      // Pinata
-      pinataId?: string;
-      pinataName?: string;
-      
-      // ImageKit
-      imageKitId?: string;
-      fileId?: string;
-      
-      // Generic
-      etag?: string;
-      lastModified?: string;
-      contentType?: string;
-      size?: number;
-      
-      // Additional provider-specific fields
-      [key: string]: any;
-    }>(),
-
-    uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
-
-    // Verification & Health
-    isVerified: boolean("is_verified").default(false).notNull(), // Has URL been verified accessible?
-    lastVerifiedAt: timestamp("last_verified_at"),
-    failureCount: integer("failure_count").default(0).notNull(),
-    lastFailureAt: timestamp("last_failure_at"),
-    lastFailureReason: text("last_failure_reason"),
-
-    // Soft delete
-    deletedAt: timestamp("deleted_at"),
-
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
-      .defaultNow()
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => ({
-    mediaIdIdx: index("storage_links_media_id_idx").on(table.mediaId),
-    metadataIdIdx: index("storage_links_metadata_id_idx").on(table.metadataId),
-    providerIdx: index("storage_links_provider_idx").on(table.provider),
-    statusIdx: index("storage_links_status_idx").on(table.status),
-    ipfsHashIdx: index("storage_links_ipfs_hash_idx").on(table.ipfsHash),
-  })
-);
 
 
 
@@ -341,6 +226,7 @@ export const apiVersions = pgTable('api_versions', {
   releasedAt: timestamp('released_at').notNull(),
   sunsetAt: timestamp('sunset_at')
 });
+
 export const auditLogs = pgTable(
   "audit_logs",
   {
@@ -373,55 +259,4 @@ export const auditLogs = pgTable(
 
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => ({
-    userIdIdx: index("audit_logs_user_id_idx").on(table.userId),
-    apiKeyIdIdx: index("audit_logs_api_key_id_idx").on(table.apiKeyId),
-    createdAtIdx: index("audit_logs_created_at_idx").on(table.createdAt),
-    actionIdx: index("audit_logs_action_idx").on(table.action),
-    resourceTypeIdx: index("audit_logs_resource_type_idx").on(table.resourceType),
-  })
 );
-
-// ============= RELATIONS =============
-export const usersRelations = relations(users, ({ many }) => ({
-  apiKeys: many(apiKeys),
-  auditLogs: many(auditLogs),
-}));
-
-export const apiKeysRelations = relations(apiKeys, ({ one, many }) => ({
-  user: one(users, {
-    fields: [apiKeys.userId],
-    references: [users.id],
-  }),
-  auditLogs: many(auditLogs),
-}));
-
-export const metadataRelations = relations(metadata, ({ many }) => ({
-  storageLinks: many(storageLinks),
-}));
-
-export const mediaRelations = relations(media, ({ many }) => ({
-  storageLinks: many(storageLinks),
-}));
-
-export const storageLinksRelations = relations(storageLinks, ({ one }) => ({
-  media: one(media, {
-    fields: [storageLinks.mediaId],
-    references: [media.id],
-  }),
-  metadata: one(metadata, {
-    fields: [storageLinks.metadataId],
-    references: [metadata.id],
-  }),
-}));
-
-export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
-  user: one(users, {
-    fields: [auditLogs.userId],
-    references: [users.id],
-  }),
-  apiKey: one(apiKeys, {
-    fields: [auditLogs.apiKeyId],
-    references: [apiKeys.id],
-  }),
-}));
