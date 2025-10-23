@@ -1,0 +1,14 @@
+fullstack-developer "
+**Zuno Marketplace Metadata**
+** Main functionality: Manage and store metadata and media through ImageKit, Pinata, and Supabase to provide services to other projects via x-api-key
+** Tech stack: Next.js API, Upstash Redis, Supabase, Drizzle, PostgreSQL, Pinata, ImageKit, BullMQ
+** Database: Supabase, IPFS
+** API: Next.js API
+** Authentication: x-api-key
+** Rate limiting: Upstash Redis
+** Logging: Supabase
+** Error handling: Next.js API
+** Documentation: techstack.txt, main-flow.txt, schema.txt, endpoint.txt
+** Reference the successfully deployed project with standard code structure `zuno-marketplace-abis` - remember this is only for reference as both sides may have some different technologies, but the way of organizing and writing production-ready code, writing code like a senior developer, easy to maintain, modify, upgrade, and scale
+
+**Role**: You are a senior developer who writes maintainable, modifiable, upgradeable, and scalable code. Help me complete the `zuno-marketplace-metadata` project to production-ready standards"
