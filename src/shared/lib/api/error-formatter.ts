@@ -2,15 +2,26 @@ import { ZodError } from "zod";
 import { ErrorCode } from "@/shared/types";
 import { getErrorMessage } from "./error-messages";
 
+interface ValidationIssue {
+  path: string;
+  message: string;
+  code: string;
+}
+
+interface ValidationErrorDetails {
+  issues: ValidationIssue[];
+  count: number;
+}
+
 /**
  * Format Zod validation errors into user-friendly format
  */
 export function formatZodError(error: ZodError): {
   code: ErrorCode;
   message: string;
-  details: any;
+  details: ValidationErrorDetails;
 } {
-  const issues = error.issues.map((issue) => ({
+  const issues: ValidationIssue[] = error.issues.map((issue) => ({
     path: issue.path.join("."),
     message: issue.message,
     code: issue.code,
@@ -26,14 +37,36 @@ export function formatZodError(error: ZodError): {
   };
 }
 
+interface DatabaseError {
+  code?: string;
+  constraint?: string;
+  column?: string;
+}
+
+interface DatabaseErrorDetails {
+  constraint?: string;
+  column?: string;
+}
+
+function isDatabaseError(error: unknown): error is DatabaseError {
+  return typeof error === 'object' && error !== null && 'code' in error;
+}
+
 /**
  * Format database errors
  */
-export function formatDatabaseError(error: any): {
+export function formatDatabaseError(error: unknown): {
   code: ErrorCode;
   message: string;
-  details?: any;
+  details?: DatabaseErrorDetails;
 } {
+  if (!isDatabaseError(error)) {
+    return {
+      code: ErrorCode.INTERNAL_ERROR,
+      message: getErrorMessage(ErrorCode.INTERNAL_ERROR),
+    };
+  }
+
   // Unique constraint violation
   if (error.code === "23505") {
     return {
@@ -79,7 +112,7 @@ export function formatDatabaseError(error: any): {
 export function formatError(error: unknown): {
   code: ErrorCode;
   message: string;
-  details?: any;
+  details?: ValidationErrorDetails | DatabaseErrorDetails;
 } {
   if (error instanceof ZodError) {
     return formatZodError(error);
@@ -87,7 +120,7 @@ export function formatError(error: unknown): {
 
   if (error instanceof Error) {
     // Check if it's a database error
-    if ((error as any).code) {
+    if (isDatabaseError(error)) {
       return formatDatabaseError(error);
     }
 

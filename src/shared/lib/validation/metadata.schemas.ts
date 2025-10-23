@@ -128,10 +128,14 @@ export function validateAttributes(attributes: unknown[]): boolean {
   if (!Array.isArray(attributes)) return false;
 
   // Check for duplicate trait types
-  const traitTypes = new Set();
+  const traitTypes = new Set<string>();
   for (const attr of attributes) {
     if (typeof attr === 'object' && attr !== null && 'traitType' in attr) {
-      const traitType = (attr as any).traitType;
+      const record = attr as Record<string, unknown>;
+      const traitType = record.traitType;
+
+      if (typeof traitType !== 'string') continue;
+
       if (traitTypes.has(traitType)) {
         return false; // Duplicate trait type
       }
@@ -149,7 +153,12 @@ export function validateCreators(creators: unknown[]): boolean {
   let totalShare = 0;
   for (const creator of creators) {
     if (typeof creator === 'object' && creator !== null && 'share' in creator) {
-      totalShare += (creator as any).share;
+      const record = creator as Record<string, unknown>;
+      const share = record.share;
+
+      if (typeof share === 'number') {
+        totalShare += share;
+      }
     }
   }
 

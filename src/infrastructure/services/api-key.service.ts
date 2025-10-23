@@ -8,6 +8,7 @@
 import { db, schema } from "@/infrastructure/database/client";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
+import { ApiKeyMetadata } from "@/shared/types";
 import crypto from "crypto";
 
 export interface CreateApiKeyParams {
@@ -15,14 +16,7 @@ export interface CreateApiKeyParams {
   userId: string;
   expiresAt?: Date;
   permissions?: string;
-  metadata?: {
-    tier?: string;
-    scopes?: string[];
-    ipWhitelist?: string[];
-    allowedOrigins?: string[];
-    allowedMethods?: string[];
-    notes?: string;
-  };
+  metadata?: ApiKeyMetadata;
   rateLimitEnabled?: boolean;
   rateLimitMax?: number;
   rateLimitTimeWindow?: number;
@@ -36,12 +30,24 @@ export interface ApiKeyDto {
   enabled: boolean;
   expiresAt: Date | null;
   permissions: string | null;
-  metadata: any;
+  metadata: ApiKeyMetadata | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export class ApiKeyService {
+  /**
+   * Type guard to validate metadata from database
+   */
+  private static parseMetadata(metadata: unknown): ApiKeyMetadata | null {
+    if (!metadata || typeof metadata !== 'object') {
+      return null;
+    }
+    // Runtime validation would go here
+    // For now, we trust the database schema
+    return metadata as ApiKeyMetadata;
+  }
+
   /**
    * Generate a secure random API key
    * Format: sk_live_<random_32_chars>
@@ -77,7 +83,7 @@ export class ApiKeyService {
     start: string;
     expiresAt: Date | null;
     permissions: string | null;
-    metadata: any;
+    metadata: ApiKeyMetadata | null;
     createdAt: Date;
   }> {
     try {
@@ -126,7 +132,7 @@ export class ApiKeyService {
         start: apiKey.start!,
         expiresAt: apiKey.expiresAt,
         permissions: apiKey.permissions,
-        metadata: apiKey.metadata,
+        metadata: this.parseMetadata(apiKey.metadata),
         createdAt: apiKey.createdAt,
       };
     } catch (error) {
@@ -203,8 +209,16 @@ export class ApiKeyService {
     try {
       const { limit = 20, offset = 0, enabled } = params;
 
-      // Build query
-      let query = db
+      // Build conditions
+      const conditions = [eq(schema.apiKeys.userId, userId)];
+      if (enabled !== undefined) {
+        conditions.push(eq(schema.apiKeys.enabled, enabled));
+      }
+
+      const whereClause = and(...conditions);
+
+      // Execute query with all conditions
+      const keys = await db
         .select({
           id: schema.apiKeys.id,
           name: schema.apiKeys.name,
@@ -217,23 +231,16 @@ export class ApiKeyService {
           createdAt: schema.apiKeys.createdAt,
           updatedAt: schema.apiKeys.updatedAt,
         })
-        .from(schema.apiKeys);
-
-      // Add filters
-      const conditions = [eq(schema.apiKeys.userId, userId)];
-      if (enabled !== undefined) {
-        conditions.push(eq(schema.apiKeys.enabled, enabled));
-      }
-
-      query = query.where(and(...conditions)) as any;
-
-      // Execute with pagination
-      const keys = await query.limit(limit).offset(offset);
+        .from(schema.apiKeys)
+        .where(whereClause)
+        .limit(limit)
+        .offset(offset);
 
       return {
         keys: keys.map(k => ({
           ...k,
           start: k.start || "",
+          metadata: this.parseMetadata(k.metadata),
         })),
         total: keys.length,
       };
@@ -273,6 +280,7 @@ export class ApiKeyService {
       return {
         ...apiKey,
         start: apiKey.start || "",
+        metadata: this.parseMetadata(apiKey.metadata),
       };
     } catch (error) {
       logger.error("Failed to get API key by ID", {
@@ -352,7 +360,7 @@ export class ApiKeyService {
     enabled?: boolean;
     expiresAt?: Date | null;
     permissions?: string | null;
-    metadata?: any;
+    metadata?: ApiKeyMetadata | null;
   }): Promise<ApiKeyDto | null> {
     try {
       const [apiKey] = await db
@@ -387,6 +395,7 @@ export class ApiKeyService {
       return {
         ...apiKey,
         start: apiKey.start || "",
+        metadata: this.parseMetadata(apiKey.metadata),
       };
     } catch (error) {
       logger.error("Failed to update API key", {

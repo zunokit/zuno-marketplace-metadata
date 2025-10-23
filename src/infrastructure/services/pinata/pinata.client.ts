@@ -25,6 +25,36 @@ export interface PinataPinMetadata {
   keyvalues?: Record<string, string>;
 }
 
+export interface PinataFileDetails {
+  id: string;
+  ipfs_pin_hash: string;
+  size: number;
+  user_id: string;
+  date_pinned: string;
+  date_unpinned: string | null;
+  metadata: PinataPinMetadata;
+  regions: Array<{
+    regionId: string;
+    currentReplicationCount: number;
+    desiredReplicationCount: number;
+  }>;
+}
+
+export interface PinataListResponse {
+  count: number;
+  rows: PinataFileDetails[];
+}
+
+// Type guards for runtime validation
+function isPinataListResponse(data: unknown): data is PinataListResponse {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const obj = data as { rows?: unknown };
+  return 'rows' in data && Array.isArray(obj.rows);
+}
+
 export class PinataClient {
   private static instance: PinataClient;
   private baseUrl = "https://api.pinata.cloud";
@@ -218,7 +248,7 @@ export class PinataClient {
   /**
    * Get file details from Pinata
    */
-  async getFileDetails(hash: string): Promise<any> {
+  async getFileDetails(hash: string): Promise<PinataFileDetails | null> {
     try {
       const response = await fetch(`${this.baseUrl}/data/pinList?hashContains=${hash}`, {
         headers: {
@@ -230,13 +260,14 @@ export class PinataClient {
         throw new Error(`Pinata API error: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const data: unknown = await response.json();
 
-      if (result.rows && result.rows.length > 0) {
-        return result.rows[0];
+      if (!isPinataListResponse(data)) {
+        logger.error("Invalid response from Pinata API", { hash });
+        return null;
       }
 
-      return null;
+      return data.rows.length > 0 ? data.rows[0] : null;
     } catch (error) {
       logger.error("Failed to get file details from Pinata", {
         error: error instanceof Error ? error.message : String(error),
@@ -252,7 +283,7 @@ export class PinataClient {
   async listFiles(filters?: {
     metadata?: Record<string, string>;
     limit?: number;
-  }): Promise<any[]> {
+  }): Promise<PinataFileDetails[]> {
     try {
       const params = new URLSearchParams();
       if (filters?.limit) {
@@ -269,8 +300,14 @@ export class PinataClient {
         throw new Error(`Pinata API error: ${response.statusText}`);
       }
 
-      const result = await response.json();
-      return result.rows || [];
+      const data: unknown = await response.json();
+
+      if (!isPinataListResponse(data)) {
+        logger.error("Invalid response from Pinata API");
+        return [];
+      }
+
+      return data.rows;
     } catch (error) {
       logger.error("Failed to list files from Pinata", {
         error: error instanceof Error ? error.message : String(error),

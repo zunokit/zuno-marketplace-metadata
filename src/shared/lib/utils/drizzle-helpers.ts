@@ -10,11 +10,15 @@ export interface DrizzleUpdateResult {
 }
 
 // Type-safe helper functions
-export function extractRowCount(result: any): number {
-  return result?.rowCount ?? 0;
+export function extractRowCount(result: unknown): number {
+  if (typeof result === 'object' && result !== null && 'rowCount' in result) {
+    const record = result as { rowCount?: unknown };
+    return typeof record.rowCount === 'number' ? record.rowCount : 0;
+  }
+  return 0;
 }
 
-export function hasRows(result: any): boolean {
+export function hasRows(result: unknown): boolean {
   return extractRowCount(result) > 0;
 }
 

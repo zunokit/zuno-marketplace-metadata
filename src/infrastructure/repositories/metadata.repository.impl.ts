@@ -1,6 +1,7 @@
 import { eq, desc, asc, and, or, gte, lte, ilike, sql, count } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { metadata } from "@/infrastructure/database/drizzle/schema";
+import type { Metadata } from "@/infrastructure/database/drizzle/schema/metadata.schema";
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type {
   MetadataEntity,
@@ -46,13 +47,18 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   async findByIdAndVersion(id: string, version?: number): Promise<MetadataEntity | null> {
     logger.debug("Finding metadata by ID and version", { id, version });
 
-    let query = this.db.select().from(metadata).where(eq(metadata.id, id));
+    const conditions = [eq(metadata.id, id)];
 
     if (version !== undefined) {
-      query = (query as any).where(eq(metadata.version, version));
+      conditions.push(eq(metadata.version, version));
     }
 
-    const result = await query.limit(1);
+    const result = await this.db
+      .select()
+      .from(metadata)
+      .where(and(...conditions))
+      .limit(1);
+
     return result[0] ? this.mapToEntity(result[0]) : null;
   }
 
@@ -163,16 +169,8 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       conditions.push(lte(metadata.version, maxVersion));
     }
 
-    // Build base query
-    let query: any = this.db.select().from(metadata);
-    let countQuery: any = this.db.select({ count: countSql }).from(metadata);
-
     // Apply conditions
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    if (whereClause) {
-      query = query.where(whereClause);
-      countQuery = countQuery.where(whereClause);
-    }
 
     // Apply sorting
     const sortColumn = sortBy === "name" ? metadata.name
@@ -181,15 +179,20 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       : metadata.createdAt;
 
     const orderFn = sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn);
-    query = query.orderBy(orderFn);
 
     // Apply pagination
     const offset = (page - 1) * limit;
-    query = query.limit(limit).offset(offset);
+
+    // Build and execute queries
+    const queryBuilder = this.db.select().from(metadata);
+    const countQueryBuilder = this.db.select({ count: countSql }).from(metadata);
+
+    const query = whereClause ? queryBuilder.where(whereClause) : queryBuilder;
+    const countQuery = whereClause ? countQueryBuilder.where(whereClause) : countQueryBuilder;
 
     // Execute queries
     const [results, [{ count: totalCount }]] = await Promise.all([
-      query,
+      query.orderBy(orderFn).limit(limit).offset(offset),
       countQuery,
     ]);
 
@@ -197,7 +200,7 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: results.map((item: any) => this.mapToEntity(item)),
+      data: results.map((item) => this.mapToEntity(item)),
       pagination: {
         page,
         limit,
@@ -319,27 +322,27 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     return result ? this.mapToEntity(result) : null;
   }
 
-  private mapToEntity(row: any): MetadataEntity {
+  private mapToEntity(row: Metadata): MetadataEntity {
     return {
       id: row.id,
       name: row.name,
-      description: row.description,
-      symbol: row.symbol,
+      description: row.description ?? undefined,
+      symbol: row.symbol ?? undefined,
       image: row.image,
-      bannerImage: row.bannerImage,
-      featuredImage: row.featuredImage,
-      animationUrl: row.animationUrl,
-      externalUrl: row.externalUrl,
-      backgroundColor: row.backgroundColor,
-      attributes: row.attributes || [],
+      bannerImage: row.bannerImage ?? undefined,
+      featuredImage: row.featuredImage ?? undefined,
+      animationUrl: row.animationUrl ?? undefined,
+      externalUrl: row.externalUrl ?? undefined,
+      backgroundColor: row.backgroundColor ?? undefined,
+      attributes: row.attributes ?? [],
       mediaType: row.mediaType,
-      ipfsHash: row.ipfsHash,
-      ipfsUrl: row.ipfsUrl,
+      ipfsHash: row.ipfsHash ?? undefined,
+      ipfsUrl: row.ipfsUrl ?? undefined,
       isPinned: row.isPinned,
-      pinnedAt: row.pinnedAt,
-      creators: row.creators || [],
-      sellerFeeBasisPoints: row.sellerFeeBasisPoints,
-      feeRecipient: row.feeRecipient,
+      pinnedAt: row.pinnedAt ?? undefined,
+      creators: row.creators ?? [],
+      sellerFeeBasisPoints: row.sellerFeeBasisPoints ?? undefined,
+      feeRecipient: row.feeRecipient ?? undefined,
       version: row.version,
       isLocked: row.isLocked,
       createdAt: row.createdAt,

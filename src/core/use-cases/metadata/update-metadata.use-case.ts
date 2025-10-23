@@ -76,7 +76,8 @@ export class UpdateMetadataUseCase {
     // Only include fields that are being updated
     (Object.keys(updates) as Array<keyof typeof updates>).forEach((key) => {
       if (updates[key] !== undefined && key !== "version") {
-        updateData[key] = updates[key] as any; // Type assertion needed for partial updates
+        // TypeScript-safe assignment using index signature
+        (updateData as Record<string, unknown>)[key] = updates[key];
       }
     });
 

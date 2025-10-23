@@ -1,5 +1,5 @@
 import type { MetadataEntity } from "@/core/domain/metadata/metadata.entity";
-import type { PaginatedResponse } from "@/shared/types";
+import type { PaginatedResponse, MetadataAttribute, Creator } from "@/shared/types";
 
 // ============= METADATA RESPONSE DTO =============
 export interface MetadataResponseDto {
@@ -13,9 +13,9 @@ export interface MetadataResponseDto {
   animationUrl: string | null;
   externalUrl: string | null;
   backgroundColor: string | null;
-  attributes: any[];
+  attributes: MetadataAttribute[];
   mediaType: string;
-  creators: any[];
+  creators: Creator[];
   sellerFeeBasisPoints: number | null;
   feeRecipient: string | null;
   version: number;

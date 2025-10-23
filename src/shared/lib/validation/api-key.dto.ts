@@ -1,8 +1,20 @@
 import { z } from "zod";
+import { ApiKeyScope } from "@/shared/types";
 
 /**
  * API Key Validation Schemas
  */
+
+const apiKeyScopeEnum = z.enum([
+  "metadata:read",
+  "metadata:write",
+  "metadata:delete",
+  "media:read",
+  "media:write",
+  "media:delete",
+  "admin:read",
+  "admin:write",
+] as const);
 
 export const createApiKeySchema = z.object({
   body: z.object({
@@ -11,9 +23,10 @@ export const createApiKeySchema = z.object({
     expiresIn: z.number().positive().optional(), // Days until expiration
     metadata: z.object({
       tier: z.enum(["public", "free", "pro", "enterprise"]).optional(),
-      scopes: z.array(z.string()).optional(),
+      scopes: z.array(apiKeyScopeEnum).optional(),
       ipWhitelist: z.array(z.string()).optional(),
       allowedOrigins: z.array(z.string()).optional(),
+      allowedMethods: z.array(z.string()).optional(),
       notes: z.string().optional(),
     }).optional(),
     rateLimitEnabled: z.boolean().optional(),
