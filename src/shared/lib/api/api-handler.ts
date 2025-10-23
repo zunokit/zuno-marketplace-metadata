@@ -34,7 +34,11 @@ export type ApiHandler<TInput = unknown, TOutput = unknown> = (
   context: ApiContext
 ) => Promise<TOutput>;
 
-export interface ApiRouteConfig {
+export interface ApiRouteConfig<
+  TBody extends z.ZodSchema = z.ZodSchema,
+  TQuery extends z.ZodSchema = z.ZodSchema,
+  TParams extends z.ZodSchema = z.ZodSchema
+> {
   auth?: {
     required?: boolean;
     allowApiKey?: boolean;
@@ -42,15 +46,34 @@ export interface ApiRouteConfig {
     requiredScopes?: string[];
   };
   validation?: {
-    body?: z.ZodSchema;
-    query?: z.ZodSchema;
-    params?: z.ZodSchema;
+    body?: TBody;
+    query?: TQuery;
+    params?: TParams;
   };
   rateLimit?: {
     max: number;
     window: number;
   };
 }
+
+// Type helper to infer validated input type from config
+export type InferApiInput<TConfig extends ApiRouteConfig> = {
+  body: TConfig['validation'] extends { body: infer B }
+    ? B extends z.ZodSchema
+      ? z.infer<B>
+      : never
+    : undefined;
+  query: TConfig['validation'] extends { query: infer Q }
+    ? Q extends z.ZodSchema
+      ? z.infer<Q>
+      : never
+    : undefined;
+  params: TConfig['validation'] extends { params: infer P }
+    ? P extends z.ZodSchema
+      ? z.infer<P>
+      : never
+    : undefined;
+};
 
 export class ApiWrapper {
   static create<TInput = unknown, TOutput = unknown>(
@@ -218,20 +241,62 @@ export class ApiWrapper {
         request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
       if (apiKeyValue) {
-        // TODO: Implement API key verification
-        // For now, we'll use a simple mock
-        if (apiKeyValue.startsWith("sk_")) {
+        // Import API key service dynamically to avoid circular dependency
+        const { ApiKeyService } = await import("@/infrastructure/services/api-key.service");
+        const { RateLimitService, RateLimitError } = await import("@/infrastructure/services/rate-limit.service");
+        const { getIpAddress, getOrigin } = await import("./request-context");
+
+        // Verify API key
+        const apiKey = await ApiKeyService.verify(apiKeyValue);
+
+        if (apiKey) {
+          // Extract scopes from metadata
+          const metadata = apiKey.metadata as { scopes?: string[] } | null;
+          const scopes = metadata?.scopes || [];
+
           context.apiKey = {
-            id: "api_key_123",
-            userId: "user_123",
-            scopes: ["metadata:read", "metadata:write", "media:read", "media:write"],
+            id: apiKey.id,
+            userId: apiKey.userId,
+            scopes,
           };
           authenticated = true;
 
-          logger.debug("API key authenticated", {
-            keyId: context.apiKey.id,
-            userId: context.apiKey.userId,
-          });
+          // Check rate limit
+          try {
+            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
+              ip: getIpAddress(request),
+              origin: getOrigin(request),
+            });
+
+            context.rateLimit = {
+              limit: rateLimitResult.limit,
+              remaining: rateLimitResult.remaining,
+              reset: rateLimitResult.reset,
+            };
+
+            logger.debug("API key authenticated", {
+              keyId: context.apiKey.id,
+              userId: context.apiKey.userId,
+              tier: rateLimitResult.tier,
+              remaining: rateLimitResult.remaining,
+            });
+          } catch (error) {
+            if (error instanceof RateLimitError) {
+              throw new ApiError(
+                error.message,
+                ErrorCode.RATE_LIMIT_EXCEEDED,
+                429,
+                {
+                  limit: error.result.limit,
+                  remaining: error.result.remaining,
+                  reset: error.result.reset,
+                  retryAfter: error.result.retryAfter,
+                }
+              );
+            }
+            // Log but don't fail on rate limit errors
+            logger.error("Rate limit check failed", { error });
+          }
         }
       }
     }

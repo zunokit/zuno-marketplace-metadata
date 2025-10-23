@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
 import {
@@ -6,26 +5,26 @@ import {
   listMetadataSchema,
   validateAttributes,
   validateCreators,
+  type CreateMetadataInput,
+  type ListMetadataInput,
 } from "@/shared/lib/validation/metadata.schemas";
 import { MetadataQueryService } from "@/core/services/metadata/metadata-query.service";
 import { getMetadataRepository } from "@/infrastructure/di/container";
-import type { CreateMetadataParams } from "@/core/domain/metadata/metadata.entity";
 
 /**
  * GET /api/metadata - List all metadata
  */
-export const GET = ApiWrapper.create(
+export const GET = ApiWrapper.create<ListMetadataInput>(
   async (input, context) => {
-    // Extract query from nested input structure (similar to reference project)
-    const queryParams = (input as any).query || input;
+    const { query } = input;
 
     logger.info("Listing metadata", {
-      queryParams,
+      query,
       requestId: context.requestId,
     });
 
     // Build list params using service
-    const listParams = MetadataQueryService.buildListParams(queryParams, {
+    const listParams = MetadataQueryService.buildListParams(query, {
       user: context.user,
       apiKey: context.apiKey,
     });
@@ -56,9 +55,9 @@ export const GET = ApiWrapper.create(
 /**
  * POST /api/metadata - Create new metadata
  */
-export const POST = ApiWrapper.create(
+export const POST = ApiWrapper.create<CreateMetadataInput>(
   async (input, context) => {
-    const { body } = input as z.infer<typeof createMetadataSchema>;
+    const { body } = input;
 
     logger.info("Creating new metadata", {
       name: body.name,
@@ -76,27 +75,9 @@ export const POST = ApiWrapper.create(
       throw new Error("Invalid creators: total share exceeds 100%");
     }
 
-    // Prepare creation params
-    const createParams: CreateMetadataParams = {
-      name: body.name,
-      description: body.description,
-      symbol: body.symbol,
-      image: body.image,
-      bannerImage: body.bannerImage,
-      featuredImage: body.featuredImage,
-      animationUrl: body.animationUrl,
-      externalUrl: body.externalUrl,
-      backgroundColor: body.backgroundColor,
-      attributes: body.attributes,
-      mediaType: body.mediaType,
-      creators: body.creators,
-      sellerFeeBasisPoints: body.sellerFeeBasisPoints,
-      feeRecipient: body.feeRecipient,
-    };
-
-    // Create metadata using repository
+    // Create metadata using repository - body already matches CreateMetadataParams
     const metadataRepository = getMetadataRepository();
-    const metadataEntity = await metadataRepository.create(createParams);
+    const metadataEntity = await metadataRepository.create(body);
 
     logger.info("Metadata created successfully", {
       metadataId: metadataEntity.id,

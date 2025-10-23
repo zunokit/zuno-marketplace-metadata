@@ -40,6 +40,7 @@ export enum ErrorCode {
 
   // Rate Limiting
   RATE_LIMITED = "RATE_LIMITED",
+  RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED",
   QUOTA_EXCEEDED = "QUOTA_EXCEEDED",
 
   // Validation

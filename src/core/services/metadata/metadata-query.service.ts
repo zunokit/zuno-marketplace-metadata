@@ -2,6 +2,7 @@ import type {
   MetadataListParams,
   MetadataListFilters,
 } from "@/core/domain/metadata/metadata.entity";
+import type { ListMetadataInput } from "@/shared/lib/validation/metadata.schemas";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 
@@ -16,18 +17,8 @@ export interface AuthContext {
   };
 }
 
-export interface ListQueryInput {
-  page?: number;
-  limit?: number;
-  sortBy?: "name" | "createdAt" | "updatedAt" | "version";
-  sortOrder?: "asc" | "desc";
-  search?: string;
-  mediaType?: "IMAGE" | "VIDEO" | "GIF" | "MODEL_3D";
-  isPinned?: boolean;
-  isLocked?: boolean;
-  minVersion?: number;
-  maxVersion?: number;
-}
+// Use the query type from validation schema
+export type ListQueryInput = ListMetadataInput["query"];
 
 // ============ Metadata Query Service ============
 export class MetadataQueryService {

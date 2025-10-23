@@ -61,16 +61,16 @@ export const updateMetadataSchema = z.object({
 // List metadata schema
 export const listMetadataSchema = z.object({
   query: commonSchemas.pagination.merge(
-    commonSchemas.sort.merge(
-      z.object({
-        search: z.string().optional(),
-        mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).optional(),
-        isPinned: z.coerce.boolean().optional(),
-        isLocked: z.coerce.boolean().optional(),
-        minVersion: z.coerce.number().optional(),
-        maxVersion: z.coerce.number().optional(),
-      })
-    )
+    z.object({
+      sortBy: z.enum(["name", "createdAt", "updatedAt", "version"]).optional().default("createdAt"),
+      sortOrder: z.enum(["asc", "desc"]).default("desc"),
+      search: z.string().optional(),
+      mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).optional(),
+      isPinned: z.coerce.boolean().optional(),
+      isLocked: z.coerce.boolean().optional(),
+      minVersion: z.coerce.number().optional(),
+      maxVersion: z.coerce.number().optional(),
+    })
   ),
 });
 
@@ -86,6 +86,14 @@ export const getMetadataSchema = z.object({
 export const deleteMetadataSchema = z.object({
   params: commonSchemas.id,
 });
+
+// ============= TYPE EXPORTS =============
+// Export inferred types for use in routes
+export type GetMetadataInput = z.infer<typeof getMetadataSchema>;
+export type UpdateMetadataInput = z.infer<typeof updateMetadataSchema>;
+export type DeleteMetadataInput = z.infer<typeof deleteMetadataSchema>;
+export type CreateMetadataInput = z.infer<typeof createMetadataSchema>;
+export type ListMetadataInput = z.infer<typeof listMetadataSchema>;
 
 // Batch operations
 export const batchCreateMetadataSchema = z.object({
@@ -148,11 +156,7 @@ export function validateCreators(creators: unknown[]): boolean {
   return totalShare <= 100;
 }
 
-// Type exports
+// Additional type exports for nested schemas
 export type MetadataAttribute = z.infer<typeof metadataAttributeSchema>;
 export type Creator = z.infer<typeof creatorSchema>;
 export type MetadataInput = z.infer<typeof metadataSchema>;
-export type CreateMetadataInput = z.infer<typeof createMetadataSchema>;
-export type UpdateMetadataInput = z.infer<typeof updateMetadataSchema>;
-export type ListMetadataQuery = z.infer<typeof listMetadataSchema>["query"];
-export type GetMetadataQuery = z.infer<typeof getMetadataSchema>["query"];

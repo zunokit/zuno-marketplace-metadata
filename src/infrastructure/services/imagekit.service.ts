@@ -314,6 +314,22 @@ export class ImageKitService {
   }
 
   /**
+   * Extract file ID from ImageKit URL
+   * @param url - Full ImageKit URL
+   * @returns File ID or null if extraction fails
+   */
+  extractFileIdFromUrl(url: string): string | null {
+    try {
+      const urlParts = url.split("/");
+      const filename = urlParts[urlParts.length - 1].split("?")[0];
+      return filename;
+    } catch (error) {
+      logger.warn("Failed to extract ImageKit file ID from URL", { url, error });
+      return null;
+    }
+  }
+
+  /**
    * Check if ImageKit service is healthy
    */
   async healthCheck(): Promise<boolean> {
