@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { authClient } from "@/infrastructure/auth/auth.client";
 import { toast } from "sonner";
 
 export interface ApiKeyViewModel {
@@ -64,14 +63,18 @@ export function useApiKeys() {
   return useQuery({
     queryKey: ["api-keys"],
     queryFn: async () => {
-      // Use Better Auth client to list API keys
-      const result = await authClient.apiKey.list();
+      // Use custom admin API route
+      const response = await fetch("/api/admin/api-keys", {
+        credentials: "include",
+      });
 
-      if (!result.data) {
+      if (!response.ok) {
         throw new Error("Failed to fetch API keys");
       }
 
-      return result.data.map((key: BetterAuthApiKey): ApiKeyViewModel => {
+      const data = await response.json();
+
+      return data.map((key: BetterAuthApiKey): ApiKeyViewModel => {
         const permissions = typeof key.permissions === "string"
           ? (JSON.parse(key.permissions) as Record<string, string[]>)
           : (key.permissions || {});
@@ -107,20 +110,25 @@ export function useCreateApiKey() {
 
   return useMutation({
     mutationFn: async (input: CreateApiKeyInput) => {
-      const result = await authClient.apiKey.create({
-        name: input.name,
-        permissions: input.permissions,
-        expiresIn: input.expiresIn ?? undefined,
-        metadata: input.metadata,
+      const response = await fetch("/api/admin/api-keys", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(input),
       });
 
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to create API key");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create API key");
       }
 
+      const result = await response.json();
+
       return {
-        id: result.data?.id,
-        key: result.data?.key, // The actual key value (only shown once!)
+        id: result?.id,
+        key: result?.key, // The actual key value (only shown once!)
       };
     },
     onSuccess: () => {
@@ -150,16 +158,21 @@ export function useUpdateApiKey() {
       permissions?: Record<string, string[]>;
       metadata?: ApiKeyViewModel["metadata"];
     }) => {
-      const result = await authClient.apiKey.update({
-        keyId: id,
-        ...updates,
+      const response = await fetch(`/api/admin/api-keys/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(updates),
       });
 
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to update API key");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update API key");
       }
 
-      return result.data;
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
@@ -179,13 +192,17 @@ export function useDeleteApiKey() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const result = await authClient.apiKey.delete({ keyId: id });
+      const response = await fetch(`/api/admin/api-keys/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
 
-      if (result.error) {
-        throw new Error(result.error.message || "Failed to delete API key");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete API key");
       }
 
-      return result.data;
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });

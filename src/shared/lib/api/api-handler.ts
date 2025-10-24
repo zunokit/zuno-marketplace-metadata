@@ -47,6 +47,7 @@ export interface ApiRouteConfig<
     allowApiKey?: boolean;
     allowSession?: boolean;
     requiredScopes?: string[];
+    adminOnly?: boolean; // Require admin role
   };
   validation?: {
     body?: TBody;
@@ -394,6 +395,22 @@ export class ApiWrapper {
         ErrorCode.UNAUTHORIZED,
         401
       );
+    }
+
+    // Check admin role if required
+    if (authenticated && authConfig?.adminOnly) {
+      if (context.user?.role !== "admin") {
+        logger.warn("Admin access required", {
+          userId: context.user?.id || context.apiKey?.userId,
+          role: context.user?.role,
+        });
+
+        throw new ApiError(
+          "Admin access required",
+          ErrorCode.FORBIDDEN,
+          403
+        );
+      }
     }
 
     // Check permissions if authenticated and required
