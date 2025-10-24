@@ -1,10 +1,8 @@
 import { auth } from "./better-auth.config";
-import { headers as nextHeaders } from "next/headers";
 import { db } from "@/infrastructure/database/client";
 import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/api-key.schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
-import { Session } from "better-auth";
 import { User } from "@/infrastructure/database/drizzle/schema/user.schema";
 
 export interface AuthUser {
@@ -137,66 +135,6 @@ export async function verifyApiKey(
     };
   } catch (error) {
     logger.error("Failed to verify API key", { error });
-    return null;
-  }
-}
-
-/**
- * Verify session from cookies using Better Auth
- */
-export async function verifySession(): Promise<{
-  user: AuthUser;
-  session: AuthContext["session"];
-} | null> {
-  try {
-    const headersList = await nextHeaders();
-    const cookieHeader = headersList.get("cookie") || "";
-
-    // Use Better Auth's session validation
-    const session = await auth.api.getSession({
-      headers: {
-        cookie: cookieHeader,
-      },
-    });
-
-    if (!session || !session.user || !session.session) {
-      return null;
-    }
-
-    // Check if user is banned
-    if (session.user.banned) {
-      const banExpires = session.user.banExpires
-        ? new Date(session.user.banExpires)
-        : null;
-      if (!banExpires || banExpires > new Date()) {
-        logger.warn("Banned user attempted access", {
-          userId: session.user.id,
-        });
-        return null;
-      }
-    }
-
-    return {
-      user: {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        role: session.user.role || "user",
-        banned: session.user.banned || undefined,
-        banReason: session.user.banReason || undefined,
-        banExpires: session.user.banExpires
-          ? new Date(session.user.banExpires)
-          : undefined,
-      },
-      session: {
-        id: session.session.id,
-        token: session.session.token,
-        expiresAt: new Date(session.session.expiresAt),
-        impersonatedBy: session.session.impersonatedBy || undefined,
-      },
-    };
-  } catch (error) {
-    logger.error("Failed to verify session", { error });
     return null;
   }
 }

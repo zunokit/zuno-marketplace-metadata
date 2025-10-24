@@ -1,6 +1,0 @@
-upstash https://upstash.com/docs/introduction , https://context7.com/websites/upstash-redis/llms.txt?tokens=200000
-drizzle supbabase https://orm.drizzle.team/docs/tutorials/drizzle-with-supabase , https://supabase.com/docs/guides/database/drizzle
-bullmq upstash https://upstash.com/docs/redis/integrations/bullmq , https://docs.bullmq.io/
-imagekit https://imagekit.io/docs/overview
-pinata https://docs.pinata.cloud/quickstart 
-supbabase https://supabase.com/docs 
