@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,13 +14,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface ApiKeyFormDialogProps {
   onCreate: (data: {
@@ -28,9 +39,6 @@ interface ApiKeyFormDialogProps {
       notes?: string;
     };
     expiresIn?: number;
-    rateLimitEnabled?: boolean;
-    rateLimitMax?: number;
-    rateLimitTimeWindow?: number;
   }) => void;
   isCreating: boolean;
   newKey?: string | null;
@@ -50,6 +58,25 @@ const AVAILABLE_RESOURCES = [
   },
 ];
 
+// Form schema with zod validation
+const apiKeyFormSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters").max(100),
+  permissions: z.record(z.string(), z.array(z.string())).refine(
+    (perms) => {
+      const values = Object.values(perms) as string[][];
+      return Object.keys(perms).length > 0 && values.some(actions => actions.length > 0);
+    },
+    "At least one permission must be selected"
+  ),
+  expiresIn: z.string().optional().refine(
+    (val) => !val || (parseInt(val) > 0 && parseInt(val) <= 3650),
+    "Expiration must be between 1 and 3650 days"
+  ),
+  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
+});
+
+type ApiKeyFormValues = z.infer<typeof apiKeyFormSchema>;
+
 export function ApiKeyFormDialog({
   onCreate,
   isCreating,
@@ -57,75 +84,67 @@ export function ApiKeyFormDialog({
   onClose,
 }: ApiKeyFormDialogProps) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [notes, setNotes] = useState("");
-  const [expiresIn, setExpiresIn] = useState<string>("");
-  const [permissions, setPermissions] = useState<Record<string, string[]>>({});
   const [copied, setCopied] = useState(false);
-  const [enableRateLimit, setEnableRateLimit] = useState(false);
-  const [rateLimitMax, setRateLimitMax] = useState<string>("1000");
-  const [rateLimitWindow, setRateLimitWindow] = useState<string>("3600"); // 1 hour in seconds
+
+  const form = useForm<ApiKeyFormValues>({
+    resolver: zodResolver(apiKeyFormSchema),
+    defaultValues: {
+      name: "",
+      permissions: {},
+      expiresIn: "",
+      notes: "",
+    },
+  });
 
   // Reset form when dialog closes
   useEffect(() => {
     if (!open) {
-      setName("");
-      setNotes("");
-      setExpiresIn("");
-      setPermissions({});
+      form.reset();
       setCopied(false);
-      setEnableRateLimit(false);
-      setRateLimitMax("1000");
-      setRateLimitWindow("3600");
       onClose();
     }
-  }, [open, onClose]);
-
-  // Show success state when key is created
-  useEffect(() => {
-    if (newKey) {
-      // Keep dialog open to show the key
-    }
-  }, [newKey]);
+  }, [open, form, onClose]);
 
   const handlePermissionChange = (resource: string, action: string, checked: boolean) => {
-    setPermissions((prev) => {
-      const current = prev[resource] || [];
-      if (checked) {
-        return { ...prev, [resource]: [...current, action] };
-      } else {
-        return { ...prev, [resource]: current.filter((a) => a !== action) };
-      }
+    const currentPermissions = form.getValues("permissions");
+    const currentActions = currentPermissions[resource] || [];
+
+    const updatedActions = checked
+      ? [...currentActions, action]
+      : currentActions.filter((a) => a !== action);
+
+    form.setValue("permissions", {
+      ...currentPermissions,
+      [resource]: updatedActions,
     });
+
+    // Trigger validation
+    form.trigger("permissions");
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) {
-      toast.error("Please provide a name for the API key");
-      return;
-    }
-
+  const onSubmit = (values: ApiKeyFormValues) => {
     // Convert permissions to scopes format
     const scopes: string[] = [];
-    Object.entries(permissions).forEach(([resource, actions]) => {
+    Object.entries(values.permissions).forEach(([resource, actions]) => {
       actions.forEach((action) => {
-        scopes.push(`${action}:${resource}`);
+        scopes.push(`${resource}:${action}`);
       });
     });
 
+    // Type-safe permissions (zod already validates this is Record<string, string[]>)
+    const permissions: Record<string, string[]> = {};
+    Object.entries(values.permissions).forEach(([key, value]) => {
+      permissions[key] = value;
+    });
+
     onCreate({
-      name: name.trim(),
+      name: values.name.trim(),
       permissions,
       metadata: {
         scopes,
-        notes: notes.trim() || undefined,
+        notes: values.notes?.trim() || undefined,
       },
-      expiresIn: expiresIn ? parseInt(expiresIn) : undefined,
-      rateLimitEnabled: enableRateLimit,
-      rateLimitMax: enableRateLimit ? parseInt(rateLimitMax) : undefined,
-      rateLimitTimeWindow: enableRateLimit ? parseInt(rateLimitWindow) : undefined,
+      expiresIn: values.expiresIn ? parseInt(values.expiresIn) : undefined,
     });
   };
 
@@ -157,20 +176,20 @@ export function ApiKeyFormDialog({
             <DialogHeader>
               <DialogTitle>API Key Created Successfully!</DialogTitle>
               <DialogDescription>
-                Copy this key now. You won't be able to see it again.
+                Copy this key now. You won&apos;t be able to see it again.
               </DialogDescription>
             </DialogHeader>
 
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Make sure to copy your API key now. You won't be able to see it again!
+                Make sure to copy your API key now. You won&apos;t be able to see it again!
               </AlertDescription>
             </Alert>
 
             <div className="space-y-4">
               <div>
-                <Label>API Key</Label>
+                <FormLabel>API Key</FormLabel>
                 <div className="flex gap-2 mt-2">
                   <Input
                     value={newKey}
@@ -202,140 +221,138 @@ export function ApiKeyFormDialog({
             <DialogHeader>
               <DialogTitle>Create New API Key</DialogTitle>
               <DialogDescription>
-                Create a new API key for programmatic access to the metadata API
+                Create a new API key for programmatic access to the metadata API.
+                Rate limiting is configured server-side (1000 req/hour by default).
               </DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  placeholder="Production API Key"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  disabled={isCreating}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Production API Key"
+                          disabled={isCreating}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        A descriptive name for this API key
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <Label>Permissions *</Label>
-                <div className="space-y-4 border rounded-lg p-4">
-                  {AVAILABLE_RESOURCES.map(({ resource, label, actions }) => (
-                    <div key={resource} className="space-y-2">
-                      <h4 className="font-medium text-sm">{label}</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {actions.map((action) => (
-                          <div key={action} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`${resource}-${action}`}
-                              checked={permissions[resource]?.includes(action) || false}
-                              onCheckedChange={(checked) =>
-                                handlePermissionChange(resource, action, checked as boolean)
-                              }
-                              disabled={isCreating}
-                            />
-                            <Label
-                              htmlFor={`${resource}-${action}`}
-                              className="text-sm font-normal cursor-pointer"
-                            >
-                              {action}
-                            </Label>
+                <FormField
+                  control={form.control}
+                  name="permissions"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Permissions *</FormLabel>
+                      <div className="space-y-4 border rounded-lg p-4">
+                        {AVAILABLE_RESOURCES.map(({ resource, label, actions }) => (
+                          <div key={resource} className="space-y-2">
+                            <h4 className="font-medium text-sm">{label}</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                              {actions.map((action) => (
+                                <div key={action} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`${resource}-${action}`}
+                                    checked={
+                                      (form.watch("permissions")[resource] || []).includes(action)
+                                    }
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(resource, action, checked as boolean)
+                                    }
+                                    disabled={isCreating}
+                                  />
+                                  <label
+                                    htmlFor={`${resource}-${action}`}
+                                    className="text-sm font-normal cursor-pointer"
+                                  >
+                                    {action}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expiresIn">Expires In (days)</Label>
-                <Input
-                  id="expiresIn"
-                  type="number"
-                  placeholder="Leave empty for no expiration"
-                  value={expiresIn}
-                  onChange={(e) => setExpiresIn(e.target.value)}
-                  min="1"
-                  disabled={isCreating}
+                      <FormDescription>
+                        Select the permissions this API key will have
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="enableRateLimit"
-                    checked={enableRateLimit}
-                    onCheckedChange={(checked) => setEnableRateLimit(checked as boolean)}
+                <FormField
+                  control={form.control}
+                  name="expiresIn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Expires In (days)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Leave empty for no expiration"
+                          min="1"
+                          max="3650"
+                          disabled={isCreating}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Number of days until the key expires (optional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Internal notes about this API key..."
+                          rows={3}
+                          disabled={isCreating}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Optional notes for internal reference
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
                     disabled={isCreating}
-                  />
-                  <Label htmlFor="enableRateLimit" className="cursor-pointer">
-                    Enable Custom Rate Limiting
-                  </Label>
-                </div>
-                {enableRateLimit && (
-                  <div className="grid grid-cols-2 gap-4 pl-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="rateLimitMax">Max Requests</Label>
-                      <Input
-                        id="rateLimitMax"
-                        type="number"
-                        placeholder="1000"
-                        value={rateLimitMax}
-                        onChange={(e) => setRateLimitMax(e.target.value)}
-                        min="1"
-                        disabled={isCreating}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="rateLimitWindow">
-                        Window (seconds)
-                      </Label>
-                      <Input
-                        id="rateLimitWindow"
-                        type="number"
-                        placeholder="3600"
-                        value={rateLimitWindow}
-                        onChange={(e) => setRateLimitWindow(e.target.value)}
-                        min="1"
-                        disabled={isCreating}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        3600s = 1 hour
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Internal notes about this API key..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  disabled={isCreating}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  disabled={isCreating}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isCreating}>
-                  {isCreating ? "Creating..." : "Create API Key"}
-                </Button>
-              </DialogFooter>
-            </form>
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? "Creating..." : "Create API Key"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </>
         )}
       </DialogContent>

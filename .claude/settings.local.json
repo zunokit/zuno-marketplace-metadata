@@ -12,7 +12,8 @@
       "Bash(done)",
       "mcp__better-auth__search",
       "Bash(pnpm drizzle-kit:*)",
-      "Bash(pnpm db:migrate:*)"
+      "Bash(pnpm db:migrate:*)",
+      "Bash(pnpm typecheck:*)"
     ],
     "deny": [],
     "ask": []

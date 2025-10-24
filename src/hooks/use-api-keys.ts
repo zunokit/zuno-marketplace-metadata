@@ -43,6 +43,23 @@ export interface CreateApiKeyInput {
 /**
  * List all API keys for current user
  */
+// Better Auth API Key Response Type
+interface BetterAuthApiKey {
+  id: string;
+  name: string | null;
+  start?: string | null;
+  permissions?: string | Record<string, string[]> | null;
+  metadata?: Record<string, unknown> | null;
+  enabled?: boolean | null;
+  expiresAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  rateLimitEnabled?: boolean | null;
+  rateLimitMax?: number | null;
+  rateLimitTimeWindow?: number | null;
+  remaining?: number | null;
+}
+
 export function useApiKeys() {
   return useQuery({
     queryKey: ["api-keys"],
@@ -54,24 +71,30 @@ export function useApiKeys() {
         throw new Error("Failed to fetch API keys");
       }
 
-      return result.data.map((key: any) => ({
-        id: key.id,
-        name: key.name,
-        start: key.start || null,
-        permissions: typeof key.permissions === "string"
-          ? JSON.parse(key.permissions)
-          : (key.permissions || {}),
-        scopes: key.metadata?.scopes || [],
-        enabled: key.enabled ?? true,
-        expiresAt: key.expiresAt ? new Date(key.expiresAt) : null,
-        createdAt: new Date(key.createdAt),
-        updatedAt: new Date(key.updatedAt),
-        rateLimitEnabled: key.rateLimitEnabled ?? false,
-        rateLimitMax: key.rateLimitMax ?? null,
-        rateLimitTimeWindow: key.rateLimitTimeWindow ?? null,
-        remaining: key.remaining ?? null,
-        metadata: key.metadata,
-      })) as ApiKeyViewModel[];
+      return result.data.map((key: BetterAuthApiKey): ApiKeyViewModel => {
+        const permissions = typeof key.permissions === "string"
+          ? (JSON.parse(key.permissions) as Record<string, string[]>)
+          : (key.permissions || {});
+
+        const metadata = key.metadata as ApiKeyViewModel["metadata"] | undefined;
+
+        return {
+          id: key.id,
+          name: key.name || "Unnamed Key",
+          start: key.start || null,
+          permissions,
+          scopes: (metadata?.scopes as string[]) || [],
+          enabled: key.enabled ?? true,
+          expiresAt: key.expiresAt ? new Date(key.expiresAt) : null,
+          createdAt: new Date(key.createdAt),
+          updatedAt: new Date(key.updatedAt),
+          rateLimitEnabled: key.rateLimitEnabled ?? false,
+          rateLimitMax: key.rateLimitMax ?? null,
+          rateLimitTimeWindow: key.rateLimitTimeWindow ?? null,
+          remaining: key.remaining ?? null,
+          metadata,
+        };
+      });
     },
   });
 }
@@ -89,9 +112,6 @@ export function useCreateApiKey() {
         permissions: input.permissions,
         expiresIn: input.expiresIn ?? undefined,
         metadata: input.metadata,
-        rateLimitEnabled: input.rateLimitEnabled,
-        rateLimitMax: input.rateLimitMax,
-        rateLimitTimeWindow: input.rateLimitTimeWindow,
       });
 
       if (result.error) {

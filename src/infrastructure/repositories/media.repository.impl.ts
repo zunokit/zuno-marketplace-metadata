@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, or, ilike, sql, count } from "drizzle-orm";
+import { eq, desc, asc, and, ilike, sql } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { media } from "@/infrastructure/database/drizzle/schema";
 import type { MediaRepository } from "@/core/domain/media/media.repository";
@@ -11,6 +11,10 @@ import type {
 import type { PaginatedResponse } from "@/shared/types";
 import { logger } from "@/shared/lib/utils/logger";
 import { hasRows, extractRowCount, countSql } from "@/shared/lib/utils/drizzle-helpers";
+import type { InferSelectModel } from "drizzle-orm";
+
+// Type-safe database row type
+type MediaRow = InferSelectModel<typeof media>;
 
 export class MediaRepositoryImpl implements MediaRepository {
   constructor(private db: Database) {}
@@ -94,16 +98,12 @@ export class MediaRepositoryImpl implements MediaRepository {
       conditions.push(eq(media.isPinned, isPinned));
     }
 
-    // Build base query
-    let query: any = this.db.select().from(media);
-    let countQuery: any = this.db.select({ count: countSql }).from(media);
-
-    // Apply conditions
+    // Build base query with type safety
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    if (whereClause) {
-      query = query.where(whereClause);
-      countQuery = countQuery.where(whereClause);
-    }
+
+    // Build queries
+    const baseQuery = this.db.select().from(media);
+    const queryWithConditions = whereClause ? baseQuery.where(whereClause) : baseQuery;
 
     // Apply sorting
     const sortColumn = sortBy === "fileName" ? media.fileName
@@ -111,15 +111,19 @@ export class MediaRepositoryImpl implements MediaRepository {
       : media.createdAt;
 
     const orderFn = sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn);
-    query = query.orderBy(orderFn);
+    const queryWithSort = queryWithConditions.orderBy(orderFn);
 
     // Apply pagination
     const offset = (page - 1) * limit;
-    query = query.limit(limit).offset(offset);
+    const finalQuery = queryWithSort.limit(limit).offset(offset);
+
+    // Count query
+    const countQueryBase = this.db.select({ count: countSql }).from(media);
+    const countQuery = whereClause ? countQueryBase.where(whereClause) : countQueryBase;
 
     // Execute queries
     const [results, [{ count: totalCount }]] = await Promise.all([
-      query,
+      finalQuery,
       countQuery,
     ]);
 
@@ -127,7 +131,7 @@ export class MediaRepositoryImpl implements MediaRepository {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: results.map((item: any) => this.mapToEntity(item)),
+      data: results.map((item) => this.mapToEntity(item)),
       pagination: {
         page,
         limit,
@@ -216,7 +220,7 @@ export class MediaRepositoryImpl implements MediaRepository {
     return result ? this.mapToEntity(result) : null;
   }
 
-  private mapToEntity(row: any): MediaEntity {
+  private mapToEntity(row: MediaRow): MediaEntity {
     return {
       id: row.id,
       fileName: row.fileName,
@@ -224,15 +228,15 @@ export class MediaRepositoryImpl implements MediaRepository {
       mimeType: row.mimeType,
       mediaType: row.mediaType,
       url: row.url,
-      ipfsHash: row.ipfsHash,
-      ipfsUrl: row.ipfsUrl,
-      width: row.width,
-      height: row.height,
-      duration: row.duration,
-      thumbnailUrl: row.thumbnailUrl,
-      optimizedUrl: row.optimizedUrl,
+      ipfsHash: row.ipfsHash ?? undefined,
+      ipfsUrl: row.ipfsUrl ?? undefined,
+      width: row.width ?? undefined,
+      height: row.height ?? undefined,
+      duration: row.duration ?? undefined,
+      thumbnailUrl: row.thumbnailUrl ?? undefined,
+      optimizedUrl: row.optimizedUrl ?? undefined,
       isPinned: row.isPinned,
-      pinnedAt: row.pinnedAt,
+      pinnedAt: row.pinnedAt ?? undefined,
       createdAt: row.createdAt,
     };
   }
