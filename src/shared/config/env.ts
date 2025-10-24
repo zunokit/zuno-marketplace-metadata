@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { tryCatchSync, unwrapOrThrow } from "@/shared/lib/utils";
 
 const envSchema = z.object({
   // Database
@@ -33,21 +32,17 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 // Validate and export environment variables
-const envResult = tryCatchSync(
-  () => envSchema.parse(process.env),
-  {
-    errorMessage: "Environment validation failed",
-    shouldLog: false,
-    onError: (error) => {
-      if (error instanceof z.ZodError) {
-        const missingVars = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join('\n');
-        console.error(`Environment validation failed:\n${missingVars}`);
-      }
-    },
+// Note: Using direct try-catch here to avoid circular dependency with tryCatchSync
+let env: Env;
+try {
+  env = envSchema.parse(process.env);
+} catch (error) {
+  if (error instanceof z.ZodError) {
+    const missingVars = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join('\n');
+    console.error(`Environment validation failed:\n${missingVars}`);
   }
-);
-
-const env: Env = unwrapOrThrow(envResult);
+  throw error;
+}
 
 export { env };
 

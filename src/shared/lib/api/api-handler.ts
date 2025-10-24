@@ -334,77 +334,55 @@ export class ApiWrapper {
     const { request } = context;
     let authenticated = false;
 
-    // Try API key authentication first
-    if (authConfig?.allowApiKey !== false) {
+    // Try session authentication first (for admin UI)
+    if (authConfig?.allowSession !== false) {
+      const { verifySessionFromHeaders } = await import(
+        "@/infrastructure/auth/auth-helpers"
+      );
+      const sessionResult = await verifySessionFromHeaders(request.headers);
+
+      if (sessionResult) {
+        context.user = sessionResult.user;
+        authenticated = true;
+
+        logger.debug("Session authenticated", {
+          userId: context.user.id,
+          role: context.user.role,
+        });
+      }
+    }
+
+    // Try API key authentication if session not found
+    if (!authenticated && authConfig?.allowApiKey !== false) {
       const apiKeyValue =
         request.headers.get("x-api-key") ||
         request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
 
       if (apiKeyValue) {
-        // Import API key service dynamically to avoid circular dependency
-        const { ApiKeyService } = await import("@/infrastructure/services/api-key.service");
-        const { RateLimitService, RateLimitError } = await import("@/infrastructure/services/rate-limit.service");
-        const { getIpAddress, getOrigin } = await import("./request-context");
+        // Import Better Auth helpers
+        const { verifyApiKey } = await import(
+          "@/infrastructure/auth/auth-helpers"
+        );
 
-        // Verify API key
-        const apiKey = await ApiKeyService.verify(apiKeyValue);
+        // Verify API key using Better Auth
+        const apiKey = await verifyApiKey(apiKeyValue);
 
         if (apiKey) {
-          // Extract scopes from metadata
-          const metadata = apiKey.metadata as { scopes?: string[] } | null;
-          const scopes = metadata?.scopes || [];
-
           context.apiKey = {
             id: apiKey.id,
             userId: apiKey.userId,
-            scopes,
+            scopes: apiKey.scopes,
           };
           authenticated = true;
 
-          // Check rate limit
-          const rateLimitCheck = await tryCatch(
-            () => RateLimitService.checkLimit(apiKey, {
-              ip: getIpAddress(request),
-              origin: getOrigin(request),
-            }),
-            {
-              errorMessage: "Rate limit check failed",
-              shouldLog: false,
-            }
-          );
+          logger.debug("API key authenticated", {
+            keyId: context.apiKey.id,
+            userId: context.apiKey.userId,
+            scopes: context.apiKey.scopes,
+          });
 
-          if (!rateLimitCheck.success) {
-            const error = rateLimitCheck.error;
-            if (error instanceof RateLimitError) {
-              throw new ApiError(
-                error.message,
-                ErrorCode.RATE_LIMIT_EXCEEDED,
-                429,
-                {
-                  limit: error.result.limit,
-                  remaining: error.result.remaining,
-                  reset: error.result.reset,
-                  retryAfter: error.result.retryAfter,
-                }
-              );
-            }
-            // Log but don't fail on rate limit errors
-            logger.error("Rate limit check failed", { error });
-          } else {
-            const rateLimitResult = rateLimitCheck.data;
-            context.rateLimit = {
-              limit: rateLimitResult.limit,
-              remaining: rateLimitResult.remaining,
-              reset: rateLimitResult.reset,
-            };
-
-            logger.debug("API key authenticated", {
-              keyId: context.apiKey.id,
-              userId: context.apiKey.userId,
-              tier: rateLimitResult.tier,
-              remaining: rateLimitResult.remaining,
-            });
-          }
+          // Note: Rate limiting is handled by Better Auth if enabled
+          // Custom Redis-based rate limiting can be added here if needed
         }
       }
     }
@@ -412,32 +390,50 @@ export class ApiWrapper {
     // Check if authentication is required
     if (authConfig?.required && !authenticated) {
       throw new ApiError(
-        "Authentication required. Provide a valid API key.",
+        "Authentication required. Provide a valid API key or session.",
         ErrorCode.UNAUTHORIZED,
         401
       );
     }
 
-    // Check scopes if authenticated
+    // Check permissions if authenticated and required
     if (
       authenticated &&
       authConfig?.requiredScopes &&
       authConfig.requiredScopes.length > 0
     ) {
-      const userScopes = context.apiKey?.scopes || [];
-      const hasRequiredScopes = authConfig.requiredScopes.some(scope =>
-        userScopes.includes(scope)
+      const { hasPermission } = await import(
+        "@/infrastructure/auth/auth-helpers"
       );
 
-      if (!hasRequiredScopes) {
-        logger.warn("Insufficient scopes", {
-          userId: context.apiKey?.userId,
+      const authContext = {
+        user: context.user,
+        apiKey: context.apiKey
+          ? {
+              id: context.apiKey.id,
+              userId: context.apiKey.userId,
+              name: "",
+              permissions: {},
+              scopes: context.apiKey.scopes || [],
+              enabled: true,
+            }
+          : undefined,
+      };
+
+      const hasRequiredPermissions = hasPermission(
+        authContext,
+        authConfig.requiredScopes
+      );
+
+      if (!hasRequiredPermissions) {
+        logger.warn("Insufficient permissions", {
+          userId: context.user?.id || context.apiKey?.userId,
           required: authConfig.requiredScopes,
-          userScopes,
+          userScopes: context.apiKey?.scopes || [],
         });
 
         throw new ApiError(
-          `Insufficient permissions. Required scopes: ${authConfig.requiredScopes.join(", ")}`,
+          `Insufficient permissions. Required permissions: ${authConfig.requiredScopes.join(", ")}`,
           ErrorCode.FORBIDDEN,
           403
         );

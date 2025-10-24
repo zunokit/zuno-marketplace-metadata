@@ -7,16 +7,15 @@ import {
   jsonb,
   varchar,
 } from "drizzle-orm/pg-core";
-import { users } from "./auth.schema";
-import { apiKeys } from "./api-keys.schema";
+import { user, apiKey } from "./auth.schema";
 
 // ============= AUDIT LOGS =============
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
 
   // Can be from session or API key
-  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
-  apiKeyId: text("api_key_id").references(() => apiKeys.id, {
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  apiKeyId: text("api_key_id").references(() => apiKey.id, {
     onDelete: "set null",
   }),
 
