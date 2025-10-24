@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
  *
  * Note: API versioning is handled in route handlers to avoid database calls in Edge Runtime
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Handle API routes
