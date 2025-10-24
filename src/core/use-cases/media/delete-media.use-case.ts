@@ -4,6 +4,7 @@ import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { tryCatch } from "@/shared/lib/utils";
 
 /**
  * Delete Media Use Case
@@ -29,20 +30,22 @@ export class DeleteMediaUseCase {
 
     // 3. Delete from ImageKit first (if file ID exists)
     if (fileId) {
-      try {
-        await this.imageKitService.deleteFile(fileId);
+      const deleteResult = await tryCatch(
+        () => this.imageKitService.deleteFile(fileId),
+        {
+          errorMessage: "Failed to delete from ImageKit, proceeding with database deletion",
+          context: { mediaId, fileId },
+          shouldLog: true,
+        }
+      );
+
+      if (deleteResult.success) {
         logger.info("Media deleted from ImageKit", {
           mediaId,
           fileId,
         });
-      } catch (error) {
-        logger.error("Failed to delete from ImageKit, proceeding with database deletion", {
-          mediaId,
-          fileId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-        // Continue with DB deletion even if ImageKit deletion fails
       }
+      // Continue with DB deletion even if ImageKit deletion fails
     }
 
     // 4. Delete from database

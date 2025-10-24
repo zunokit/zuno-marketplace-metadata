@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MetadataPinJobData } from "../queue.config";
 import { env } from "@/shared/config/env";
+import { tryCatch } from "@/shared/lib/utils";
 
 /**
  * Metadata IPFS Pinning Worker
@@ -21,48 +22,53 @@ export const metadataWorker = new Worker<MetadataPinJobData>(
 
     logger.info("Processing metadata IPFS pin job", { metadataId, name });
 
-    try {
-      // Upload JSON to Pinata
-      const result = await pinataClient.uploadJSON(metadata, {
-        name: `${name} - Metadata`,
-        keyvalues: {
+    const result = await tryCatch(
+      async () => {
+        // Upload JSON to Pinata
+        const pinResult = await pinataClient.uploadJSON(metadata, {
+          name: `${name} - Metadata`,
+          keyvalues: {
+            metadataId,
+            type: "nft-metadata",
+            name,
+            pinnedAt: new Date().toISOString(),
+          },
+        });
+
+        // Update database with IPFS info
+        await db
+          .update(schema.metadata)
+          .set({
+            ipfsHash: pinResult.hash,
+            ipfsUrl: pinResult.url,
+            isPinned: true,
+            pinnedAt: new Date(),
+          })
+          .where(eq(schema.metadata.id, metadataId));
+
+        logger.info("Metadata pinned to IPFS successfully", {
           metadataId,
-          type: "nft-metadata",
-          name,
-          pinnedAt: new Date().toISOString(),
-        },
-      });
+          ipfsHash: pinResult.hash,
+        });
 
-      // Update database with IPFS info
-      await db
-        .update(schema.metadata)
-        .set({
-          ipfsHash: result.hash,
-          ipfsUrl: result.url,
-          isPinned: true,
-          pinnedAt: new Date(),
-        })
-        .where(eq(schema.metadata.id, metadataId));
+        return {
+          success: true,
+          metadataId,
+          ipfsHash: pinResult.hash,
+          ipfsUrl: pinResult.url,
+        };
+      },
+      {
+        errorMessage: "Failed to pin metadata to IPFS",
+        context: { metadataId },
+      }
+    );
 
-      logger.info("Metadata pinned to IPFS successfully", {
-        metadataId,
-        ipfsHash: result.hash,
-      });
-
-      return {
-        success: true,
-        metadataId,
-        ipfsHash: result.hash,
-        ipfsUrl: result.url,
-      };
-    } catch (error) {
-      logger.error("Failed to pin metadata to IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        metadataId,
-      });
-
-      throw error; // BullMQ will retry
+    if (!result.success) {
+      throw result.error; // BullMQ will retry
     }
+
+    return result.data;
   },
   {
     connection: {

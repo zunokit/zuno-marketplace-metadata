@@ -1,6 +1,7 @@
 import { checkDbConnection } from "@/infrastructure/database/client";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils";
 
 export interface ServiceHealth {
   status: "up" | "down";
@@ -55,101 +56,133 @@ export class HealthCheckUseCase {
   }
 
   private async checkDatabase(result: HealthCheckResult): Promise<void> {
-    try {
-      const startTime = Date.now();
-      const isHealthy = await checkDbConnection();
-      const responseTime = Date.now() - startTime;
+    const startTime = Date.now();
+    const checkResult = await tryCatch(
+      () => checkDbConnection(),
+      {
+        errorMessage: "Database health check failed",
+        shouldLog: true,
+      }
+    );
 
+    const responseTime = Date.now() - startTime;
+
+    if (checkResult.success) {
       result.services.database = {
-        status: isHealthy ? "up" : "down",
+        status: checkResult.data ? "up" : "down",
         responseTime,
       };
 
-      if (!isHealthy) {
+      if (!checkResult.data) {
         result.status = "degraded";
       }
-    } catch (error) {
-      logger.error("Database health check failed", { error });
+    } else {
       result.services.database = {
         status: "down",
-        error: error instanceof Error ? error.message : String(error),
+        responseTime,
+        error: checkResult.error.message,
       };
       result.status = "degraded";
     }
   }
 
   private async checkImageKit(result: HealthCheckResult): Promise<void> {
-    try {
-      const imageKitService = new ImageKitService();
-      const startTime = Date.now();
-      const isHealthy = await imageKitService.healthCheck();
-      const responseTime = Date.now() - startTime;
+    const imageKitService = new ImageKitService();
+    const startTime = Date.now();
+    const checkResult = await tryCatch(
+      () => imageKitService.healthCheck(),
+      {
+        errorMessage: "ImageKit health check failed",
+        shouldLog: true,
+      }
+    );
 
+    const responseTime = Date.now() - startTime;
+
+    if (checkResult.success) {
       result.services.imagekit = {
-        status: isHealthy ? "up" : "down",
+        status: checkResult.data ? "up" : "down",
         responseTime,
       };
 
-      if (!isHealthy) {
+      if (!checkResult.data) {
         result.status = "degraded";
       }
-    } catch (error) {
-      logger.error("ImageKit health check failed", { error });
+    } else {
       result.services.imagekit = {
         status: "down",
-        error: error instanceof Error ? error.message : String(error),
+        responseTime,
+        error: checkResult.error.message,
       };
       result.status = "degraded";
     }
   }
 
   private async checkRedis(result: HealthCheckResult): Promise<void> {
-    try {
-      const { RedisClient } = await import("@/infrastructure/cache/redis.client");
-      const redis = RedisClient.getInstance();
-      const startTime = Date.now();
-      const isHealthy = await redis.ping();
-      const responseTime = Date.now() - startTime;
+    const startTime = Date.now();
+    const checkResult = await tryCatch(
+      async () => {
+        const { RedisClient } = await import("@/infrastructure/cache/redis.client");
+        const redis = RedisClient.getInstance();
+        return await redis.ping();
+      },
+      {
+        errorMessage: "Redis health check failed",
+        shouldLog: true,
+      }
+    );
 
+    const responseTime = Date.now() - startTime;
+
+    if (checkResult.success) {
       result.services.redis = {
-        status: isHealthy ? "up" : "down",
+        status: checkResult.data ? "up" : "down",
         responseTime,
       };
 
-      if (!isHealthy) {
+      if (!checkResult.data) {
         result.status = "degraded";
       }
-    } catch (error) {
-      logger.error("Redis health check failed", { error });
+    } else {
       result.services.redis = {
         status: "down",
-        error: error instanceof Error ? error.message : String(error),
+        responseTime,
+        error: checkResult.error.message,
       };
       result.status = "degraded";
     }
   }
 
   private async checkPinata(result: HealthCheckResult): Promise<void> {
-    try {
-      const { PinataClient } = await import("@/infrastructure/services/pinata/pinata.client");
-      const pinata = PinataClient.getInstance();
-      const startTime = Date.now();
-      const isHealthy = await pinata.health();
-      const responseTime = Date.now() - startTime;
+    const startTime = Date.now();
+    const checkResult = await tryCatch(
+      async () => {
+        const { PinataClient } = await import("@/infrastructure/services/pinata/pinata.client");
+        const pinata = PinataClient.getInstance();
+        return await pinata.health();
+      },
+      {
+        errorMessage: "Pinata health check failed",
+        shouldLog: true,
+      }
+    );
 
+    const responseTime = Date.now() - startTime;
+
+    if (checkResult.success) {
       result.services.pinata = {
-        status: isHealthy ? "up" : "down",
+        status: checkResult.data ? "up" : "down",
         responseTime,
       };
 
-      if (!isHealthy) {
+      if (!checkResult.data) {
         result.status = "degraded";
       }
-    } catch (error) {
-      logger.error("Pinata health check failed", { error });
+    } else {
       result.services.pinata = {
         status: "down",
-        error: error instanceof Error ? error.message : String(error),
+        responseTime,
+        error: checkResult.error.message,
       };
       result.status = "degraded";
     }

@@ -1,39 +1,24 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { tryCatch } from "./try-catch-wrapper";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Try-catch wrapper with Result pattern
-export type Result<T, E = Error> =
-  | { success: true; data: T }
-  | { success: false; error: E };
-
-export function tryCatch<T, E = Error>(
-  fn: () => T | Promise<T>
-): T extends Promise<any> ? Promise<Result<Awaited<T>, E>> : Result<T, E> {
-  try {
-    const result = fn();
-
-    if (result instanceof Promise) {
-      return result
-        .then((data) => ({ success: true, data } as Result<Awaited<T>, E>))
-        .catch((error) => ({ success: false, error } as Result<Awaited<T>, E>)) as any;
-    }
-
-    return { success: true, data: result } as any;
-  } catch (error) {
-    return { success: false, error: error as E } as any;
-  }
-}
-
-export function unwrapOrThrow<T, E>(result: Result<T, E>): T {
-  if (result.success) {
-    return result.data;
-  }
-  throw result.error;
-}
+// Export robust try-catch wrapper utilities
+export {
+  tryCatch,
+  tryCatchSync,
+  withTryCatch,
+  withTryCatchSync,
+  unwrapOrThrow,
+  getError,
+  isSuccess,
+  isError,
+  type TryCatchConfig,
+  type TryCatchResult,
+} from "./try-catch-wrapper";
 
 // Sleep utility
 export const sleep = (ms: number): Promise<void> =>
@@ -59,22 +44,26 @@ export async function retry<T>(
   let lastError: Error;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error as Error;
+    const result = await tryCatch(() => fn(), {
+      shouldLog: false, // Don't log retries
+    });
 
-      if (attempt === maxAttempts) {
-        throw lastError;
-      }
-
-      const delay = Math.min(
-        baseDelay * Math.pow(backoffFactor, attempt - 1),
-        maxDelay
-      );
-
-      await sleep(delay);
+    if (result.success) {
+      return result.data;
     }
+
+    lastError = result.error;
+
+    if (attempt === maxAttempts) {
+      throw lastError;
+    }
+
+    const delay = Math.min(
+      baseDelay * Math.pow(backoffFactor, attempt - 1),
+      maxDelay
+    );
+
+    await sleep(delay);
   }
 
   throw lastError!;

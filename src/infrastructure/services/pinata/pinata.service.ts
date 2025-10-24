@@ -1,6 +1,7 @@
 import { PinataClient } from "./pinata.client";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MediaType } from "@/shared/types";
+import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils";
 
 /**
  * Pinata Service
@@ -42,63 +43,65 @@ export class PinataService {
     hash: string;
     url: string;
   }> {
-    try {
-      logger.info("Storing metadata to IPFS", { name: params.name });
+    const result = await tryCatch(
+      async () => {
+        logger.info("Storing metadata to IPFS", { name: params.name });
 
-      // Build OpenSea-compatible metadata
-      const metadata: Record<string, unknown> = {
-        name: params.name,
-        description: params.description,
-        image: params.image,
-      };
-
-      if (params.animationUrl) {
-        metadata.animation_url = params.animationUrl;
-      }
-
-      if (params.externalUrl) {
-        metadata.external_url = params.externalUrl;
-      }
-
-      if (params.attributes && params.attributes.length > 0) {
-        metadata.attributes = params.attributes.map((attr) => ({
-          trait_type: attr.traitType,
-          value: attr.value,
-          ...(attr.displayType && { display_type: attr.displayType }),
-        }));
-      }
-
-      // Add any custom metadata
-      if (params.metadata) {
-        Object.assign(metadata, params.metadata);
-      }
-
-      // Upload to IPFS
-      const result = await this.client.uploadJSON(metadata, {
-        name: `${params.name} - Metadata`,
-        keyvalues: {
-          type: "nft-metadata",
+        // Build OpenSea-compatible metadata
+        const metadata: Record<string, unknown> = {
           name: params.name,
-          uploadedAt: new Date().toISOString(),
-        },
-      });
+          description: params.description,
+          image: params.image,
+        };
 
-      logger.info("Metadata stored to IPFS successfully", {
-        name: params.name,
-        hash: result.hash,
-      });
+        if (params.animationUrl) {
+          metadata.animation_url = params.animationUrl;
+        }
 
-      return {
-        hash: result.hash,
-        url: result.url,
-      };
-    } catch (error) {
-      logger.error("Failed to store metadata to IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        name: params.name,
-      });
-      throw new Error(`Failed to store metadata: ${error instanceof Error ? error.message : String(error)}`);
-    }
+        if (params.externalUrl) {
+          metadata.external_url = params.externalUrl;
+        }
+
+        if (params.attributes && params.attributes.length > 0) {
+          metadata.attributes = params.attributes.map((attr) => ({
+            trait_type: attr.traitType,
+            value: attr.value,
+            ...(attr.displayType && { display_type: attr.displayType }),
+          }));
+        }
+
+        // Add any custom metadata
+        if (params.metadata) {
+          Object.assign(metadata, params.metadata);
+        }
+
+        // Upload to IPFS
+        const res = await this.client.uploadJSON(metadata, {
+          name: `${params.name} - Metadata`,
+          keyvalues: {
+            type: "nft-metadata",
+            name: params.name,
+            uploadedAt: new Date().toISOString(),
+          },
+        });
+
+        logger.info("Metadata stored to IPFS successfully", {
+          name: params.name,
+          hash: res.hash,
+        });
+
+        return {
+          hash: res.hash,
+          url: res.url,
+        };
+      },
+      {
+        errorMessage: "Failed to store metadata to IPFS",
+        context: { name: params.name },
+      }
+    );
+
+    return unwrapOrThrow(result);
   }
 
   /**
@@ -109,58 +112,61 @@ export class PinataService {
     url: string;
     size: number;
   }> {
-    try {
-      logger.info("Storing media to IPFS", {
-        fileName: params.file.name,
-        mediaType: params.mediaType,
-      });
-
-      const result = await this.client.uploadFile(params.file, {
-        name: params.metadata?.name || params.file.name,
-        keyvalues: {
-          type: "nft-media",
+    const result = await tryCatch(
+      async () => {
+        logger.info("Storing media to IPFS", {
+          fileName: params.file.name,
           mediaType: params.mediaType,
-          originalName: params.file.name,
-          uploadedAt: new Date().toISOString(),
-          ...(params.metadata?.description && {
-            description: params.metadata.description,
-          }),
-        },
-      });
+        });
 
-      logger.info("Media stored to IPFS successfully", {
-        fileName: params.file.name,
-        hash: result.hash,
-        size: result.size,
-      });
+        const res = await this.client.uploadFile(params.file, {
+          name: params.metadata?.name || params.file.name,
+          keyvalues: {
+            type: "nft-media",
+            mediaType: params.mediaType,
+            originalName: params.file.name,
+            uploadedAt: new Date().toISOString(),
+            ...(params.metadata?.description && {
+              description: params.metadata.description,
+            }),
+          },
+        });
 
-      return {
-        hash: result.hash,
-        url: result.url,
-        size: result.size,
-      };
-    } catch (error) {
-      logger.error("Failed to store media to IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        fileName: params.file.name,
-      });
-      throw new Error(`Failed to store media: ${error instanceof Error ? error.message : String(error)}`);
-    }
+        logger.info("Media stored to IPFS successfully", {
+          fileName: params.file.name,
+          hash: res.hash,
+          size: res.size,
+        });
+
+        return {
+          hash: res.hash,
+          url: res.url,
+          size: res.size,
+        };
+      },
+      {
+        errorMessage: "Failed to store media to IPFS",
+        context: { fileName: params.file.name },
+      }
+    );
+
+    return unwrapOrThrow(result);
   }
 
   /**
    * Retrieve metadata from IPFS
    */
   async getMetadata(hash: string): Promise<any> {
-    try {
-      return await this.client.retrieve(hash);
-    } catch (error) {
-      logger.error("Failed to retrieve metadata from IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        hash,
-      });
-      return null;
-    }
+    const result = await tryCatch(
+      () => this.client.retrieve(hash),
+      {
+        errorMessage: "Failed to retrieve metadata from IPFS",
+        context: { hash },
+        shouldLog: true,
+      }
+    );
+
+    return result.success ? result.data : null;
   }
 
   /**
@@ -206,16 +212,21 @@ export class PinataService {
   async getUsage(): Promise<{
     totalFiles: number;
   } | null> {
-    try {
-      const files = await this.client.listFiles({ limit: 1000 });
+    const result = await tryCatch(
+      async () => {
+        const files = await this.client.listFiles({ limit: 1000 });
 
-      return {
-        totalFiles: files.length,
-      };
-    } catch (error) {
-      logger.error("Failed to get Pinata usage stats", { error });
-      return null;
-    }
+        return {
+          totalFiles: files.length,
+        };
+      },
+      {
+        errorMessage: "Failed to get Pinata usage stats",
+        shouldLog: true,
+      }
+    );
+
+    return result.success ? result.data : null;
   }
 
   /**

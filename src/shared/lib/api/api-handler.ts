@@ -7,6 +7,9 @@ import {
   type ApiResponse,
 } from "@/shared/types";
 import { logger } from "@/shared/lib/utils/logger";
+import { auditLogger } from "@/infrastructure/monitoring/audit-logger";
+import { getIpAddress, getUserAgent } from "./request-context";
+import { tryCatch } from "@/shared/lib/utils";
 
 export interface ApiContext {
   request: NextRequest;
@@ -87,84 +90,160 @@ export class ApiWrapper {
       const startTime = Date.now();
       let statusCode = 200;
 
-      try {
-        // 1. Extract request metadata
-        const requestId = this.extractRequestId(request);
+      const handlerResult = await tryCatch(
+        async () => {
+          // 1. Extract request metadata
+          const requestId = this.extractRequestId(request);
 
-        // 2. Parse and validate request data
-        const params = context?.params ? await context.params : {};
-        const parsedData = await this.parseRequest(
-          request,
-          config.validation,
-          params
-        );
+          // 2. Parse and validate request data
+          const params = context?.params ? await context.params : {};
+          const parsedData = await this.parseRequest(
+            request,
+            config.validation,
+            params
+          );
 
-        // 3. Create API context
-        const apiContext: ApiContext = {
-          request,
-          params,
-          requestId,
-        };
+          // 3. Create API context
+          const apiContext: ApiContext = {
+            request,
+            params,
+            requestId,
+          };
 
-        // 4. Handle authentication if required
-        if (config.auth?.required !== false) {
-          await this.handleAuth(apiContext, config.auth);
+          // 4. Handle authentication if required
+          if (config.auth?.required !== false) {
+            await this.handleAuth(apiContext, config.auth);
+          }
+
+          // 5. Execute the handler
+          // Type assertion is safe here because parseRequest validates the data against TInput schema
+          const result = await handler(parsedData as TInput, apiContext);
+
+          // 6. Return success response
+          const response = NextResponse.json(createSuccessResponse(result), {
+            status: 200,
+          });
+
+          // Add request tracking headers
+          response.headers.set("X-Request-ID", requestId);
+          response.headers.set("X-API-Version", "v1.0.0");
+
+          // Add rate limit headers if available
+          if (apiContext.rateLimit) {
+            response.headers.set(
+              "X-RateLimit-Limit",
+              apiContext.rateLimit.limit.toString()
+            );
+            response.headers.set(
+              "X-RateLimit-Remaining",
+              apiContext.rateLimit.remaining.toString()
+            );
+            response.headers.set(
+              "X-RateLimit-Reset",
+              apiContext.rateLimit.reset.toString()
+            );
+          }
+
+          // 7. Log successful request
+          const duration = Date.now() - startTime;
+          const pathname = new URL(request.url).pathname;
+
+          // Console logging
+          logger.logRequest(request.method, pathname, statusCode, duration, {
+            requestId,
+            userId: apiContext.user?.id || apiContext.apiKey?.userId,
+          });
+
+          // Audit logging to database
+          await auditLogger.log({
+            userId: apiContext.user?.id,
+            apiKeyId: apiContext.apiKey?.id,
+            method: request.method,
+            path: pathname,
+            action: `${request.method} ${pathname}`,
+            ipAddress: getIpAddress(request),
+            userAgent: getUserAgent(request),
+            resourceType: this.extractResourceType(pathname),
+            resourceId: params?.id,
+            statusCode,
+            duration,
+            metadata: {
+              responseSize: JSON.stringify(result).length,
+            },
+          });
+
+          return response;
+        },
+        {
+          errorMessage: "Request handler failed",
+          shouldLog: false, // Custom logging below
         }
+      );
 
-        // 5. Execute the handler
-        const result = await handler(parsedData as TInput, apiContext);
-
-        // 6. Return success response
-        const response = NextResponse.json(createSuccessResponse(result), {
-          status: 200,
-        });
-
-        // Add request tracking headers
-        response.headers.set("X-Request-ID", requestId);
-        response.headers.set("X-API-Version", "v1.0.0");
-
-        // Add rate limit headers if available
-        if (apiContext.rateLimit) {
-          response.headers.set(
-            "X-RateLimit-Limit",
-            apiContext.rateLimit.limit.toString()
-          );
-          response.headers.set(
-            "X-RateLimit-Remaining",
-            apiContext.rateLimit.remaining.toString()
-          );
-          response.headers.set(
-            "X-RateLimit-Reset",
-            apiContext.rateLimit.reset.toString()
-          );
-        }
-
-        // 7. Log successful request
-        const duration = Date.now() - startTime;
-        logger.logRequest(request.method, new URL(request.url).pathname, statusCode, duration, {
-          requestId,
-          userId: apiContext.user?.id || apiContext.apiKey?.userId,
-        });
-
-        return response;
-      } catch (error) {
+      if (!handlerResult.success) {
+        const error = handlerResult.error;
         statusCode = this.getStatusCodeFromError(error);
         const duration = Date.now() - startTime;
+        const pathname = new URL(request.url).pathname;
 
         // Log failed request
         const requestId = this.extractRequestId(request);
-        logger.logRequest(request.method, new URL(request.url).pathname, statusCode, duration, {
+        const params = context?.params ? await context.params : {};
+
+        // Console logging
+        logger.logRequest(request.method, pathname, statusCode, duration, {
           requestId,
           error: error instanceof Error ? error.message : String(error),
         });
 
+        // Audit logging to database
+        await auditLogger.log({
+          userId: undefined, // May not have context in error case
+          apiKeyId: undefined,
+          method: request.method,
+          path: pathname,
+          action: `${request.method} ${pathname}`,
+          ipAddress: getIpAddress(request),
+          userAgent: getUserAgent(request),
+          resourceType: this.extractResourceType(pathname),
+          resourceId: params?.id,
+          statusCode,
+          duration,
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+
         return this.handleError(error, request);
       }
+
+      return handlerResult.data;
     };
   }
 
   private static extractRequestId(request: NextRequest): string {
     return request.headers.get("x-request-id") || crypto.randomUUID();
+  }
+
+  /**
+   * Extract resource type from pathname
+   * Examples:
+   * - /api/metadata -> "metadata"
+   * - /api/media/123 -> "media"
+   * - /api/admin/api-keys -> "api-keys"
+   */
+  private static extractResourceType(pathname: string): string | undefined {
+    const parts = pathname.split("/").filter(Boolean);
+    // Skip "api" prefix and return the next segment
+    const apiIndex = parts.indexOf("api");
+    if (apiIndex !== -1 && parts.length > apiIndex + 1) {
+      // For admin routes, combine admin + resource
+      if (parts[apiIndex + 1] === "admin" && parts.length > apiIndex + 2) {
+        return parts[apiIndex + 2];
+      }
+      return parts[apiIndex + 1];
+    }
+    return undefined;
   }
 
   private static async parseRequest(
@@ -188,25 +267,45 @@ export class ApiWrapper {
     if (["POST", "PUT", "PATCH"].includes(method)) {
       const contentType = request.headers.get("content-type");
       if (contentType?.includes("application/json")) {
-        try {
-          const text = await request.text();
-          if (text.trim()) {
-            body = JSON.parse(text);
+        const jsonResult = await tryCatch(
+          async () => {
+            const text = await request.text();
+            if (text.trim()) {
+              return JSON.parse(text);
+            }
+            return undefined;
+          },
+          {
+            errorMessage: "Failed to parse request body as JSON",
+            shouldLog: false,
+            onError: (error) => {
+              logger.debug("Failed to parse request body as JSON", { error });
+            },
           }
-        } catch (error) {
-          logger.debug("Failed to parse request body as JSON", { error });
+        );
+        if (jsonResult.success && jsonResult.data !== undefined) {
+          body = jsonResult.data;
         }
       } else if (contentType?.includes("multipart/form-data")) {
-        try {
-          body = await request.formData();
-        } catch (error) {
-          logger.debug("Failed to parse request body as FormData", { error });
+        const formResult = await tryCatch(
+          () => request.formData(),
+          {
+            errorMessage: "Failed to parse request body as FormData",
+            shouldLog: false,
+            onError: (error) => {
+              logger.debug("Failed to parse request body as FormData", { error });
+            },
+          }
+        );
+        if (formResult.success) {
+          body = formResult.data;
         }
       }
     }
 
     // Validate using Zod schemas if provided
     if (validation?.query) {
+      // Type assertion is safe: Zod parse validates and returns the correct type
       query = validation.query.parse(query) as Record<string, string>;
     }
 
@@ -215,6 +314,7 @@ export class ApiWrapper {
     }
 
     if (validation?.params && params) {
+      // Type assertion is safe: Zod parse validates and returns the correct type
       params = validation.params.parse(params) as Record<string, string>;
     }
 
@@ -262,25 +362,19 @@ export class ApiWrapper {
           authenticated = true;
 
           // Check rate limit
-          try {
-            const rateLimitResult = await RateLimitService.checkLimit(apiKey, {
+          const rateLimitCheck = await tryCatch(
+            () => RateLimitService.checkLimit(apiKey, {
               ip: getIpAddress(request),
               origin: getOrigin(request),
-            });
+            }),
+            {
+              errorMessage: "Rate limit check failed",
+              shouldLog: false,
+            }
+          );
 
-            context.rateLimit = {
-              limit: rateLimitResult.limit,
-              remaining: rateLimitResult.remaining,
-              reset: rateLimitResult.reset,
-            };
-
-            logger.debug("API key authenticated", {
-              keyId: context.apiKey.id,
-              userId: context.apiKey.userId,
-              tier: rateLimitResult.tier,
-              remaining: rateLimitResult.remaining,
-            });
-          } catch (error) {
+          if (!rateLimitCheck.success) {
+            const error = rateLimitCheck.error;
             if (error instanceof RateLimitError) {
               throw new ApiError(
                 error.message,
@@ -296,6 +390,20 @@ export class ApiWrapper {
             }
             // Log but don't fail on rate limit errors
             logger.error("Rate limit check failed", { error });
+          } else {
+            const rateLimitResult = rateLimitCheck.data;
+            context.rateLimit = {
+              limit: rateLimitResult.limit,
+              remaining: rateLimitResult.remaining,
+              reset: rateLimitResult.reset,
+            };
+
+            logger.debug("API key authenticated", {
+              keyId: context.apiKey.id,
+              userId: context.apiKey.userId,
+              tier: rateLimitResult.tier,
+              remaining: rateLimitResult.remaining,
+            });
           }
         }
       }
@@ -382,8 +490,9 @@ export class ApiWrapper {
     response.headers.set("X-API-Version", "v1.0.0");
 
     if (apiError.statusCode === 429 && apiError.details) {
-      const details = apiError.details as any;
-      if (details.retryAfter) {
+      // Type-safe check for retryAfter in details
+      const details = apiError.details as Record<string, unknown>;
+      if (typeof details.retryAfter === 'number') {
         response.headers.set("Retry-After", String(details.retryAfter));
       }
     }
@@ -436,14 +545,14 @@ export const commonSchemas = {
 };
 
 // Helper functions for common operations
-export const withPagination = <T extends z.ZodObject<any>>(schema: T) =>
+export const withPagination = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   schema.merge(commonSchemas.pagination);
 
-export const withSort = <T extends z.ZodObject<any>>(schema: T) =>
+export const withSort = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   schema.merge(commonSchemas.sort);
 
-export const withSearch = <T extends z.ZodObject<any>>(schema: T) =>
+export const withSearch = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   schema.merge(commonSchemas.search);
 
-export const withId = <T extends z.ZodObject<any>>(schema: T) =>
+export const withId = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   schema.merge(commonSchemas.id);

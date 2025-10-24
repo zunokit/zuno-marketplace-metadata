@@ -1,5 +1,6 @@
 import { RedisClient } from "@/infrastructure/cache/redis.client";
 import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils";
 import type { ApiKey } from "@/infrastructure/database/drizzle/schema";
 
 /**
@@ -165,126 +166,138 @@ export class RateLimitService {
       origin?: string;
     }
   ): Promise<RateLimitResult> {
-    try {
-      // Get tier and config
-      const tier = this.getKeyTier(apiKey);
-      const config = this.getTierConfig(tier);
+    const result = await tryCatch(
+      async () => {
+        // Get tier and config
+        const tier = this.getKeyTier(apiKey);
+        const config = this.getTierConfig(tier);
 
-      // Enterprise tier - unlimited
-      if (tier === RateLimitTier.ENTERPRISE) {
+        // Enterprise tier - unlimited
+        if (tier === RateLimitTier.ENTERPRISE) {
+          return {
+            allowed: true,
+            tier,
+            limit: Infinity,
+            remaining: Infinity,
+            reset: 0,
+          };
+        }
+
+        // Check IP whitelist
+        const metadata = apiKey.metadata as { ipWhitelist?: string[]; allowedOrigins?: string[] } | null;
+        if (metadata?.ipWhitelist) {
+          if (!this.isIpAllowed(request.ip, metadata.ipWhitelist)) {
+            const res: RateLimitResult = {
+              allowed: false,
+              tier,
+              limit: 0,
+              remaining: 0,
+              reset: 0,
+            };
+            throw new RateLimitError("IP address not in whitelist", res);
+          }
+        }
+
+        // Check origin restriction
+        if (metadata?.allowedOrigins) {
+          if (!this.isOriginAllowed(request.origin, metadata.allowedOrigins)) {
+            const res: RateLimitResult = {
+              allowed: false,
+              tier,
+              limit: 0,
+              remaining: 0,
+              reset: 0,
+            };
+            throw new RateLimitError("Origin not allowed", res);
+          }
+        }
+
+        const now = Date.now();
+
+        // Check hourly limit
+        const hourlyKey = this.getHourlyKey(apiKey.id);
+        const hourlyCount = await this.redis.incr(hourlyKey);
+
+        // Set TTL on first request of the hour (1 hour)
+        if (hourlyCount === 1) {
+          await this.redis.expire(hourlyKey, 3600);
+        }
+
+        if (hourlyCount > config.limits.requestsPerHour) {
+          const hourlyReset = Math.ceil(now / 1000 / 3600) * 3600;
+          const res: RateLimitResult = {
+            allowed: false,
+            tier,
+            limit: config.limits.requestsPerHour,
+            remaining: 0,
+            reset: hourlyReset,
+            retryAfter: hourlyReset - Math.floor(now / 1000),
+          };
+          throw new RateLimitError("Hourly rate limit exceeded", res);
+        }
+
+        // Check daily limit
+        const dailyKey = this.getDailyKey(apiKey.id);
+        const dailyCount = await this.redis.incr(dailyKey);
+
+        // Set TTL on first request of the day (24 hours)
+        if (dailyCount === 1) {
+          await this.redis.expire(dailyKey, 86400);
+        }
+
+        if (dailyCount > config.limits.requestsPerDay) {
+          const dailyReset = Math.ceil(now / 1000 / 86400) * 86400;
+          const res: RateLimitResult = {
+            allowed: false,
+            tier,
+            limit: config.limits.requestsPerDay,
+            remaining: 0,
+            reset: dailyReset,
+            retryAfter: dailyReset - Math.floor(now / 1000),
+          };
+          throw new RateLimitError("Daily rate limit exceeded", res);
+        }
+
+        // Success - return remaining counts
+        const hourlyReset = Math.ceil(now / 1000 / 3600) * 3600;
         return {
           allowed: true,
           tier,
-          limit: Infinity,
-          remaining: Infinity,
-          reset: 0,
-        };
-      }
-
-      // Check IP whitelist
-      const metadata = apiKey.metadata as { ipWhitelist?: string[]; allowedOrigins?: string[] } | null;
-      if (metadata?.ipWhitelist) {
-        if (!this.isIpAllowed(request.ip, metadata.ipWhitelist)) {
-          const result: RateLimitResult = {
-            allowed: false,
-            tier,
-            limit: 0,
-            remaining: 0,
-            reset: 0,
-          };
-          throw new RateLimitError("IP address not in whitelist", result);
-        }
-      }
-
-      // Check origin restriction
-      if (metadata?.allowedOrigins) {
-        if (!this.isOriginAllowed(request.origin, metadata.allowedOrigins)) {
-          const result: RateLimitResult = {
-            allowed: false,
-            tier,
-            limit: 0,
-            remaining: 0,
-            reset: 0,
-          };
-          throw new RateLimitError("Origin not allowed", result);
-        }
-      }
-
-      const now = Date.now();
-
-      // Check hourly limit
-      const hourlyKey = this.getHourlyKey(apiKey.id);
-      const hourlyCount = await this.redis.incr(hourlyKey);
-
-      // Set TTL on first request of the hour (1 hour)
-      if (hourlyCount === 1) {
-        await this.redis.expire(hourlyKey, 3600);
-      }
-
-      if (hourlyCount > config.limits.requestsPerHour) {
-        const hourlyReset = Math.ceil(now / 1000 / 3600) * 3600;
-        const result: RateLimitResult = {
-          allowed: false,
-          tier,
           limit: config.limits.requestsPerHour,
-          remaining: 0,
+          remaining: config.limits.requestsPerHour - hourlyCount,
           reset: hourlyReset,
-          retryAfter: hourlyReset - Math.floor(now / 1000),
         };
-        throw new RateLimitError("Hourly rate limit exceeded", result);
+      },
+      {
+        errorMessage: "Rate limit check failed, allowing request",
+        context: { apiKeyId: apiKey.id },
+        shouldLog: false,
       }
+    );
 
-      // Check daily limit
-      const dailyKey = this.getDailyKey(apiKey.id);
-      const dailyCount = await this.redis.incr(dailyKey);
-
-      // Set TTL on first request of the day (24 hours)
-      if (dailyCount === 1) {
-        await this.redis.expire(dailyKey, 86400);
-      }
-
-      if (dailyCount > config.limits.requestsPerDay) {
-        const dailyReset = Math.ceil(now / 1000 / 86400) * 86400;
-        const result: RateLimitResult = {
-          allowed: false,
-          tier,
-          limit: config.limits.requestsPerDay,
-          remaining: 0,
-          reset: dailyReset,
-          retryAfter: dailyReset - Math.floor(now / 1000),
-        };
-        throw new RateLimitError("Daily rate limit exceeded", result);
-      }
-
-      // Success - return remaining counts
-      const hourlyReset = Math.ceil(now / 1000 / 3600) * 3600;
-      return {
-        allowed: true,
-        tier,
-        limit: config.limits.requestsPerHour,
-        remaining: config.limits.requestsPerHour - hourlyCount,
-        reset: hourlyReset,
-      };
-    } catch (error) {
-      // If it's already a RateLimitError, rethrow
-      if (error instanceof RateLimitError) {
-        throw error;
-      }
-
-      // For other errors, log and allow request (fail open)
-      logger.error("Rate limit check failed, allowing request", {
-        error: error instanceof Error ? error.message : String(error),
-        apiKeyId: apiKey.id,
-      });
-
-      return {
-        allowed: true,
-        tier: RateLimitTier.FREE,
-        limit: 500,
-        remaining: 500,
-        reset: Math.ceil(Date.now() / 1000 / 3600) * 3600,
-      };
+    // If RateLimitError, rethrow it
+    if (!result.success && result.error instanceof RateLimitError) {
+      throw result.error;
     }
+
+    // Success case
+    if (result.success) {
+      return result.data;
+    }
+
+    // Other errors - fail open (allow request)
+    logger.error("Rate limit check failed, allowing request", {
+      error: result.error.message,
+      apiKeyId: apiKey.id,
+    });
+
+    return {
+      allowed: true,
+      tier: RateLimitTier.FREE,
+      limit: 500,
+      remaining: 500,
+      reset: Math.ceil(Date.now() / 1000 / 3600) * 3600,
+    };
   }
 
   /**

@@ -1,5 +1,6 @@
 import { env } from "@/shared/config/env";
 import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils";
 
 /**
  * Pinata IPFS Client
@@ -77,48 +78,50 @@ export class PinataClient {
     data: unknown,
     metadata?: PinataUploadMetadata
   ): Promise<PinataUploadResult> {
-    try {
-      logger.info("Uploading JSON to Pinata", { metadata });
+    const result = await tryCatch(
+      async () => {
+        logger.info("Uploading JSON to Pinata", { metadata });
 
-      const response = await fetch(`${this.baseUrl}/pinning/pinJSONToIPFS`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.jwt}`,
-        },
-        body: JSON.stringify({
-          pinataContent: data,
-          pinataMetadata: {
-            name: metadata?.name,
-            keyvalues: metadata?.keyvalues,
+        const response = await fetch(`${this.baseUrl}/pinning/pinJSONToIPFS`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.jwt}`,
           },
-        }),
-      });
+          body: JSON.stringify({
+            pinataContent: data,
+            pinataMetadata: {
+              name: metadata?.name,
+              keyvalues: metadata?.keyvalues,
+            },
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        const res = await response.json();
+
+        logger.info("JSON uploaded to Pinata successfully", {
+          hash: res.IpfsHash,
+          size: res.PinSize,
+        });
+
+        return {
+          hash: res.IpfsHash,
+          url: `${this.gatewayUrl}/${res.IpfsHash}`,
+          size: res.PinSize,
+          timestamp: res.Timestamp,
+        };
+      },
+      {
+        errorMessage: "Failed to upload JSON to Pinata",
+        context: { metadata },
       }
+    );
 
-      const result = await response.json();
-
-      logger.info("JSON uploaded to Pinata successfully", {
-        hash: result.IpfsHash,
-        size: result.PinSize,
-      });
-
-      return {
-        hash: result.IpfsHash,
-        url: `${this.gatewayUrl}/${result.IpfsHash}`,
-        size: result.PinSize,
-        timestamp: result.Timestamp,
-      };
-    } catch (error) {
-      logger.error("Failed to upload JSON to Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-        metadata,
-      });
-      throw new Error(`Pinata JSON upload failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    return unwrapOrThrow(result);
   }
 
   /**
@@ -128,56 +131,58 @@ export class PinataClient {
     file: File,
     metadata?: PinataUploadMetadata
   ): Promise<PinataUploadResult> {
-    try {
-      logger.info("Uploading file to Pinata", {
-        fileName: file.name,
-        fileSize: file.size,
-        metadata,
-      });
+    const result = await tryCatch(
+      async () => {
+        logger.info("Uploading file to Pinata", {
+          fileName: file.name,
+          fileSize: file.size,
+          metadata,
+        });
 
-      const formData = new FormData();
-      formData.append("file", file);
+        const formData = new FormData();
+        formData.append("file", file);
 
-      if (metadata) {
-        formData.append("pinataMetadata", JSON.stringify({
-          name: metadata.name || file.name,
-          keyvalues: metadata.keyvalues,
-        }));
+        if (metadata) {
+          formData.append("pinataMetadata", JSON.stringify({
+            name: metadata.name || file.name,
+            keyvalues: metadata.keyvalues,
+          }));
+        }
+
+        const response = await fetch(`${this.baseUrl}/pinning/pinFileToIPFS`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        const res = await response.json();
+
+        logger.info("File uploaded to Pinata successfully", {
+          hash: res.IpfsHash,
+          size: res.PinSize,
+          fileName: file.name,
+        });
+
+        return {
+          hash: res.IpfsHash,
+          url: `${this.gatewayUrl}/${res.IpfsHash}`,
+          size: res.PinSize,
+          timestamp: res.Timestamp,
+        };
+      },
+      {
+        errorMessage: "Failed to upload file to Pinata",
+        context: { fileName: file.name },
       }
+    );
 
-      const response = await fetch(`${this.baseUrl}/pinning/pinFileToIPFS`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      logger.info("File uploaded to Pinata successfully", {
-        hash: result.IpfsHash,
-        size: result.PinSize,
-        fileName: file.name,
-      });
-
-      return {
-        hash: result.IpfsHash,
-        url: `${this.gatewayUrl}/${result.IpfsHash}`,
-        size: result.PinSize,
-        timestamp: result.Timestamp,
-      };
-    } catch (error) {
-      logger.error("Failed to upload file to Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-        fileName: file.name,
-      });
-      throw new Error(`Pinata file upload failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    return unwrapOrThrow(result);
   }
 
   /**
@@ -187,94 +192,102 @@ export class PinataClient {
     hash: string,
     metadata?: PinataPinMetadata
   ): Promise<void> {
-    try {
-      logger.info("Pinning hash to Pinata", { hash, metadata });
+    const result = await tryCatch(
+      async () => {
+        logger.info("Pinning hash to Pinata", { hash, metadata });
 
-      const response = await fetch(`${this.baseUrl}/pinning/pinByHash`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.jwt}`,
-        },
-        body: JSON.stringify({
-          hashToPin: hash,
-          pinataMetadata: metadata,
-        }),
-      });
+        const response = await fetch(`${this.baseUrl}/pinning/pinByHash`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.jwt}`,
+          },
+          body: JSON.stringify({
+            hashToPin: hash,
+            pinataMetadata: metadata,
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        logger.info("Hash pinned to Pinata successfully", { hash });
+      },
+      {
+        errorMessage: "Failed to pin hash to Pinata",
+        context: { hash },
       }
+    );
 
-      logger.info("Hash pinned to Pinata successfully", { hash });
-    } catch (error) {
-      logger.error("Failed to pin hash to Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-        hash,
-      });
-      throw new Error(`Pinata pin failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    unwrapOrThrow(result);
   }
 
   /**
    * Unpin file from Pinata
    */
   async unpin(hash: string): Promise<boolean> {
-    try {
-      logger.info("Unpinning from Pinata", { hash });
+    const result = await tryCatch(
+      async () => {
+        logger.info("Unpinning from Pinata", { hash });
 
-      const response = await fetch(`${this.baseUrl}/pinning/unpin/${hash}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-      });
+        const response = await fetch(`${this.baseUrl}/pinning/unpin/${hash}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        logger.info("Unpinned from Pinata successfully", { hash });
+        return true;
+      },
+      {
+        errorMessage: "Failed to unpin from Pinata",
+        context: { hash },
+        shouldLog: true,
       }
+    );
 
-      logger.info("Unpinned from Pinata successfully", { hash });
-      return true;
-    } catch (error) {
-      logger.error("Failed to unpin from Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-        hash,
-      });
-      return false;
-    }
+    return result.success ? result.data : false;
   }
 
   /**
    * Get file details from Pinata
    */
   async getFileDetails(hash: string): Promise<PinataFileDetails | null> {
-    try {
-      const response = await fetch(`${this.baseUrl}/data/pinList?hashContains=${hash}`, {
-        headers: {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-      });
+    const result = await tryCatch(
+      async () => {
+        const response = await fetch(`${this.baseUrl}/data/pinList?hashContains=${hash}`, {
+          headers: {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+        });
 
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        const data: unknown = await response.json();
+
+        if (!isPinataListResponse(data)) {
+          logger.error("Invalid response from Pinata API", { hash });
+          return null;
+        }
+
+        return data.rows.length > 0 ? data.rows[0] : null;
+      },
+      {
+        errorMessage: "Failed to get file details from Pinata",
+        context: { hash },
+        shouldLog: true,
       }
+    );
 
-      const data: unknown = await response.json();
-
-      if (!isPinataListResponse(data)) {
-        logger.error("Invalid response from Pinata API", { hash });
-        return null;
-      }
-
-      return data.rows.length > 0 ? data.rows[0] : null;
-    } catch (error) {
-      logger.error("Failed to get file details from Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-        hash,
-      });
-      return null;
-    }
+    return result.success ? result.data : null;
   }
 
   /**
@@ -284,65 +297,71 @@ export class PinataClient {
     metadata?: Record<string, string>;
     limit?: number;
   }): Promise<PinataFileDetails[]> {
-    try {
-      const params = new URLSearchParams();
-      if (filters?.limit) {
-        params.append("pageLimit", filters.limit.toString());
+    const result = await tryCatch(
+      async () => {
+        const params = new URLSearchParams();
+        if (filters?.limit) {
+          params.append("pageLimit", filters.limit.toString());
+        }
+
+        const response = await fetch(`${this.baseUrl}/data/pinList?${params}`, {
+          headers: {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Pinata API error: ${response.statusText}`);
+        }
+
+        const data: unknown = await response.json();
+
+        if (!isPinataListResponse(data)) {
+          logger.error("Invalid response from Pinata API");
+          return [];
+        }
+
+        return data.rows;
+      },
+      {
+        errorMessage: "Failed to list files from Pinata",
+        shouldLog: true,
       }
+    );
 
-      const response = await fetch(`${this.baseUrl}/data/pinList?${params}`, {
-        headers: {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Pinata API error: ${response.statusText}`);
-      }
-
-      const data: unknown = await response.json();
-
-      if (!isPinataListResponse(data)) {
-        logger.error("Invalid response from Pinata API");
-        return [];
-      }
-
-      return data.rows;
-    } catch (error) {
-      logger.error("Failed to list files from Pinata", {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return [];
-    }
+    return result.success ? result.data : [];
   }
 
   /**
    * Retrieve file from IPFS
    */
   async retrieve<T = unknown>(hash: string): Promise<T | null> {
-    try {
-      const gatewayUrl = `${this.gatewayUrl}/${hash}`;
-      const response = await fetch(gatewayUrl);
+    const result = await tryCatch(
+      async () => {
+        const gatewayUrl = `${this.gatewayUrl}/${hash}`;
+        const response = await fetch(gatewayUrl);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const contentType = response.headers.get("content-type");
+
+        if (contentType?.includes("application/json")) {
+          return await response.json();
+        }
+
+        // For non-JSON, return as text
+        return await response.text() as T;
+      },
+      {
+        errorMessage: "Failed to retrieve file from IPFS",
+        context: { hash },
+        shouldLog: true,
       }
+    );
 
-      const contentType = response.headers.get("content-type");
-
-      if (contentType?.includes("application/json")) {
-        return await response.json();
-      }
-
-      // For non-JSON, return as text
-      return await response.text() as T;
-    } catch (error) {
-      logger.error("Failed to retrieve file from IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        hash,
-      });
-      return null;
-    }
+    return result.success ? result.data : null;
   }
 
   /**
@@ -361,18 +380,23 @@ export class PinataClient {
    * Health check for Pinata service
    */
   async health(): Promise<boolean> {
-    try {
-      // Try to list files as a health check
-      const response = await fetch(`${this.baseUrl}/data/pinList?pageLimit=1`, {
-        headers: {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-      });
+    const result = await tryCatch(
+      async () => {
+        // Try to list files as a health check
+        const response = await fetch(`${this.baseUrl}/data/pinList?pageLimit=1`, {
+          headers: {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+        });
 
-      return response.ok;
-    } catch (error) {
-      logger.error("Pinata health check failed", { error });
-      return false;
-    }
+        return response.ok;
+      },
+      {
+        errorMessage: "Pinata health check failed",
+        shouldLog: true,
+      }
+    );
+
+    return result.success ? result.data : false;
   }
 }

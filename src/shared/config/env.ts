@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { tryCatchSync, unwrapOrThrow } from "@/shared/lib/utils";
 
 const envSchema = z.object({
   // Database
@@ -22,12 +23,8 @@ const envSchema = z.object({
 
   // App Config
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  API_BASE_URL: z.string().url("Invalid API_BASE_URL").default("http://localhost:3000"),
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
-  // Auth
-  NEXTAUTH_SECRET: z.string().min(32, "NEXTAUTH_SECRET must be at least 32 characters"),
-  NEXTAUTH_URL: z.string().url("Invalid NEXTAUTH_URL").default("http://localhost:3000"),
 
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -36,17 +33,21 @@ const envSchema = z.object({
 export type Env = z.infer<typeof envSchema>;
 
 // Validate and export environment variables
-let env: Env;
-
-try {
-  env = envSchema.parse(process.env);
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    const missingVars = error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join('\n');
-    throw new Error(`Environment validation failed:\n${missingVars}`);
+const envResult = tryCatchSync(
+  () => envSchema.parse(process.env),
+  {
+    errorMessage: "Environment validation failed",
+    shouldLog: false,
+    onError: (error) => {
+      if (error instanceof z.ZodError) {
+        const missingVars = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join('\n');
+        console.error(`Environment validation failed:\n${missingVars}`);
+      }
+    },
   }
-  throw error;
-}
+);
+
+const env: Env = unwrapOrThrow(envResult);
 
 export { env };
 

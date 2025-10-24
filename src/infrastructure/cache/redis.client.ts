@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
+import { tryCatch } from "@/shared/lib/utils";
 
 export const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,
@@ -29,159 +30,181 @@ export class RedisClient {
    * Set value with optional TTL
    */
   async set(key: string, value: unknown, ttl?: number): Promise<boolean> {
-    try {
-      if (ttl) {
-        await this.client.setex(key, ttl, JSON.stringify(value));
-      } else {
-        await this.client.set(key, JSON.stringify(value));
+    const result = await tryCatch(
+      async () => {
+        if (ttl) {
+          await this.client.setex(key, ttl, JSON.stringify(value));
+        } else {
+          await this.client.set(key, JSON.stringify(value));
+        }
+        return true;
+      },
+      {
+        errorMessage: `Redis SET error for key ${key}`,
+        context: { key, ttl },
+        shouldLog: true,
       }
-      return true;
-    } catch (error) {
-      console.error(`Redis SET error for key ${key}:`, error);
-      return false;
-    }
+    );
+
+    return result.success ? result.data : false;
   }
 
   /**
    * Get value with JSON parsing
    */
   async get<T = unknown>(key: string): Promise<T | null> {
-    try {
-      const value = await this.client.get(key);
-      if (!value) return null;
+    const result = await tryCatch(
+      async () => {
+        const value = await this.client.get(key);
+        if (!value) return null;
 
-      // Upstash Redis may return parsed JSON or string
-      if (typeof value === "object") {
-        return value as T;
+        // Upstash Redis may return parsed JSON or string
+        if (typeof value === "object") {
+          return value as T;
+        }
+
+        if (typeof value === "string") {
+          return JSON.parse(value) as T;
+        }
+
+        console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
+        return null;
+      },
+      {
+        errorMessage: `Redis GET error for key ${key}`,
+        context: { key },
+        shouldLog: true,
       }
+    );
 
-      if (typeof value === "string") {
-        return JSON.parse(value) as T;
-      }
-
-      console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
-      return null;
-    } catch (error) {
-      console.error(`Redis GET error for key ${key}:`, error);
-      return null;
-    }
+    return result.success ? result.data : null;
   }
 
   /**
    * Delete key
    */
   async del(key: string): Promise<boolean> {
-    try {
-      await this.client.del(key);
-      return true;
-    } catch (error) {
-      console.error(`Redis DEL error for key ${key}:`, error);
-      return false;
-    }
+    const result = await tryCatch(() => this.client.del(key), {
+      errorMessage: `Redis DEL error for key ${key}`,
+      context: { key },
+      shouldLog: true,
+    });
+    return result.success;
   }
 
   /**
    * Increment counter (atomic)
    */
   async incr(key: string): Promise<number> {
-    try {
-      return await this.client.incr(key);
-    } catch (error) {
-      console.error(`Redis INCR error for key ${key}:`, error);
-      return 0;
-    }
+    const result = await tryCatch(() => this.client.incr(key), {
+      errorMessage: `Redis INCR error for key ${key}`,
+      context: { key },
+      shouldLog: true,
+    });
+    return result.success ? result.data : 0;
   }
 
   /**
    * Set expiration time
    */
   async expire(key: string, seconds: number): Promise<boolean> {
-    try {
-      await this.client.expire(key, seconds);
-      return true;
-    } catch (error) {
-      console.error(`Redis EXPIRE error for key ${key}:`, error);
-      return false;
-    }
+    const result = await tryCatch(() => this.client.expire(key, seconds), {
+      errorMessage: `Redis EXPIRE error for key ${key}`,
+      context: { key, seconds },
+      shouldLog: true,
+    });
+    return result.success;
   }
 
   /**
    * Check if key exists
    */
   async exists(key: string): Promise<boolean> {
-    try {
-      const result = await this.client.exists(key);
-      return result === 1;
-    } catch (error) {
-      console.error(`Redis EXISTS error for key ${key}:`, error);
-      return false;
-    }
+    const result = await tryCatch(
+      async () => {
+        const res = await this.client.exists(key);
+        return res === 1;
+      },
+      {
+        errorMessage: `Redis EXISTS error for key ${key}`,
+        context: { key },
+        shouldLog: true,
+      }
+    );
+    return result.success ? result.data : false;
   }
 
   /**
    * Get TTL for key
    */
   async ttl(key: string): Promise<number> {
-    try {
-      return await this.client.ttl(key);
-    } catch (error) {
-      console.error(`Redis TTL error for key ${key}:`, error);
-      return -1;
-    }
+    const result = await tryCatch(() => this.client.ttl(key), {
+      errorMessage: `Redis TTL error for key ${key}`,
+      context: { key },
+      shouldLog: true,
+    });
+    return result.success ? result.data : -1;
   }
 
   /**
    * Get keys matching pattern
    */
   async keys(pattern: string): Promise<string[]> {
-    try {
-      return await this.client.keys(pattern);
-    } catch (error) {
-      console.error(`Redis KEYS error for pattern ${pattern}:`, error);
-      return [];
-    }
+    const result = await tryCatch(() => this.client.keys(pattern), {
+      errorMessage: `Redis KEYS error for pattern ${pattern}`,
+      context: { pattern },
+      shouldLog: true,
+    });
+    return result.success ? result.data : [];
   }
 
   /**
    * Delete keys matching pattern
    */
   async deletePattern(pattern: string): Promise<number> {
-    try {
-      const keys = await this.keys(pattern);
-      if (keys.length === 0) return 0;
+    const result = await tryCatch(
+      async () => {
+        const keys = await this.keys(pattern);
+        if (keys.length === 0) return 0;
 
-      await this.client.del(...keys);
-      return keys.length;
-    } catch (error) {
-      console.error(`Redis DELETE PATTERN error for pattern ${pattern}:`, error);
-      return 0;
-    }
+        await this.client.del(...keys);
+        return keys.length;
+      },
+      {
+        errorMessage: `Redis DELETE PATTERN error for pattern ${pattern}`,
+        context: { pattern },
+        shouldLog: true,
+      }
+    );
+    return result.success ? result.data : 0;
   }
 
   /**
    * Flush all keys (use with caution)
    */
   async flushAll(): Promise<boolean> {
-    try {
-      await this.client.flushall();
-      return true;
-    } catch (error) {
-      console.error("Redis FLUSHALL error:", error);
-      return false;
-    }
+    const result = await tryCatch(() => this.client.flushall(), {
+      errorMessage: "Redis FLUSHALL error",
+      shouldLog: true,
+    });
+    return result.success;
   }
 
   /**
    * Health check
    */
   async ping(): Promise<boolean> {
-    try {
-      const result = await this.client.ping();
-      return result === "PONG";
-    } catch (error) {
-      console.error("Redis PING error:", error);
-      return false;
-    }
+    const result = await tryCatch(
+      async () => {
+        const res = await this.client.ping();
+        return res === "PONG";
+      },
+      {
+        errorMessage: "Redis PING error",
+        shouldLog: true,
+      }
+    );
+    return result.success ? result.data : false;
   }
 
   /**

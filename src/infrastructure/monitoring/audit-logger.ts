@@ -1,5 +1,6 @@
 import { db, schema } from "@/infrastructure/database/client";
 import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils";
 
 /**
  * Audit Logger
@@ -42,30 +43,32 @@ export class AuditLogger {
    * Log an API request
    */
   async log(data: AuditLogData): Promise<void> {
-    try {
-      await db.insert(schema.auditLogs).values({
-        userId: data.userId || null,
-        apiKeyId: data.apiKeyId || null,
-        method: data.method,
-        path: data.path,
-        action: data.action,
-        ipAddress: data.ipAddress || null,
-        userAgent: data.userAgent || null,
-        resourceType: data.resourceType || null,
-        resourceId: data.resourceId || null,
-        statusCode: data.statusCode,
-        duration: data.duration || null,
-        metadata: data.metadata || null,
-      });
+    await tryCatch(
+      async () => {
+        await db.insert(schema.auditLogs).values({
+          userId: data.userId || null,
+          apiKeyId: data.apiKeyId || null,
+          method: data.method,
+          path: data.path,
+          action: data.action,
+          ipAddress: data.ipAddress || null,
+          userAgent: data.userAgent || null,
+          resourceType: data.resourceType || null,
+          resourceId: data.resourceId || null,
+          statusCode: data.statusCode,
+          duration: data.duration || null,
+          metadata: data.metadata || null,
+        });
 
-      logger.debug("Audit log created", { action: data.action, path: data.path });
-    } catch (error) {
-      // Don't throw errors from audit logging
-      logger.error("Failed to create audit log", {
-        error: error instanceof Error ? error.message : String(error),
-        data,
-      });
-    }
+        logger.debug("Audit log created", { action: data.action, path: data.path });
+      },
+      {
+        errorMessage: "Failed to create audit log",
+        context: { data },
+        shouldLog: true,
+      }
+    );
+    // Don't throw errors from audit logging - result is ignored
   }
 
   /**

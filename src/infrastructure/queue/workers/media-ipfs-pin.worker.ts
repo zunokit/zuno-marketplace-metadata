@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MediaPinJobData } from "../queue.config";
 import { env } from "@/shared/config/env";
+import { tryCatch } from "@/shared/lib/utils";
 
 /**
  * Media IPFS Pinning Worker
@@ -21,55 +22,60 @@ export const mediaWorker = new Worker<MediaPinJobData>(
 
     logger.info("Processing media IPFS pin job", { mediaId, fileName });
 
-    try {
-      // Fetch the file from ImageKit URL
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch media: ${response.statusText}`);
-      }
+    const result = await tryCatch(
+      async () => {
+        // Fetch the file from ImageKit URL
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media: ${response.statusText}`);
+        }
 
-      const blob = await response.blob();
-      const file = new File([blob], fileName, { type: blob.type });
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: blob.type });
 
-      // Upload to Pinata
-      const result = await pinataClient.uploadFile(file, {
-        name: fileName,
-        keyvalues: {
+        // Upload to Pinata
+        const pinResult = await pinataClient.uploadFile(file, {
+          name: fileName,
+          keyvalues: {
+            mediaId,
+            mediaType,
+            originalUrl: url,
+            pinnedAt: new Date().toISOString(),
+          },
+        });
+
+        // Update database with IPFS info
+        await db
+          .update(schema.media)
+          .set({
+            ipfsHash: pinResult.hash,
+            ipfsUrl: pinResult.url,
+          })
+          .where(eq(schema.media.id, mediaId));
+
+        logger.info("Media pinned to IPFS successfully", {
           mediaId,
-          mediaType,
-          originalUrl: url,
-          pinnedAt: new Date().toISOString(),
-        },
-      });
+          ipfsHash: pinResult.hash,
+        });
 
-      // Update database with IPFS info
-      await db
-        .update(schema.media)
-        .set({
-          ipfsHash: result.hash,
-          ipfsUrl: result.url,
-        })
-        .where(eq(schema.media.id, mediaId));
+        return {
+          success: true,
+          mediaId,
+          ipfsHash: pinResult.hash,
+          ipfsUrl: pinResult.url,
+        };
+      },
+      {
+        errorMessage: "Failed to pin media to IPFS",
+        context: { mediaId },
+      }
+    );
 
-      logger.info("Media pinned to IPFS successfully", {
-        mediaId,
-        ipfsHash: result.hash,
-      });
-
-      return {
-        success: true,
-        mediaId,
-        ipfsHash: result.hash,
-        ipfsUrl: result.url,
-      };
-    } catch (error) {
-      logger.error("Failed to pin media to IPFS", {
-        error: error instanceof Error ? error.message : String(error),
-        mediaId,
-      });
-
-      throw error; // BullMQ will retry
+    if (!result.success) {
+      throw result.error; // BullMQ will retry
     }
+
+    return result.data;
   },
   {
     connection: {

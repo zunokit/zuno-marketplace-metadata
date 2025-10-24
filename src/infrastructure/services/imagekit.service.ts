@@ -7,7 +7,10 @@ import {
   isValidVideoType,
   isValid3DModelType,
   sanitizeFilename,
-  formatBytes
+  formatBytes,
+  tryCatch,
+  tryCatchSync,
+  unwrapOrThrow
 } from "@/shared/lib/utils";
 
 interface UploadOptions {
@@ -51,122 +54,125 @@ export class ImageKitService {
    * Upload a file to ImageKit
    */
   async uploadFile(options: UploadOptions): Promise<UploadResult> {
-    try {
-      const { file, fileName, folder = "uploads", tags = [], useUniqueFileName = true } = options;
+    const result = await tryCatch(
+      async () => {
+        const { file, fileName, folder = "uploads", tags = [], useUniqueFileName = true } = options;
 
-      // Sanitize filename
-      const sanitizedFileName = sanitizeFilename(fileName);
+        // Sanitize filename
+        const sanitizedFileName = sanitizeFilename(fileName);
 
-      // Determine file buffer and mime type
-      let fileBuffer: Buffer;
-      let mimeType: string;
+        // Determine file buffer and mime type
+        let fileBuffer: Buffer;
+        let mimeType: string;
 
-      if (file instanceof File) {
-        fileBuffer = Buffer.from(await file.arrayBuffer());
-        mimeType = file.type;
-      } else {
-        fileBuffer = file;
-        // Try to detect mime type from filename extension
-        mimeType = this.getMimeTypeFromFilename(sanitizedFileName);
-      }
+        if (file instanceof File) {
+          fileBuffer = Buffer.from(await file.arrayBuffer());
+          mimeType = file.type;
+        } else {
+          fileBuffer = file;
+          // Try to detect mime type from filename extension
+          mimeType = this.getMimeTypeFromFilename(sanitizedFileName);
+        }
 
-      // Validate file type and get media type
-      const mediaType = this.getMediaType(mimeType);
-      if (!mediaType) {
-        throw new Error(`Unsupported file type: ${mimeType}`);
-      }
+        // Validate file type and get media type
+        const mediaType = this.getMediaType(mimeType);
+        if (!mediaType) {
+          throw new Error(`Unsupported file type: ${mimeType}`);
+        }
 
-      // Validate file size (100MB limit)
-      const maxSize = 100 * 1024 * 1024; // 100MB
-      if (fileBuffer.length > maxSize) {
-        throw new Error(`File too large. Maximum size is ${formatBytes(maxSize)}`);
-      }
+        // Validate file size (100MB limit)
+        const maxSize = 100 * 1024 * 1024; // 100MB
+        if (fileBuffer.length > maxSize) {
+          throw new Error(`File too large. Maximum size is ${formatBytes(maxSize)}`);
+        }
 
-      logger.info("Uploading file to ImageKit", {
-        fileName: sanitizedFileName,
-        size: formatBytes(fileBuffer.length),
-        mimeType,
-        mediaType,
-      });
-
-      // Upload to ImageKit
-      const uploadResponse = await this.client.upload({
-        file: fileBuffer,
-        fileName: sanitizedFileName,
-        folder,
-        tags: [...tags, mediaType.toLowerCase()],
-        useUniqueFileName,
-      });
-
-      logger.info("File uploaded successfully to ImageKit", {
-        fileId: uploadResponse.fileId,
-        url: uploadResponse.url,
-        size: uploadResponse.size,
-      });
-
-      // Generate thumbnail for images and videos
-      let thumbnailUrl: string | undefined;
-      if (mediaType === "IMAGE") {
-        thumbnailUrl = this.generateThumbnailUrl(uploadResponse.url, {
-          width: 300,
-          height: 300,
-          quality: 80,
+        logger.info("Uploading file to ImageKit", {
+          fileName: sanitizedFileName,
+          size: formatBytes(fileBuffer.length),
+          mimeType,
+          mediaType,
         });
-      } else if (mediaType === "VIDEO") {
-        // For videos, ImageKit can generate thumbnails from the first frame
-        thumbnailUrl = this.generateVideoThumbnailUrl(uploadResponse.url);
-      }
 
-      return {
-        fileId: uploadResponse.fileId,
-        name: uploadResponse.name,
-        url: uploadResponse.url,
-        thumbnailUrl,
-        width: uploadResponse.width,
-        height: uploadResponse.height,
-        size: uploadResponse.size,
-        mimeType,
-        mediaType,
-      };
-    } catch (error) {
-      logger.error("Failed to upload file to ImageKit", {
-        error: error instanceof Error ? error.message : String(error),
-        fileName: options.fileName,
-      });
-      throw new Error(`ImageKit upload failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+        // Upload to ImageKit
+        const uploadResponse = await this.client.upload({
+          file: fileBuffer,
+          fileName: sanitizedFileName,
+          folder,
+          tags: [...tags, mediaType.toLowerCase()],
+          useUniqueFileName,
+        });
+
+        logger.info("File uploaded successfully to ImageKit", {
+          fileId: uploadResponse.fileId,
+          url: uploadResponse.url,
+          size: uploadResponse.size,
+        });
+
+        // Generate thumbnail for images and videos
+        let thumbnailUrl: string | undefined;
+        if (mediaType === "IMAGE") {
+          thumbnailUrl = this.generateThumbnailUrl(uploadResponse.url, {
+            width: 300,
+            height: 300,
+            quality: 80,
+          });
+        } else if (mediaType === "VIDEO") {
+          // For videos, ImageKit can generate thumbnails from the first frame
+          thumbnailUrl = this.generateVideoThumbnailUrl(uploadResponse.url);
+        }
+
+        return {
+          fileId: uploadResponse.fileId,
+          name: uploadResponse.name,
+          url: uploadResponse.url,
+          thumbnailUrl,
+          width: uploadResponse.width,
+          height: uploadResponse.height,
+          size: uploadResponse.size,
+          mimeType,
+          mediaType,
+        };
+      },
+      {
+        errorMessage: "Failed to upload file to ImageKit",
+        context: { fileName: options.fileName },
+      }
+    );
+
+    return unwrapOrThrow(result);
   }
 
   /**
    * Delete a file from ImageKit
    */
   async deleteFile(fileId: string): Promise<void> {
-    try {
-      await this.client.deleteFile(fileId);
-      logger.info("File deleted from ImageKit", { fileId });
-    } catch (error) {
-      logger.error("Failed to delete file from ImageKit", {
-        error: error instanceof Error ? error.message : String(error),
-        fileId,
-      });
-      throw new Error(`ImageKit deletion failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    const result = await tryCatch(
+      async () => {
+        await this.client.deleteFile(fileId);
+        logger.info("File deleted from ImageKit", { fileId });
+      },
+      {
+        errorMessage: "Failed to delete file from ImageKit",
+        context: { fileId },
+      }
+    );
+
+    unwrapOrThrow(result);
   }
 
   /**
    * Get file details from ImageKit
    */
   async getFileDetails(fileId: string) {
-    try {
-      const details = await this.client.getFileDetails(fileId);
-      return details;
-    } catch (error) {
-      logger.error("Failed to get file details from ImageKit", {
-        error: error instanceof Error ? error.message : String(error),
-        fileId,
-      });
-      throw new Error(`ImageKit get details failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    const result = await tryCatch(
+      () => this.client.getFileDetails(fileId),
+      {
+        errorMessage: "Failed to get file details from ImageKit",
+        context: { fileId },
+      }
+    );
+
+    return unwrapOrThrow(result);
   }
 
   /**
@@ -292,13 +298,19 @@ export class ImageKitService {
     const errors: string[] = [];
 
     for (const { file, fileName } of files) {
-      try {
-        const result = await this.uploadFile({ file, fileName });
-        results.push(result);
-      } catch (error) {
-        const errorMessage = `Failed to upload ${fileName}: ${error instanceof Error ? error.message : String(error)}`;
-        errors.push(errorMessage);
-        logger.error("Bulk upload error", { fileName, error: errorMessage });
+      const uploadResult = await tryCatch(
+        () => this.uploadFile({ file, fileName }),
+        {
+          errorMessage: `Failed to upload ${fileName}`,
+          context: { fileName },
+          shouldLog: true,
+        }
+      );
+
+      if (uploadResult.success) {
+        results.push(uploadResult.data);
+      } else {
+        errors.push(uploadResult.error.message);
       }
     }
 
@@ -319,29 +331,34 @@ export class ImageKitService {
    * @returns File ID or null if extraction fails
    */
   extractFileIdFromUrl(url: string): string | null {
-    try {
-      const urlParts = url.split("/");
-      const filename = urlParts[urlParts.length - 1].split("?")[0];
-      return filename;
-    } catch (error) {
-      logger.warn("Failed to extract ImageKit file ID from URL", { url, error });
-      return null;
-    }
+    const result = tryCatchSync(
+      () => {
+        const urlParts = url.split("/");
+        const filename = urlParts[urlParts.length - 1].split("?")[0];
+        return filename;
+      },
+      {
+        errorMessage: "Failed to extract ImageKit file ID from URL",
+        context: { url },
+        shouldLog: true,
+      }
+    );
+
+    return result.success ? result.data : null;
   }
 
   /**
    * Check if ImageKit service is healthy
    */
   async healthCheck(): Promise<boolean> {
-    try {
-      // Try to list files to check if service is accessible
-      await this.client.listFiles({
-        limit: 1,
-      });
-      return true;
-    } catch (error) {
-      logger.error("ImageKit health check failed", { error });
-      return false;
-    }
+    const result = await tryCatch(
+      () => this.client.listFiles({ limit: 1 }),
+      {
+        errorMessage: "ImageKit health check failed",
+        shouldLog: true,
+      }
+    );
+
+    return result.success;
   }
 }
