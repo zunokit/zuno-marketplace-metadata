@@ -1,6 +1,6 @@
 import { RedisClient } from "@/infrastructure/cache/redis.client";
 import { logger } from "@/shared/lib/utils/logger";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 import type { ApiKey } from "@/infrastructure/database/drizzle/schema";
 
 /**

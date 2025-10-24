@@ -1,6 +1,6 @@
 import { db, schema } from "@/infrastructure/database/client";
 import { logger } from "@/shared/lib/utils/logger";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 /**
  * Audit Logger

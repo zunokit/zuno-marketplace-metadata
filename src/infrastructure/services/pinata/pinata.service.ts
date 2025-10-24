@@ -1,7 +1,7 @@
 import { PinataClient } from "./pinata.client";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MediaType } from "@/shared/types";
-import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils";
+import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
 
 /**
  * Pinata Service

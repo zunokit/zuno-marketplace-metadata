@@ -1,7 +1,7 @@
 import { checkDbConnection } from "@/infrastructure/database/client";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 export interface ServiceHealth {
   status: "up" | "down";

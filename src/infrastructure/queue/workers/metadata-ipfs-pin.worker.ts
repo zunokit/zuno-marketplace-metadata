@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MetadataPinJobData } from "../queue.config";
 import { env } from "@/shared/config/env";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 /**
  * Metadata IPFS Pinning Worker

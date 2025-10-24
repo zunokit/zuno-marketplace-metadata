@@ -8,10 +8,12 @@ import {
   isValid3DModelType,
   sanitizeFilename,
   formatBytes,
+} from "@/shared/lib/utils";
+import {
   tryCatch,
   tryCatchSync,
   unwrapOrThrow
-} from "@/shared/lib/utils";
+} from "@/shared/lib/utils/server";
 
 interface UploadOptions {
   file: File | Buffer;

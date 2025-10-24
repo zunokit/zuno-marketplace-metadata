@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 export const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,

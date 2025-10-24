@@ -1,6 +1,6 @@
 import { env } from "@/shared/config/env";
 import { logger } from "@/shared/lib/utils/logger";
-import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils";
+import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
 
 /**
  * Pinata IPFS Client

@@ -55,7 +55,7 @@ export function AdminSidebar({ userEmail, userName }: AdminSidebarProps) {
     try {
       await authClient.signOut();
       toast.success("Signed out successfully");
-      router.push("/admin/signin");
+      router.push("/auth/admin/signin");
     } catch (error) {
       toast.error("Failed to sign out");
     }

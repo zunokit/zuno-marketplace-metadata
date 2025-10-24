@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "@/shared/config/env";
 import * as schema from "./drizzle/schema";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 // Create database connection
 const connection = postgres(env.DATABASE_URL);

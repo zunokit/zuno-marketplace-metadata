@@ -9,7 +9,7 @@ import {
 import { logger } from "@/shared/lib/utils/logger";
 import { auditLogger } from "@/infrastructure/monitoring/audit-logger";
 import { getIpAddress, getUserAgent } from "./request-context";
-import { tryCatch } from "@/shared/lib/utils";
+import { tryCatch } from "@/shared/lib/utils/server";
 
 export interface ApiContext {
   request: NextRequest;

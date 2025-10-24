@@ -4,10 +4,10 @@ import { user } from "../src/infrastructure/database/drizzle/schema/user.schema"
 import { account } from "../src/infrastructure/database/drizzle/schema/account.schema";
 import { IdGenerator, EntityPrefix } from "../src/shared/lib/utils/id-generator";
 import { eq } from "drizzle-orm";
-import bcrypt from "bcryptjs";
 import * as crypto from "crypto";
 import * as fs from "fs";
 import * as path from "path";
+import { hashPassword } from "better-auth/crypto";
 
 /**
  * Script to create admin user
@@ -72,9 +72,16 @@ async function createAdminUser() {
       .limit(1);
 
     if (existingAdmin.length > 0) {
-      console.log("❌ Admin user already exists!");
-      console.log("User ID:", existingAdmin[0].id);
-      process.exit(1);
+      console.log("⚠️  Admin user already exists - deleting and recreating...");
+      const existingUserId = existingAdmin[0].id;
+
+      // Delete existing account first (due to foreign key)
+      await db.delete(account).where(eq(account.userId, existingUserId));
+
+      // Delete existing user
+      await db.delete(user).where(eq(user.id, existingUserId));
+
+      console.log("✅ Old admin user deleted");
     }
 
     // Generate user ID
@@ -83,10 +90,7 @@ async function createAdminUser() {
       apiVersion: "v1",
     });
 
-    // Hash password using Better Auth's method (bcrypt)
-    // For simplicity, we'll use a basic hash here
-    // Better Auth will handle proper hashing when user signs in
-    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    const hashedPassword = await hashPassword(adminPassword);
 
     // Create user
     await db.insert(user).values({

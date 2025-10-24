@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint } from "drizzle-orm/pg-core";
 
 // ============================================
 // RATE LIMIT TABLE
@@ -6,9 +6,10 @@ import { pgTable, text, timestamp, integer } from "drizzle-orm/pg-core";
 // ============================================
 
 export const rateLimit = pgTable("rate_limit", {
-  key: text("key").primaryKey(),
+  id: text("id").primaryKey(),
+  key: text("key").notNull(),
   count: integer("count").notNull().default(0),
-  lastRequest: timestamp("last_request").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
 }).enableRLS();
 
 // Export types for TypeScript inference
