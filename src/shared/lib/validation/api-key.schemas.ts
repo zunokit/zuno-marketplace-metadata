@@ -7,7 +7,7 @@ export const createApiKeySchema = z.object({
   body: z.object({
     name: z.string().min(3).max(100),
     permissions: z.record(z.string(), z.array(z.string())),
-    expiresIn: z.number().int().positive().max(3650).optional(),
+    expiresIn: z.number().int().min(60).max(365 * 24 * 60 * 60).optional(), // Min 60 seconds (1 minute), max 1 year in seconds
     metadata: z
       .object({
         scopes: z.array(z.string()).optional(),

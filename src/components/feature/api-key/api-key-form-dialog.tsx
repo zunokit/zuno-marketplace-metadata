@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import ms, { StringValue } from "ms";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -61,18 +62,24 @@ const AVAILABLE_RESOURCES = [
 // Form schema with zod validation
 const apiKeyFormSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(100),
-  permissions: z.record(z.string(), z.array(z.string())).refine(
-    (perms) => {
-      const values = Object.values(perms) as string[][];
-      return Object.keys(perms).length > 0 && values.some(actions => actions.length > 0);
-    },
-    "At least one permission must be selected"
-  ),
-  expiresIn: z.string().optional().refine(
-    (val) => !val || (parseInt(val) > 0 && parseInt(val) <= 3650),
-    "Expiration must be between 1 and 3650 days"
-  ),
-  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
+  permissions: z.record(z.string(), z.array(z.string())).refine((perms) => {
+    const values = Object.values(perms) as string[][];
+    return (
+      Object.keys(perms).length > 0 &&
+      values.some((actions) => actions.length > 0)
+    );
+  }, "At least one permission must be selected"),
+  expiresIn: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 365),
+      "Expiration must be between 1 and 365 days"
+    ),
+  notes: z
+    .string()
+    .max(500, "Notes must be less than 500 characters")
+    .optional(),
 });
 
 type ApiKeyFormValues = z.infer<typeof apiKeyFormSchema>;
@@ -105,7 +112,11 @@ export function ApiKeyFormDialog({
     }
   }, [open, form, onClose]);
 
-  const handlePermissionChange = (resource: string, action: string, checked: boolean) => {
+  const handlePermissionChange = (
+    resource: string,
+    action: string,
+    checked: boolean
+  ) => {
     const currentPermissions = form.getValues("permissions");
     const currentActions = currentPermissions[resource] || [];
 
@@ -137,6 +148,11 @@ export function ApiKeyFormDialog({
       permissions[key] = value;
     });
 
+    // Convert days to seconds using ms library
+    const expiresInSeconds = values.expiresIn
+      ? Math.floor(ms(`${values.expiresIn}d` as StringValue) / 1000) // Convert ms to seconds
+      : undefined;
+
     onCreate({
       name: values.name.trim(),
       permissions,
@@ -144,7 +160,7 @@ export function ApiKeyFormDialog({
         scopes,
         notes: values.notes?.trim() || undefined,
       },
-      expiresIn: values.expiresIn ? parseInt(values.expiresIn) : undefined,
+      expiresIn: expiresInSeconds,
     });
   };
 
@@ -183,7 +199,8 @@ export function ApiKeyFormDialog({
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                Make sure to copy your API key now. You won&apos;t be able to see it again!
+                Make sure to copy your API key now. You won&apos;t be able to
+                see it again!
               </AlertDescription>
             </Alert>
 
@@ -221,13 +238,17 @@ export function ApiKeyFormDialog({
             <DialogHeader>
               <DialogTitle>Create New API Key</DialogTitle>
               <DialogDescription>
-                Create a new API key for programmatic access to the metadata API.
-                Rate limiting is configured server-side (1000 req/hour by default).
+                Create a new API key for programmatic access to the metadata
+                API. Rate limiting is configured server-side (1000 req/hour by
+                default).
               </DialogDescription>
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="name"
@@ -256,33 +277,43 @@ export function ApiKeyFormDialog({
                     <FormItem>
                       <FormLabel>Permissions *</FormLabel>
                       <div className="space-y-4 border rounded-lg p-4">
-                        {AVAILABLE_RESOURCES.map(({ resource, label, actions }) => (
-                          <div key={resource} className="space-y-2">
-                            <h4 className="font-medium text-sm">{label}</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                              {actions.map((action) => (
-                                <div key={action} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`${resource}-${action}`}
-                                    checked={
-                                      (form.watch("permissions")[resource] || []).includes(action)
-                                    }
-                                    onCheckedChange={(checked) =>
-                                      handlePermissionChange(resource, action, checked as boolean)
-                                    }
-                                    disabled={isCreating}
-                                  />
-                                  <label
-                                    htmlFor={`${resource}-${action}`}
-                                    className="text-sm font-normal cursor-pointer"
+                        {AVAILABLE_RESOURCES.map(
+                          ({ resource, label, actions }) => (
+                            <div key={resource} className="space-y-2">
+                              <h4 className="font-medium text-sm">{label}</h4>
+                              <div className="grid grid-cols-2 gap-2">
+                                {actions.map((action) => (
+                                  <div
+                                    key={action}
+                                    className="flex items-center space-x-2"
                                   >
-                                    {action}
-                                  </label>
-                                </div>
-                              ))}
+                                    <Checkbox
+                                      id={`${resource}-${action}`}
+                                      checked={(
+                                        form.watch("permissions")[resource] ||
+                                        []
+                                      ).includes(action)}
+                                      onCheckedChange={(checked) =>
+                                        handlePermissionChange(
+                                          resource,
+                                          action,
+                                          checked as boolean
+                                        )
+                                      }
+                                      disabled={isCreating}
+                                    />
+                                    <label
+                                      htmlFor={`${resource}-${action}`}
+                                      className="text-sm font-normal cursor-pointer"
+                                    >
+                                      {action}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        )}
                       </div>
                       <FormDescription>
                         Select the permissions this API key will have

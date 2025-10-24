@@ -241,6 +241,8 @@ export class ApiKeyService {
   > {
     return tryCatch(
       async () => {
+        console.log("[ApiKeyService.create] Input:", JSON.stringify(input, null, 2));
+
         const result = await betterAuthApi.createApiKey({
           body: {
             userId: input.userId,
@@ -250,6 +252,8 @@ export class ApiKeyService {
             metadata: input.metadata,
           },
         });
+
+        console.log("[ApiKeyService.create] Better Auth result:", JSON.stringify(result, null, 2));
 
         if (!result || !result.id) {
           throw new ApiError(
