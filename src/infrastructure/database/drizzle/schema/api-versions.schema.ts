@@ -14,7 +14,7 @@ export const apiVersions = pgTable("api_versions", {
   deprecated: boolean("deprecated").notNull().default(false),
   releasedAt: timestamp("released_at").notNull(),
   sunsetAt: timestamp("sunset_at"),
-});
+}).enableRLS();
 
 // Export table types for TypeScript inference
 export type ApiVersion = typeof apiVersions.$inferSelect;

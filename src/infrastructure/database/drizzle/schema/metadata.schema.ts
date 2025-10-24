@@ -6,7 +6,7 @@ import {
   integer,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { mediaTypeEnum } from "./media.schema";
+  import { mediaTypeEnum } from "./media.schema";
 
 // ============= METADATA =============
 export const metadata = pgTable("metadata", {
@@ -75,7 +75,7 @@ export const metadata = pgTable("metadata", {
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),
-});
+}).enableRLS();
 
 // Export table types for TypeScript inference
 export type Metadata = typeof metadata.$inferSelect;

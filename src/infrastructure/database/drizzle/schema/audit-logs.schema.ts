@@ -7,7 +7,8 @@ import {
   jsonb,
   varchar,
 } from "drizzle-orm/pg-core";
-import { user, apiKey } from "./auth.schema";
+import { user } from "./user.schema";
+import { apiKey } from "./api-key.schema";
 
 // ============= AUDIT LOGS =============
 export const auditLogs = pgTable("audit_logs", {
@@ -39,7 +40,7 @@ export const auditLogs = pgTable("audit_logs", {
   }>(),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 // Export table types for TypeScript inference
 export type AuditLog = typeof auditLogs.$inferSelect;

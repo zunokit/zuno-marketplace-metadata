@@ -1,5 +1,5 @@
 {
-  "id": "498006fa-ce09-46fd-b73b-88fa5be6f1d8",
+  "id": "0b981a5c-40db-456b-b8c0-2f618f111264",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -107,7 +107,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.api_key": {
       "name": "api_key",
@@ -271,7 +271,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.rate_limit": {
       "name": "rate_limit",
@@ -303,7 +303,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.session": {
       "name": "session",
@@ -392,7 +392,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.user": {
       "name": "user",
@@ -482,7 +482,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.verification": {
       "name": "verification",
@@ -531,7 +531,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.media": {
       "name": "media",
@@ -651,7 +651,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.metadata": {
       "name": "metadata",
@@ -817,7 +817,7 @@
       },
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.api_versions": {
       "name": "api_versions",
@@ -868,7 +868,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     },
     "public.audit_logs": {
       "name": "audit_logs",
@@ -994,7 +994,7 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
-      "isRLSEnabled": false
+      "isRLSEnabled": true
     }
   },
   "enums": {

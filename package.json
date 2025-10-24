@@ -14,7 +14,7 @@
     "db:push": "drizzle-kit push",
     "db:apply-rls": "tsx scripts/apply-rls.ts",
     "db:fix-search-path": "tsx scripts/fix-search-path.ts",
-    "create-admin": "tsx scripts/create-admin.ts"
+    "db:create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

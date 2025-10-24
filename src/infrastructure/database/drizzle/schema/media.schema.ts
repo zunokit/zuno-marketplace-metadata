@@ -48,7 +48,7 @@ export const media = pgTable("media", {
   pinnedAt: timestamp("pinned_at"),
 
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}).enableRLS();
 
 // Export table types for TypeScript inference
 export type Media = typeof media.$inferSelect;

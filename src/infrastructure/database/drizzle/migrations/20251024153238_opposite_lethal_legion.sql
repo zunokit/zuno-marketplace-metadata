@@ -1,5 +1,10 @@
-CREATE TYPE "public"."media_type" AS ENUM('IMAGE', 'VIDEO', 'GIF', 'MODEL_3D');--> statement-breakpoint
-CREATE TABLE "account" (
+DO $$ BEGIN
+ CREATE TYPE "public"."media_type" AS ENUM('IMAGE', 'VIDEO', 'GIF', 'MODEL_3D');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"account_id" text NOT NULL,
 	"provider_id" text NOT NULL,
@@ -15,7 +20,8 @@ CREATE TABLE "account" (
 	"updated_at" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "api_key" (
+ALTER TABLE "account" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "api_key" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"start" text,
@@ -40,13 +46,15 @@ CREATE TABLE "api_key" (
 	CONSTRAINT "api_key_key_unique" UNIQUE("key")
 );
 --> statement-breakpoint
-CREATE TABLE "rate_limit" (
+ALTER TABLE "api_key" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "rate_limit" (
 	"key" text PRIMARY KEY NOT NULL,
 	"count" integer DEFAULT 0 NOT NULL,
 	"last_request" timestamp NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "session" (
+ALTER TABLE "rate_limit" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "session" (
 	"id" text PRIMARY KEY NOT NULL,
 	"expires_at" timestamp NOT NULL,
 	"token" text NOT NULL,
@@ -59,7 +67,8 @@ CREATE TABLE "session" (
 	CONSTRAINT "session_token_unique" UNIQUE("token")
 );
 --> statement-breakpoint
-CREATE TABLE "user" (
+ALTER TABLE "session" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "user" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text,
 	"email" text NOT NULL,
@@ -74,7 +83,8 @@ CREATE TABLE "user" (
 	CONSTRAINT "user_email_unique" UNIQUE("email")
 );
 --> statement-breakpoint
-CREATE TABLE "verification" (
+ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "verification" (
 	"id" text PRIMARY KEY NOT NULL,
 	"identifier" text NOT NULL,
 	"value" text NOT NULL,
@@ -83,7 +93,8 @@ CREATE TABLE "verification" (
 	"updated_at" timestamp
 );
 --> statement-breakpoint
-CREATE TABLE "media" (
+ALTER TABLE "verification" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "media" (
 	"id" text PRIMARY KEY NOT NULL,
 	"file_name" text NOT NULL,
 	"file_size" bigint NOT NULL,
@@ -103,7 +114,8 @@ CREATE TABLE "media" (
 	CONSTRAINT "media_ipfs_hash_unique" UNIQUE("ipfs_hash")
 );
 --> statement-breakpoint
-CREATE TABLE "metadata" (
+ALTER TABLE "media" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "metadata" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
@@ -130,7 +142,8 @@ CREATE TABLE "metadata" (
 	CONSTRAINT "metadata_ipfs_hash_unique" UNIQUE("ipfs_hash")
 );
 --> statement-breakpoint
-CREATE TABLE "api_versions" (
+ALTER TABLE "metadata" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "api_versions" (
 	"id" text PRIMARY KEY NOT NULL,
 	"label" varchar(32) NOT NULL,
 	"is_current" boolean DEFAULT false NOT NULL,
@@ -139,7 +152,8 @@ CREATE TABLE "api_versions" (
 	"sunset_at" timestamp
 );
 --> statement-breakpoint
-CREATE TABLE "audit_logs" (
+ALTER TABLE "api_versions" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "audit_logs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" text,
 	"api_key_id" text,
@@ -156,8 +170,33 @@ CREATE TABLE "audit_logs" (
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "api_key" ADD CONSTRAINT "api_key_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_api_key_id_api_key_id_fk" FOREIGN KEY ("api_key_id") REFERENCES "public"."api_key"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "audit_logs" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "api_key" ADD CONSTRAINT "api_key_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_api_key_id_api_key_id_fk" FOREIGN KEY ("api_key_id") REFERENCES "public"."api_key"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;

@@ -13,9 +13,4 @@ export default defineConfig({
   },
   verbose: true,
   strict: true,
-  migrations: {
-    prefix: "timestamp",
-    table: "drizzle_migrations",
-    schema: "public",
-  },
 });

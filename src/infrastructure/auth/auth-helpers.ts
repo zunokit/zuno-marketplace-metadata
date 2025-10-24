@@ -1,10 +1,11 @@
 import { auth } from "./better-auth.config";
 import { headers as nextHeaders } from "next/headers";
-import { ApiKey } from "@/infrastructure/database/drizzle/schema/auth.schema";
 import { db } from "@/infrastructure/database/client";
-import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/auth.schema";
+import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/api-key.schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
+import { Session } from "better-auth";
+import { User } from "@/infrastructure/database/drizzle/schema/user.schema";
 
 export interface AuthUser {
   id: string;
@@ -219,18 +220,17 @@ export async function verifySessionFromHeaders(headers: Headers): Promise<{
         id: session.user.id,
         email: session.user.email,
         name: session.user.name,
-        role: (session.user as any).role || "user",
-        banned: (session.user as any).banned || undefined,
-        banReason: (session.user as any).banReason || undefined,
-        banExpires: (session.user as any).banExpires
-          ? new Date((session.user as any).banExpires)
+        role: (session.user as User).role || "user",
+        banned: (session.user as User).banned || undefined,
+        banReason: (session.user as User).banReason || undefined,
+        banExpires: (session.user as User).banExpires
+          ? new Date((session.user as User).banExpires || new Date())
           : undefined,
       },
       session: {
         id: session.session.id,
         token: session.session.token,
         expiresAt: new Date(session.session.expiresAt),
-        impersonatedBy: (session.session as any).impersonatedBy || undefined,
       },
     };
   } catch (error) {
