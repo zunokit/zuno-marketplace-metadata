@@ -39,6 +39,11 @@ const navigation = [
     href: "/admin/media",
     icon: ImageIcon,
   },
+  {
+    name: "Audit Logs",
+    href: "/admin/audit-logs",
+    icon: Activity,
+  },
 ];
 
 interface AdminSidebarProps {

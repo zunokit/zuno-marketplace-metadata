@@ -4,11 +4,17 @@ import { MediaRepositoryImpl } from "@/infrastructure/repositories/media.reposit
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type { MediaRepository } from "@/core/domain/media/media.repository";
+import { AuditLogRepositoryImpl } from "@/infrastructure/repositories/audit-log.repository.impl";
+import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repository";
+
+
 
 // ============= SINGLETON INSTANCES =============
 let metadataRepositoryInstance: MetadataRepository | null = null;
 let mediaRepositoryInstance: MediaRepository | null = null;
 let imageKitServiceInstance: ImageKitService | null = null;
+let auditLogRepository: AuditLogRepository | null = null;
+
 
 // ============= REPOSITORY FACTORIES =============
 
@@ -35,10 +41,19 @@ export function getImageKitService(): ImageKitService {
   return imageKitServiceInstance;
 }
 
+export function getAuditLogRepository(): AuditLogRepository {
+  if (!auditLogRepository) {
+    auditLogRepository = new AuditLogRepositoryImpl();
+  }
+  return auditLogRepository;
+}
+
+
 // ============= CLEANUP =============
 
 export function clearContainer(): void {
   metadataRepositoryInstance = null;
   mediaRepositoryInstance = null;
   imageKitServiceInstance = null;
+  auditLogRepository = null;
 }
