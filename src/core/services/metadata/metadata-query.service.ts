@@ -25,10 +25,7 @@ export class MetadataQueryService {
   /**
    * Build list params từ query input và auth context
    */
-  static buildListParams(
-    input: ListQueryInput,
-    context: AuthContext
-  ): MetadataListParams {
+  static buildListParams(input: ListQueryInput): MetadataListParams {
     const {
       page = 1,
       limit = 20,
@@ -38,23 +35,33 @@ export class MetadataQueryService {
       mediaType,
       isPinned,
       isLocked,
-      minVersion,
-      maxVersion,
     } = input;
 
     // Validate pagination
     if (page < 1) {
-      throw new ApiError("Page must be greater than 0", ErrorCode.VALIDATION_ERROR, 400);
+      throw new ApiError(
+        "Page must be greater than 0",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
     }
 
     if (limit < 1 || limit > 100) {
-      throw new ApiError("Limit must be between 1 and 100", ErrorCode.VALIDATION_ERROR, 400);
+      throw new ApiError(
+        "Limit must be between 1 and 100",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
     }
 
     // Validate sorting
     const validSortFields = ["name", "createdAt", "updatedAt", "version"];
     if (!validSortFields.includes(sortBy)) {
-      throw new ApiError(`Invalid sortBy field: ${sortBy}`, ErrorCode.VALIDATION_ERROR, 400);
+      throw new ApiError(
+        `Invalid sortBy field: ${sortBy}`,
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
     }
 
     return {
@@ -66,8 +73,6 @@ export class MetadataQueryService {
       mediaType,
       isPinned,
       isLocked,
-      minVersion,
-      maxVersion,
     };
   }
 
@@ -80,8 +85,6 @@ export class MetadataQueryService {
       mediaType: input.mediaType,
       isPinned: input.isPinned,
       isLocked: input.isLocked,
-      minVersion: input.minVersion,
-      maxVersion: input.maxVersion,
     };
   }
 
@@ -115,11 +118,19 @@ export class MetadataQueryService {
 
     const trimmed = query.trim();
     if (trimmed.length < 2) {
-      throw new ApiError("Search query must be at least 2 characters", ErrorCode.VALIDATION_ERROR, 400);
+      throw new ApiError(
+        "Search query must be at least 2 characters",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
     }
 
     if (trimmed.length > 100) {
-      throw new ApiError("Search query is too long", ErrorCode.VALIDATION_ERROR, 400);
+      throw new ApiError(
+        "Search query is too long",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
     }
 
     return trimmed;

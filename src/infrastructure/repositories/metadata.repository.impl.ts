@@ -1,4 +1,15 @@
-import { eq, desc, asc, and, or, gte, lte, ilike, sql, count } from "drizzle-orm";
+import {
+  eq,
+  desc,
+  asc,
+  and,
+  or,
+  gte,
+  lte,
+  ilike,
+  sql,
+  count,
+} from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { metadata } from "@/infrastructure/database/drizzle/schema";
 import type { Metadata } from "@/infrastructure/database/drizzle/schema/metadata.schema";
@@ -11,7 +22,12 @@ import type {
 } from "@/core/domain/metadata/metadata.entity";
 import type { PaginatedResponse } from "@/shared/types";
 import { logger } from "@/shared/lib/utils/logger";
-import { hasRows, extractRowCount, buildQuery, countSql } from "@/shared/lib/utils/drizzle-helpers";
+import {
+  hasRows,
+  extractRowCount,
+  buildQuery,
+  countSql,
+} from "@/shared/lib/utils/drizzle-helpers";
 
 export class MetadataRepositoryImpl implements MetadataRepository {
   constructor(private db: Database) {}
@@ -44,7 +60,10 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     return result[0] ? this.mapToEntity(result[0]) : null;
   }
 
-  async findByIdAndVersion(id: string, version?: number): Promise<MetadataEntity | null> {
+  async findByIdAndVersion(
+    id: string,
+    version?: number
+  ): Promise<MetadataEntity | null> {
     logger.debug("Finding metadata by ID and version", { id, version });
 
     const conditions = [eq(metadata.id, id)];
@@ -62,7 +81,10 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     return result[0] ? this.mapToEntity(result[0]) : null;
   }
 
-  async update(id: string, params: UpdateMetadataParams): Promise<MetadataEntity | null> {
+  async update(
+    id: string,
+    params: UpdateMetadataParams
+  ): Promise<MetadataEntity | null> {
     logger.debug("Updating metadata", { id, params });
 
     // Get current metadata to check version and lock status
@@ -77,13 +99,24 @@ export class MetadataRepositoryImpl implements MetadataRepository {
 
     // Determine if this is a content change (should increment version)
     const contentFields = [
-      'name', 'description', 'symbol', 'image', 'bannerImage', 'featuredImage',
-      'animationUrl', 'externalUrl', 'backgroundColor', 'attributes', 'mediaType',
-      'creators', 'sellerFeeBasisPoints', 'feeRecipient'
+      "name",
+      "description",
+      "symbol",
+      "image",
+      "bannerImage",
+      "featuredImage",
+      "animationUrl",
+      "externalUrl",
+      "backgroundColor",
+      "attributes",
+      "mediaType",
+      "creators",
+      "sellerFeeBasisPoints",
+      "feeRecipient",
     ];
 
-    const hasContentChanges = contentFields.some(field =>
-      params[field as keyof UpdateMetadataParams] !== undefined
+    const hasContentChanges = contentFields.some(
+      (field) => params[field as keyof UpdateMetadataParams] !== undefined
     );
 
     const updateData = {
@@ -113,14 +146,14 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       throw new Error("Cannot delete locked metadata");
     }
 
-    const result = await this.db
-      .delete(metadata)
-      .where(eq(metadata.id, id));
+    const result = await this.db.delete(metadata).where(eq(metadata.id, id));
 
     return hasRows(result);
   }
 
-  async list(params: MetadataListParams): Promise<PaginatedResponse<MetadataEntity>> {
+  async list(
+    params: MetadataListParams
+  ): Promise<PaginatedResponse<MetadataEntity>> {
     logger.debug("Listing metadata", { params });
 
     const {
@@ -132,8 +165,6 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       mediaType,
       isPinned,
       isLocked,
-      minVersion,
-      maxVersion,
     } = params;
 
     // Build conditions
@@ -153,30 +184,26 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       conditions.push(eq(metadata.mediaType, mediaType));
     }
 
-    if (typeof isPinned === 'boolean') {
+    if (typeof isPinned === "boolean") {
       conditions.push(eq(metadata.isPinned, isPinned));
     }
 
-    if (typeof isLocked === 'boolean') {
+    if (typeof isLocked === "boolean") {
       conditions.push(eq(metadata.isLocked, isLocked));
-    }
-
-    if (minVersion !== undefined) {
-      conditions.push(gte(metadata.version, minVersion));
-    }
-
-    if (maxVersion !== undefined) {
-      conditions.push(lte(metadata.version, maxVersion));
     }
 
     // Apply conditions
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Apply sorting
-    const sortColumn = sortBy === "name" ? metadata.name
-      : sortBy === "updatedAt" ? metadata.updatedAt
-      : sortBy === "version" ? metadata.version
-      : metadata.createdAt;
+    const sortColumn =
+      sortBy === "name"
+        ? metadata.name
+        : sortBy === "updatedAt"
+        ? metadata.updatedAt
+        : sortBy === "version"
+        ? metadata.version
+        : metadata.createdAt;
 
     const orderFn = sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn);
 
@@ -185,10 +212,14 @@ export class MetadataRepositoryImpl implements MetadataRepository {
 
     // Build and execute queries
     const queryBuilder = this.db.select().from(metadata);
-    const countQueryBuilder = this.db.select({ count: countSql }).from(metadata);
+    const countQueryBuilder = this.db
+      .select({ count: countSql })
+      .from(metadata);
 
     const query = whereClause ? queryBuilder.where(whereClause) : queryBuilder;
-    const countQuery = whereClause ? countQueryBuilder.where(whereClause) : countQueryBuilder;
+    const countQuery = whereClause
+      ? countQueryBuilder.where(whereClause)
+      : countQueryBuilder;
 
     // Execute queries
     const [results, [{ count: totalCount }]] = await Promise.all([
@@ -212,7 +243,10 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     };
   }
 
-  async search(query: string, params?: MetadataListParams): Promise<PaginatedResponse<MetadataEntity>> {
+  async search(
+    query: string,
+    params?: MetadataListParams
+  ): Promise<PaginatedResponse<MetadataEntity>> {
     const searchParams = {
       ...params,
       search: query,
@@ -254,22 +288,22 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   async createMany(params: CreateMetadataParams[]): Promise<MetadataEntity[]> {
     logger.debug("Creating multiple metadata", { count: params.length });
 
-    const values = params.map(param => ({
+    const values = params.map((param) => ({
       ...param,
       version: 1,
       isLocked: false,
       isPinned: false,
     }));
 
-    const results = await this.db
-      .insert(metadata)
-      .values(values)
-      .returning();
+    const results = await this.db.insert(metadata).values(values).returning();
 
-    return results.map(result => this.mapToEntity(result));
+    return results.map((result) => this.mapToEntity(result));
   }
 
-  async updateMany(ids: string[], params: Partial<UpdateMetadataParams>): Promise<number> {
+  async updateMany(
+    ids: string[],
+    params: Partial<UpdateMetadataParams>
+  ): Promise<number> {
     logger.debug("Updating multiple metadata", { ids, params });
 
     const result = await this.db
@@ -290,7 +324,11 @@ export class MetadataRepositoryImpl implements MetadataRepository {
     return extractRowCount(result);
   }
 
-  async updateIpfsInfo(id: string, ipfsHash: string, ipfsUrl: string): Promise<MetadataEntity | null> {
+  async updateIpfsInfo(
+    id: string,
+    ipfsHash: string,
+    ipfsUrl: string
+  ): Promise<MetadataEntity | null> {
     logger.debug("Updating IPFS info", { id, ipfsHash });
 
     const [result] = await this.db

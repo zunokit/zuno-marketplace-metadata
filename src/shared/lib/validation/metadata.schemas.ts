@@ -3,7 +3,9 @@ import { commonSchemas } from "@/shared/lib/api/api-handler";
 
 // Metadata attribute schema
 export const metadataAttributeSchema = z.object({
-  displayType: z.enum(["number", "date", "boost_number", "boost_percentage"]).optional(),
+  displayType: z
+    .enum(["number", "date", "boost_number", "boost_percentage"])
+    .optional(),
   displayValue: z.string().optional(),
   traitType: z.string().min(1, "Trait type is required"),
   value: z.union([z.string(), z.number()]),
@@ -32,7 +34,10 @@ export const metadataSchema = z.object({
 
   backgroundColor: z
     .string()
-    .regex(/^[0-9A-Fa-f]{6}$/, "Background color must be a 6-character hex code without #")
+    .regex(
+      /^[0-9A-Fa-f]{6}$/,
+      "Background color must be a 6-character hex code without #"
+    )
     .optional(),
 
   attributes: z.array(metadataAttributeSchema).default([]),
@@ -40,7 +45,11 @@ export const metadataSchema = z.object({
   mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).default("IMAGE"),
 
   creators: z.array(creatorSchema).default([]),
-  sellerFeeBasisPoints: z.number().min(0).max(10000, "Seller fee cannot exceed 100%").optional(),
+  sellerFeeBasisPoints: z
+    .number()
+    .min(0)
+    .max(10000, "Seller fee cannot exceed 100%")
+    .optional(),
   feeRecipient: z.string().optional(),
 });
 
@@ -62,14 +71,15 @@ export const updateMetadataSchema = z.object({
 export const listMetadataSchema = z.object({
   query: commonSchemas.pagination.merge(
     z.object({
-      sortBy: z.enum(["name", "createdAt", "updatedAt", "version"]).optional().default("createdAt"),
+      sortBy: z
+        .enum(["name", "createdAt", "updatedAt", "version"])
+        .optional()
+        .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
-      search: z.string().optional(),
+      search: z.string().min(1, "Search query cannot be empty").optional(),
       mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).optional(),
       isPinned: z.coerce.boolean().optional(),
       isLocked: z.coerce.boolean().optional(),
-      minVersion: z.coerce.number().optional(),
-      maxVersion: z.coerce.number().optional(),
     })
   ),
 });
@@ -77,9 +87,15 @@ export const listMetadataSchema = z.object({
 // Get metadata schema
 export const getMetadataSchema = z.object({
   params: commonSchemas.id,
-  query: z.object({
-    version: z.coerce.number().optional(),
-  }).optional(),
+  query: z
+    .object({
+      version: z.coerce
+        .number()
+        .int()
+        .min(1, "Version must be at least 1")
+        .optional(),
+    })
+    .optional(),
 });
 
 // Delete metadata schema
@@ -98,24 +114,33 @@ export type ListMetadataInput = z.infer<typeof listMetadataSchema>;
 // Batch operations
 export const batchCreateMetadataSchema = z.object({
   body: z.object({
-    metadata: z.array(metadataSchema).min(1, "At least one metadata item required").max(50, "Maximum 50 items per batch"),
+    metadata: z
+      .array(metadataSchema)
+      .min(1, "At least one metadata item required")
+      .max(50, "Maximum 50 items per batch"),
   }),
 });
 
 export const batchUpdateMetadataSchema = z.object({
   body: z.object({
-    updates: z.array(
-      z.object({
-        id: z.string().min(1, "ID is required"),
-        data: metadataSchema.partial(),
-      })
-    ).min(1, "At least one update required").max(50, "Maximum 50 updates per batch"),
+    updates: z
+      .array(
+        z.object({
+          id: z.string().min(1, "ID is required"),
+          data: metadataSchema.partial(),
+        })
+      )
+      .min(1, "At least one update required")
+      .max(50, "Maximum 50 updates per batch"),
   }),
 });
 
 export const batchDeleteMetadataSchema = z.object({
   body: z.object({
-    ids: z.array(z.string().min(1, "ID is required")).min(1, "At least one ID required").max(50, "Maximum 50 IDs per batch"),
+    ids: z
+      .array(z.string().min(1, "ID is required"))
+      .min(1, "At least one ID required")
+      .max(50, "Maximum 50 IDs per batch"),
   }),
 });
 
@@ -130,11 +155,11 @@ export function validateAttributes(attributes: unknown[]): boolean {
   // Check for duplicate trait types
   const traitTypes = new Set<string>();
   for (const attr of attributes) {
-    if (typeof attr === 'object' && attr !== null && 'traitType' in attr) {
+    if (typeof attr === "object" && attr !== null && "traitType" in attr) {
       const record = attr as Record<string, unknown>;
       const traitType = record.traitType;
 
-      if (typeof traitType !== 'string') continue;
+      if (typeof traitType !== "string") continue;
 
       if (traitTypes.has(traitType)) {
         return false; // Duplicate trait type
@@ -152,11 +177,11 @@ export function validateCreators(creators: unknown[]): boolean {
   // Total share should not exceed 100
   let totalShare = 0;
   for (const creator of creators) {
-    if (typeof creator === 'object' && creator !== null && 'share' in creator) {
+    if (typeof creator === "object" && creator !== null && "share" in creator) {
       const record = creator as Record<string, unknown>;
       const share = record.share;
 
-      if (typeof share === 'number') {
+      if (typeof share === "number") {
         totalShare += share;
       }
     }

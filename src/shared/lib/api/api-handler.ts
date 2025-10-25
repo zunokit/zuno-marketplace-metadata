@@ -4,7 +4,6 @@ import {
   createSuccessResponse,
   createErrorResponse,
   ErrorCode,
-  type ApiResponse,
 } from "@/shared/types";
 import { logger } from "@/shared/lib/utils/logger";
 import { auditLogger } from "@/infrastructure/monitoring/audit-logger";
@@ -62,17 +61,17 @@ export interface ApiRouteConfig<
 
 // Type helper to infer validated input type from config
 export type InferApiInput<TConfig extends ApiRouteConfig> = {
-  body: TConfig['validation'] extends { body: infer B }
+  body: TConfig["validation"] extends { body: infer B }
     ? B extends z.ZodSchema
       ? z.infer<B>
       : never
     : undefined;
-  query: TConfig['validation'] extends { query: infer Q }
+  query: TConfig["validation"] extends { query: infer Q }
     ? Q extends z.ZodSchema
       ? z.infer<Q>
       : never
     : undefined;
-  params: TConfig['validation'] extends { params: infer P }
+  params: TConfig["validation"] extends { params: infer P }
     ? P extends z.ZodSchema
       ? z.infer<P>
       : never
@@ -288,16 +287,13 @@ export class ApiWrapper {
           body = jsonResult.data;
         }
       } else if (contentType?.includes("multipart/form-data")) {
-        const formResult = await tryCatch(
-          () => request.formData(),
-          {
-            errorMessage: "Failed to parse request body as FormData",
-            shouldLog: false,
-            onError: (error) => {
-              logger.debug("Failed to parse request body as FormData", { error });
-            },
-          }
-        );
+        const formResult = await tryCatch(() => request.formData(), {
+          errorMessage: "Failed to parse request body as FormData",
+          shouldLog: false,
+          onError: (error) => {
+            logger.debug("Failed to parse request body as FormData", { error });
+          },
+        });
         if (formResult.success) {
           body = formResult.data;
         }
@@ -310,7 +306,7 @@ export class ApiWrapper {
       query = validation.query.parse(query) as Record<string, string>;
     }
 
-    if (validation?.body && body !== undefined) {
+    if (validation?.body) {
       body = validation.body.parse(body);
     }
 
@@ -382,8 +378,6 @@ export class ApiWrapper {
             scopes: context.apiKey.scopes,
           });
 
-          // Note: Rate limiting is handled by Better Auth if enabled
-          // Custom Redis-based rate limiting can be added here if needed
         }
       }
     }
@@ -405,11 +399,7 @@ export class ApiWrapper {
           role: context.user?.role,
         });
 
-        throw new ApiError(
-          "Admin access required",
-          ErrorCode.FORBIDDEN,
-          403
-        );
+        throw new ApiError("Admin access required", ErrorCode.FORBIDDEN, 403);
       }
     }
 
@@ -450,7 +440,9 @@ export class ApiWrapper {
         });
 
         throw new ApiError(
-          `Insufficient permissions. Required permissions: ${authConfig.requiredScopes.join(", ")}`,
+          `Insufficient permissions. Required permissions: ${authConfig.requiredScopes.join(
+            ", "
+          )}`,
           ErrorCode.FORBIDDEN,
           403
         );
@@ -505,7 +497,7 @@ export class ApiWrapper {
     if (apiError.statusCode === 429 && apiError.details) {
       // Type-safe check for retryAfter in details
       const details = apiError.details as Record<string, unknown>;
-      if (typeof details.retryAfter === 'number') {
+      if (typeof details.retryAfter === "number") {
         response.headers.set("Retry-After", String(details.retryAfter));
       }
     }
@@ -543,8 +535,13 @@ export const commonSchemas = {
   }),
 
   pagination: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
+    page: z.coerce.number().int().min(1, "Page must be at least 1").default(1),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1, "Limit must be at least 1")
+      .max(100, "Limit cannot exceed 100")
+      .default(20),
   }),
 
   sort: z.object({
@@ -558,8 +555,9 @@ export const commonSchemas = {
 };
 
 // Helper functions for common operations
-export const withPagination = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
-  schema.merge(commonSchemas.pagination);
+export const withPagination = <T extends z.ZodRawShape>(
+  schema: z.ZodObject<T>
+) => schema.merge(commonSchemas.pagination);
 
 export const withSort = <T extends z.ZodRawShape>(schema: z.ZodObject<T>) =>
   schema.merge(commonSchemas.sort);

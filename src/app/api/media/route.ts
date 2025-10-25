@@ -1,7 +1,15 @@
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { getMediaRepository, getImageKitService } from "@/infrastructure/di/container";
+import {
+  getMediaRepository,
+  getImageKitService,
+} from "@/infrastructure/di/container";
 import { MediaDtoMapper } from "@/shared/dto/media.dto";
-import { ListMediaSchema, type ListMediaInput } from "@/shared/lib/validation/media.dto";
+import {
+  ListMediaSchema,
+  UploadMediaSchema,
+  type ListMediaInput,
+  type UploadMediaInput,
+} from "@/shared/lib/validation/media.dto";
 import { ListMediaUseCase } from "@/core/use-cases/media/list-media.use-case";
 import { UploadMediaUseCase } from "@/core/use-cases/media/upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
@@ -38,9 +46,9 @@ export const GET = ApiWrapper.create<ListMediaInput>(
 /**
  * POST /api/media - Upload media file
  */
-export const POST = ApiWrapper.create(
+export const POST = ApiWrapper.create<UploadMediaInput>(
   async (input, context) => {
-    const formData = input as FormData;
+    const { body } = input;
 
     logger.info("Starting media upload", {
       requestId: context.requestId,
@@ -48,9 +56,9 @@ export const POST = ApiWrapper.create(
     });
 
     // Extract file and optional parameters from form data
-    const file = formData.get("file") as File;
-    const folder = formData.get("folder") as string | null;
-    const tags = formData.getAll("tags") as string[];
+    const file = body.get("file") as File;
+    const folder = body.get("folder") as string | null;
+    const tags = body.getAll("tags") as string[];
 
     // Execute use case
     const uploadMediaUseCase = new UploadMediaUseCase(
@@ -69,6 +77,9 @@ export const POST = ApiWrapper.create(
     auth: {
       required: true,
       requiredScopes: ["media:write"],
+    },
+    validation: {
+      body: UploadMediaSchema.shape.body,
     },
   }
 );

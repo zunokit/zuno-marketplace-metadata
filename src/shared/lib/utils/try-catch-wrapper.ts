@@ -7,6 +7,65 @@
 
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { z } from "zod";
+
+/**
+ * Error type discrimination for better type safety
+ */
+type ErrorType = "ApiError" | "ZodError" | "GenericError" | "UnknownError";
+
+/**
+ * Type guard to determine error type
+ */
+function getErrorType(error: unknown): ErrorType {
+  if (error instanceof ApiError) return "ApiError";
+  if (error instanceof z.ZodError) return "ZodError";
+  if (error instanceof Error) return "GenericError";
+  return "UnknownError";
+}
+
+/**
+ * Create ApiError from any error type with proper discrimination
+ */
+function createApiError(error: unknown, config: TryCatchConfig): ApiError {
+  const errorType = getErrorType(error);
+
+  switch (errorType) {
+    case "ApiError":
+      return error as ApiError;
+
+    case "ZodError":
+      return new ApiError(
+        "Validation failed. Please check your input.",
+        ErrorCode.VALIDATION_ERROR,
+        400,
+        { issues: (error as z.ZodError).issues }
+      );
+
+    case "GenericError":
+      return new ApiError(
+        config.errorMessage || "Operation failed",
+        config.errorCode || ErrorCode.INTERNAL_ERROR,
+        config.statusCode || 500,
+        {
+          originalError: (error as Error).message,
+          stack: (error as Error).stack,
+          context: config.context,
+        }
+      );
+
+    case "UnknownError":
+      return new ApiError(
+        config.errorMessage || "Operation failed",
+        config.errorCode || ErrorCode.INTERNAL_ERROR,
+        config.statusCode || 500,
+        {
+          originalError: String(error),
+          context: config.context,
+        }
+      );
+  }
+}
 
 /**
  * Configuration for try-catch wrapper
@@ -111,26 +170,13 @@ export async function tryCatch<T>(
       onError(error, context);
     }
 
-    // Create ApiError
-    let apiError: ApiError;
-
-    if (error instanceof ApiError) {
-      // Re-throw ApiError as-is
-      apiError = error;
-    } else if (error instanceof Error) {
-      // Wrap generic errors
-      apiError = new ApiError(errorMessage, errorCode, statusCode, {
-        originalError: error.message,
-        stack: error.stack,
-        context,
-      });
-    } else {
-      // Handle unknown error types
-      apiError = new ApiError(errorMessage, errorCode, statusCode, {
-        originalError: String(error),
-        context,
-      });
-    }
+    // Create ApiError using type-safe error handling
+    const apiError = createApiError(error, {
+      errorMessage,
+      errorCode,
+      statusCode,
+      context,
+    });
 
     return {
       success: false,
@@ -182,23 +228,13 @@ export function tryCatchSync<T>(
       onError(error, context);
     }
 
-    // Create ApiError
-    let apiError: ApiError;
-
-    if (error instanceof ApiError) {
-      apiError = error;
-    } else if (error instanceof Error) {
-      apiError = new ApiError(errorMessage, errorCode, statusCode, {
-        originalError: error.message,
-        stack: error.stack,
-        context,
-      });
-    } else {
-      apiError = new ApiError(errorMessage, errorCode, statusCode, {
-        originalError: String(error),
-        context,
-      });
-    }
+    // Create ApiError using type-safe error handling
+    const apiError = createApiError(error, {
+      errorMessage,
+      errorCode,
+      statusCode,
+      context,
+    });
 
     return {
       success: false,

@@ -6,7 +6,10 @@ export const MediaTypeEnum = z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]);
 
 // ============= UPLOAD MEDIA SCHEMA =============
 export const UploadMediaSchema = z.object({
-  body: z.instanceof(FormData),
+  body: z.instanceof(FormData).refine((formData) => {
+    const file = formData.get("file") as File;
+    return file && file.size > 0;
+  }, "File is required and cannot be empty"),
 });
 
 export type UploadMediaInput = z.infer<typeof UploadMediaSchema>;
@@ -17,9 +20,15 @@ export const ListMediaSchema = z.object({
     z.object({
       mediaType: MediaTypeEnum.optional(),
       search: z.string().min(1).optional(),
-      sortBy: z.enum(["fileName", "createdAt", "fileSize"]).optional().default("createdAt"),
+      sortBy: z
+        .enum(["fileName", "createdAt", "fileSize"])
+        .optional()
+        .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
-      isPinned: z.enum(["true", "false"]).optional().transform(val => val === "true"),
+      isPinned: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((val) => val === "true"),
     })
   ),
 });
@@ -57,7 +66,7 @@ export type DeleteMediaInput = z.infer<typeof DeleteMediaSchema>;
 // ============= BULK DELETE MEDIA SCHEMA =============
 export const BulkDeleteMediaSchema = z.object({
   body: z.object({
-    ids: z.array(z.string().uuid()).min(1).max(100),
+    ids: z.array(z.string().min(1, "ID is required")).min(1).max(100),
   }),
 });
 

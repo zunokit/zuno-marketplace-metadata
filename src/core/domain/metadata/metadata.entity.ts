@@ -74,8 +74,6 @@ export interface MetadataListParams {
   mediaType?: MediaType;
   isPinned?: boolean;
   isLocked?: boolean;
-  minVersion?: number;
-  maxVersion?: number;
 }
 
 // ============= METADATA FILTERS =============
@@ -84,6 +82,4 @@ export interface MetadataListFilters {
   mediaType?: MediaType;
   isPinned?: boolean;
   isLocked?: boolean;
-  minVersion?: number;
-  maxVersion?: number;
 }
