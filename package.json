@@ -12,8 +12,6 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
-    "db:apply-rls": "tsx scripts/apply-rls.ts",
-    "db:fix-search-path": "tsx scripts/fix-search-path.ts",
     "db:create-admin": "tsx scripts/create-admin.ts"
   },
   "dependencies": {

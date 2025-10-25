@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { user } from "./user.schema";
 
 // ============================================
@@ -38,12 +38,12 @@ export const apiKey = pgTable("api_key", {
   enabled: boolean("enabled").default(true).notNull(), // Is key active/enabled
   expiresAt: timestamp("expires_at"), // Optional expiration date
 
-  // Permissions System (Better Auth built-in)
-  permissions: text("permissions"), // JSON string: '{"metadata":["read","write"],"media":["read"]}'
+  // Permissions System (Better Auth built-in) - Use jsonb for type safety
+  permissions: jsonb("permissions").$type<Record<string, string[]>>(),
 
   // Custom Metadata (Your business logic)
-  // Note: Better Auth expects this to be text, not jsonb
-  metadata: text("metadata").$type<{
+  // Using jsonb to avoid double-encoding issues
+  metadata: jsonb("metadata").$type<{
     // Key type
     type?: "personal" | "organization" | "public";
     // Custom scopes (application-specific)

@@ -1,6 +1,6 @@
 {
-  "id": "3c509d15-937c-452c-b9da-1027701d420d",
-  "prevId": "0b981a5c-40db-456b-b8c0-2f618f111264",
+  "id": "74c06ee6-9baf-470f-835f-f51553f91b76",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -448,13 +448,13 @@
         },
         "permissions": {
           "name": "permissions",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },
         "metadata": {
           "name": "metadata",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

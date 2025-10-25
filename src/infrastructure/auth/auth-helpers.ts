@@ -96,20 +96,8 @@ export async function verifyApiKey(
       return null;
     }
 
-    // Parse permissions from Better Auth format
-    let permissions: Record<string, string[]> = {};
-    if (keyRecord.permissions) {
-      try {
-        permissions =
-          typeof keyRecord.permissions === "string"
-            ? JSON.parse(keyRecord.permissions)
-            : keyRecord.permissions;
-      } catch (error) {
-        logger.error("Failed to parse API key permissions", { error });
-      }
-    }
-
-    // Extract scopes from metadata
+    // Extract permissions and metadata (stored as jsonb - no parsing needed)
+    const permissions = (keyRecord.permissions as Record<string, string[]>) || {};
     const metadata = keyRecord.metadata as AuthApiKey["metadata"];
     const scopes = metadata?.scopes || [];
 
@@ -192,9 +180,9 @@ export function hasPermission(
 
   // Check API key permissions
   if (context.apiKey) {
-    // Check each required permission
-    const hasAllPermissions = requiredPermissions.some((perm) => {
-      // Check scopes first (format: "write:metadata", "read:media")
+    // Check each required permission - ALL must be satisfied
+    const hasAllPermissions = requiredPermissions.every((perm) => {
+      // Check scopes first (format: "metadata:read", "media:write")
       if (context.apiKey!.scopes.includes(perm)) {
         return true;
       }
@@ -205,13 +193,13 @@ export function hasPermission(
       if (parts.length === 2) {
         const [part1, part2] = parts;
 
-        // Try "resource:action" format (e.g., "metadata:write")
+        // Try "resource:action" format (e.g., "metadata:read")
         const resourcePermissions1 = context.apiKey!.permissions[part1];
         if (resourcePermissions1?.includes(part2)) {
           return true;
         }
 
-        // Try "action:resource" format (e.g., "write:metadata")
+        // Try "action:resource" format (e.g., "read:metadata")
         const resourcePermissions2 = context.apiKey!.permissions[part2];
         if (resourcePermissions2?.includes(part1)) {
           return true;

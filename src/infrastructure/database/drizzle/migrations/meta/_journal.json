@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1761319958354,
-      "tag": "20251024153238_opposite_lethal_legion",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1761323166462,
-      "tag": "0001_curious_jack_murdock",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1761356720269,
-      "tag": "0002_fantastic_vampiro",
+      "when": 1761359421992,
+      "tag": "0000_premium_human_robot",
       "breakpoints": true
     }
   ]
