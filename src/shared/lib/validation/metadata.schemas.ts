@@ -22,7 +22,11 @@ export const creatorSchema = z.object({
 // Base metadata schema
 export const metadataSchema = z.object({
   name: z.string().min(1, "Name is required").max(100, "Name too long"),
-  description: z.string().max(2000, "Description too long").optional(),
+  description: z
+    .string()
+    .max(2000, "Description too long")
+    .nullable()
+    .optional(),
   symbol: z.string().max(10, "Symbol too long").optional(),
 
   image: z.string().url("Invalid image URL"),
@@ -30,7 +34,7 @@ export const metadataSchema = z.object({
   featuredImage: z.string().url("Invalid featured image URL").optional(),
 
   animationUrl: z.string().url("Invalid animation URL").optional(),
-  externalUrl: z.string().url("Invalid external URL").optional(),
+  externalUrl: z.string().url("Invalid external URL").nullable().optional(),
 
   backgroundColor: z
     .string()
@@ -47,6 +51,7 @@ export const metadataSchema = z.object({
   creators: z.array(creatorSchema).default([]),
   sellerFeeBasisPoints: z
     .number()
+    .int("Seller fee must be an integer")
     .min(0)
     .max(10000, "Seller fee cannot exceed 100%")
     .optional(),
