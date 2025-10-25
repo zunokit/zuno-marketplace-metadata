@@ -96,9 +96,38 @@ export async function verifyApiKey(
       return null;
     }
 
-    // Extract permissions and metadata (stored as jsonb - no parsing needed)
-    const permissions = (keyRecord.permissions as Record<string, string[]>) || {};
-    const metadata = keyRecord.metadata as AuthApiKey["metadata"];
+    // Parse permissions from Better Auth format
+    let permissions: Record<string, string[]> = {};
+    if (keyRecord.permissions) {
+      try {
+        permissions =
+          typeof keyRecord.permissions === "string"
+            ? JSON.parse(keyRecord.permissions)
+            : keyRecord.permissions;
+      } catch (error) {
+        logger.error("Failed to parse API key permissions", { error });
+      }
+    }
+
+    // Parse metadata from Better Auth format
+    let metadata: AuthApiKey["metadata"] = {};
+    if (keyRecord.metadata) {
+      try {
+        // Better Auth stores metadata as TEXT, need to parse
+        let parsed = typeof keyRecord.metadata === "string"
+          ? JSON.parse(keyRecord.metadata)
+          : keyRecord.metadata;
+
+        // Check if it's double-encoded (string inside string)
+        if (typeof parsed === "string") {
+          parsed = JSON.parse(parsed);
+        }
+
+        metadata = parsed;
+      } catch (error) {
+        logger.error("Failed to parse API key metadata", {error});
+      }
+    }
     const scopes = metadata?.scopes || [];
 
     // Update last request timestamp
