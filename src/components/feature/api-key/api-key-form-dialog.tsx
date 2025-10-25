@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Plus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -39,6 +40,9 @@ interface ApiKeyFormDialogProps {
       scopes?: string[];
       notes?: string;
     };
+    rateLimitEnabled?: boolean;
+    rateLimitMax?: number;
+    rateLimitTimeWindow?: number;
     expiresIn?: number;
   }) => void;
   isCreating: boolean;
@@ -76,6 +80,21 @@ const apiKeyFormSchema = z.object({
       (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 365),
       "Expiration must be between 1 and 365 days"
     ),
+  rateLimitEnabled: z.boolean().optional(),
+  rateLimitMax: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 10000),
+      "Max requests must be between 1 and 10000"
+    ),
+  rateLimitTimeWindow: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 86400),
+      "Time window must be between 1 and 86400 seconds (24 hours)"
+    ),
   notes: z
     .string()
     .max(500, "Notes must be less than 500 characters")
@@ -99,6 +118,9 @@ export function ApiKeyFormDialog({
       name: "",
       permissions: {},
       expiresIn: "",
+      rateLimitEnabled: false,
+      rateLimitMax: "",
+      rateLimitTimeWindow: "",
       notes: "",
     },
   });
@@ -161,6 +183,9 @@ export function ApiKeyFormDialog({
         notes: values.notes?.trim() || undefined,
       },
       expiresIn: expiresInSeconds,
+      rateLimitEnabled: values.rateLimitEnabled,
+      rateLimitMax: values.rateLimitMax ? parseInt(values.rateLimitMax) : undefined,
+      rateLimitTimeWindow: values.rateLimitTimeWindow ? parseInt(values.rateLimitTimeWindow) : undefined,
     });
   };
 
@@ -206,7 +231,7 @@ export function ApiKeyFormDialog({
 
             <div className="space-y-4">
               <div>
-                <FormLabel>API Key</FormLabel>
+                <Label>API Key</Label>
                 <div className="flex gap-2 mt-2">
                   <Input
                     value={newKey}
@@ -346,6 +371,80 @@ export function ApiKeyFormDialog({
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="rateLimitEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isCreating}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Enable Rate Limiting</FormLabel>
+                        <FormDescription>
+                          Limit the number of requests this key can make
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+
+                {form.watch("rateLimitEnabled") && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="rateLimitMax"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Max Requests</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="1000"
+                              min="1"
+                              max="10000"
+                              disabled={isCreating}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Maximum requests allowed
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="rateLimitTimeWindow"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Time Window (seconds)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="3600"
+                              min="1"
+                              max="86400"
+                              disabled={isCreating}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Time window in seconds (1 hour = 3600)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}

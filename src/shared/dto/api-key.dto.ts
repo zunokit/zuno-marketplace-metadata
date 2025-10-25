@@ -59,14 +59,14 @@ export interface DeletedApiKeyResponseDto {
   };
 }
 
-// Better Auth API Key Type (from Better Auth response)
+// Better Auth API Key Type (from Better Auth response or database)
 export interface BetterAuthApiKey {
   id: string;
   name: string | null;
   start?: string | null;
   key?: string; // Only present on creation
   permissions?: string | Record<string, string[]> | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: string | Record<string, unknown> | null; // Can be JSON string from DB
   enabled?: boolean | null;
   expiresAt?: string | Date | null;
   createdAt: string | Date;
@@ -96,9 +96,20 @@ export class ApiKeyDtoMapper {
    * Parse metadata from Better Auth response
    */
   private static parseMetadata(
-    metadata: Record<string, unknown> | null | undefined
+    metadata: string | Record<string, unknown> | null | undefined
   ): ApiKeyResponseDto["metadata"] | undefined {
     if (!metadata) return undefined;
+
+    // Handle JSON string from database
+    if (typeof metadata === "string") {
+      try {
+        return JSON.parse(metadata) as ApiKeyResponseDto["metadata"];
+      } catch (e) {
+        console.error("[ApiKeyDtoMapper] Failed to parse metadata:", e);
+        return undefined;
+      }
+    }
+
     return metadata as ApiKeyResponseDto["metadata"];
   }
 

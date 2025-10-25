@@ -19,8 +19,13 @@ export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
     const { params, body } = input;
     const { id } = params;
 
-    // Delegate to service layer
-    const result = await ApiKeyService.update(id, body, auth.api);
+    // Delegate to service layer (pass request headers for Better Auth session)
+    const result = await ApiKeyService.update(
+      id,
+      body,
+      auth.api,
+      context.request.headers
+    );
     const apiKey = unwrapOrThrow(result);
 
     // Map to response DTO
@@ -44,7 +49,7 @@ export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
  * DELETE /api/admin/api-keys/[id] - Delete API key by ID (admin only)
  */
 export const DELETE = ApiWrapper.create<DeleteApiKeyInput>(
-  async (input) => {
+  async (input, context) => {
     const { params } = input;
     const { id } = params;
 
@@ -56,8 +61,8 @@ export const DELETE = ApiWrapper.create<DeleteApiKeyInput>(
       throw new ApiError("API key not found", ErrorCode.NOT_FOUND, 404);
     }
 
-    // Delete through service layer
-    const result = await ApiKeyService.delete(id, auth.api);
+    // Delete through service layer (pass request headers for Better Auth session)
+    const result = await ApiKeyService.delete(id, auth.api, context.request.headers);
     unwrapOrThrow(result);
 
     // Map service DTO to Better Auth format for DTO mapper

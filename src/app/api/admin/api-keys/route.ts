@@ -48,6 +48,7 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     }));
 
     // Map to paginated DTO response
+    console.log("[GET /api/admin/api-keys] Better Auth keys:", JSON.stringify(betterAuthKeys, null, 2));
     return ApiKeyDtoMapper.toPaginatedResponseDto(
       betterAuthKeys,
       input.query?.page || 1,

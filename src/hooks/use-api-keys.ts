@@ -72,9 +72,14 @@ export function useApiKeys() {
         throw new Error("Failed to fetch API keys");
       }
 
-      const data = await response.json();
+      const response_data = await response.json();
 
-      return data.map((key: BetterAuthApiKey): ApiKeyViewModel => {
+      // API wrapper returns: { success: true, data: { data: [...], pagination: {...} } }
+      const paginatedResponse = response_data.data;
+      const apiKeys = paginatedResponse?.data || [];
+
+      console.log("[useApiKeys] API keys:", JSON.stringify(apiKeys, null, 2));
+      return apiKeys.map((key: BetterAuthApiKey): ApiKeyViewModel => {
         const permissions = typeof key.permissions === "string"
           ? (JSON.parse(key.permissions) as Record<string, string[]>)
           : (key.permissions || {});
@@ -126,9 +131,10 @@ export function useCreateApiKey() {
 
       const result = await response.json();
 
+      // API wrapper returns: { success: true, data: { id, key, ... } }
       return {
-        id: result?.id,
-        key: result?.key, // The actual key value (only shown once!)
+        id: result?.data?.id,
+        key: result?.data?.key, // The actual key value (only shown once!)
       };
     },
     onSuccess: () => {

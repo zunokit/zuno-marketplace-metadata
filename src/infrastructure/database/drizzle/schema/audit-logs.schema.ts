@@ -28,7 +28,7 @@ export const auditLogs = pgTable("audit_logs", {
   userAgent: varchar("user_agent", { length: 500 }),
 
   resourceType: varchar("resource_type", { length: 50 }),
-  resourceId: uuid("resource_id"),
+  resourceId: text("resource_id"), // Changed from uuid to text to support various ID formats
 
   statusCode: integer("status_code").notNull(),
   duration: integer("duration"), // milliseconds

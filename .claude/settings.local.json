@@ -14,7 +14,9 @@
       "Bash(pnpm drizzle-kit:*)",
       "Bash(pnpm db:migrate:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__better-auth__list_files",
+      "mcp__better-auth__get_file"
     ],
     "deny": [],
     "ask": []

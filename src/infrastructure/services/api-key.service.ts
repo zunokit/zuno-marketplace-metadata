@@ -292,7 +292,8 @@ export class ApiKeyService {
       permissions?: Record<string, string[]>;
       metadata?: Record<string, unknown>;
     },
-    betterAuthApi: any
+    betterAuthApi: any,
+    headers?: Headers
   ): Promise<TryCatchResult<any>> {
     return tryCatch(
       async () => {
@@ -301,6 +302,7 @@ export class ApiKeyService {
             keyId: id,
             ...updates,
           },
+          headers,
         });
 
         if (!result) {
@@ -324,7 +326,8 @@ export class ApiKeyService {
    */
   static async delete(
     id: string,
-    betterAuthApi: any
+    betterAuthApi: any,
+    headers?: Headers
   ): Promise<TryCatchResult<{ success: boolean }>> {
     return tryCatch(
       async () => {
@@ -343,6 +346,7 @@ export class ApiKeyService {
           body: {
             keyId: id,
           },
+          headers,
         });
 
         if (!result || !result.success) {
