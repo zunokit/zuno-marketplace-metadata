@@ -16,6 +16,7 @@ import { ApiKeyDeleteDialog } from "@/components/feature/api-key/api-key-delete-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ApiKeysPage() {
   const [selectedKey, setSelectedKey] = useState<ApiKeyViewModel | null>(null);
@@ -83,6 +84,12 @@ export default function ApiKeysPage() {
 
   const handleFormClose = () => {
     setNewKey(null);
+  };
+
+  const handleEdit = (key: ApiKeyViewModel) => {
+    // For now, we can only toggle enabled/disabled via the table
+    // Editing permissions requires Better Auth update support
+    toast.info("To modify this API key, use the toggle switch in the table to enable/disable it, or delete and recreate with new permissions.");
   };
 
   // Columns
@@ -158,6 +165,7 @@ export default function ApiKeysPage() {
           setIsViewOpen(false);
           setSelectedKey(null);
         }}
+        onEdit={handleEdit}
       />
 
       <ApiKeyDeleteDialog

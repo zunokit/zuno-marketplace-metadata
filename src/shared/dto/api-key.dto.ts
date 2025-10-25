@@ -33,6 +33,7 @@ export interface ApiKeyListItemDto {
   enabled: boolean;
   expiresAt: string | null;
   createdAt: string;
+  updatedAt: string;
   rateLimitMax: number | null;
   remaining: number | null;
 }
@@ -155,6 +156,7 @@ export class ApiKeyDtoMapper {
         ? new Date(apiKey.expiresAt).toISOString()
         : null,
       createdAt: new Date(apiKey.createdAt).toISOString(),
+      updatedAt: new Date(apiKey.updatedAt).toISOString(),
       rateLimitMax: apiKey.rateLimitMax ?? null,
       remaining: apiKey.remaining ?? null,
     };

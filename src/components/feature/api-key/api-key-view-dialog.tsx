@@ -4,27 +4,39 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import type { ApiKeyViewModel } from "@/hooks/use-api-keys";
 
 interface ApiKeyViewDialogProps {
   apiKey: ApiKeyViewModel | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (apiKey: ApiKeyViewModel) => void;
 }
 
 export function ApiKeyViewDialog({
   apiKey,
   isOpen,
   onClose,
+  onEdit,
 }: ApiKeyViewDialogProps) {
   if (!apiKey) return null;
 
   const isExpired = apiKey.expiresAt && new Date(apiKey.expiresAt) < new Date();
+
+  const handleEdit = () => {
+    if (onEdit) {
+      onEdit(apiKey);
+      onClose();
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -167,6 +179,16 @@ export function ApiKeyViewDialog({
             </div>
           </div>
         </div>
+
+        <DialogFooter>
+          {onEdit && (
+            <Button onClick={handleEdit} variant="outline">
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Permissions
+            </Button>
+          )}
+          <Button onClick={onClose}>Close</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
