@@ -78,8 +78,14 @@ export const listMetadataSchema = z.object({
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
       search: z.string().min(1, "Search query cannot be empty").optional(),
       mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).optional(),
-      isPinned: z.coerce.boolean().optional(),
-      isLocked: z.coerce.boolean().optional(),
+      isPinned: z
+        .enum(["true", "false"])
+        .transform((val) => val === "true")
+        .optional(),
+      isLocked: z
+        .enum(["true", "false"])
+        .transform((val) => val === "true")
+        .optional(),
     })
   ),
 });
