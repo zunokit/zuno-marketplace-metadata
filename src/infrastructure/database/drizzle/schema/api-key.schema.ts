@@ -38,16 +38,15 @@ export const apiKey = pgTable("api_key", {
   enabled: boolean("enabled").default(true).notNull(), // Is key active/enabled
   expiresAt: timestamp("expires_at"), // Optional expiration date
 
-  // Permissions System (Better Auth built-in) - Use jsonb for type safety
-  permissions: jsonb("permissions").$type<Record<string, string[]>>(),
+  // Permissions System (Better Auth built-in)
+  permissions: text("permissions"), // JSON string: '{"metadata":["read","write"],"media":["read"]}'
 
   // Custom Metadata (Your business logic)
-  // Using jsonb to avoid double-encoding issues
-  metadata: jsonb("metadata").$type<{
+  metadata: text("metadata").$type<{
     // Key type
     type?: "personal" | "organization" | "public";
     // Custom scopes (application-specific)
-    scopes?: string[]; // ['read:metadata', 'write:metadata', 'read:media']
+    scopes?: string[]; // ['metadata:read', 'metadata:write', 'media:read']
 
     // Security restrictions
     ipWhitelist?: string[]; // ['192.168.1.1', '10.0.0.0/8']

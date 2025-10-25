@@ -78,8 +78,8 @@ CREATE TABLE "api_key" (
 	"last_request" timestamp,
 	"enabled" boolean DEFAULT true NOT NULL,
 	"expires_at" timestamp,
-	"permissions" jsonb,
-	"metadata" jsonb,
+	"permissions" text,
+	"metadata" text,
 	"created_at" timestamp NOT NULL,
 	"updated_at" timestamp NOT NULL,
 	CONSTRAINT "api_key_key_unique" UNIQUE("key")
