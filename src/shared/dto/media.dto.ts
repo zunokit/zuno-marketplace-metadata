@@ -37,7 +37,9 @@ export interface MediaListItemDto {
 }
 
 // ============= PAGINATED MEDIA RESPONSE DTO =============
-export interface PaginatedMediaResponseDto extends PaginatedResponse<MediaListItemDto> {}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PaginatedMediaResponseDto
+  extends PaginatedResponse<MediaListItemDto> {}
 
 // ============= CREATED MEDIA RESPONSE DTO =============
 export interface CreatedMediaResponseDto {

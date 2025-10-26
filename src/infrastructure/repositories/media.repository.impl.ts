@@ -10,7 +10,11 @@ import type {
 } from "@/core/domain/media/media.entity";
 import type { PaginatedResponse } from "@/shared/types";
 import { logger } from "@/shared/lib/utils/logger";
-import { hasRows, extractRowCount, countSql } from "@/shared/lib/utils/drizzle-helpers";
+import {
+  hasRows,
+  extractRowCount,
+  countSql,
+} from "@/shared/lib/utils/drizzle-helpers";
 import type { InferSelectModel } from "drizzle-orm";
 
 // Type-safe database row type
@@ -45,7 +49,10 @@ export class MediaRepositoryImpl implements MediaRepository {
     return result[0] ? this.mapToEntity(result[0]) : null;
   }
 
-  async update(id: string, params: UpdateMediaParams): Promise<MediaEntity | null> {
+  async update(
+    id: string,
+    params: UpdateMediaParams
+  ): Promise<MediaEntity | null> {
     logger.debug("Updating media", { id, params });
 
     const [result] = await this.db
@@ -63,9 +70,7 @@ export class MediaRepositoryImpl implements MediaRepository {
   async delete(id: string): Promise<boolean> {
     logger.debug("Deleting media", { id });
 
-    const result = await this.db
-      .delete(media)
-      .where(eq(media.id, id));
+    const result = await this.db.delete(media).where(eq(media.id, id));
 
     return hasRows(result);
   }
@@ -73,15 +78,8 @@ export class MediaRepositoryImpl implements MediaRepository {
   async list(params: MediaListParams): Promise<PaginatedResponse<MediaEntity>> {
     logger.debug("Listing media", { params });
 
-    const {
-      page,
-      limit,
-      sortBy,
-      sortOrder,
-      search,
-      mediaType,
-      isPinned,
-    } = params;
+    const { page, limit, sortBy, sortOrder, search, mediaType, isPinned } =
+      params;
 
     // Build conditions
     const conditions = [];
@@ -94,7 +92,7 @@ export class MediaRepositoryImpl implements MediaRepository {
       conditions.push(eq(media.mediaType, mediaType));
     }
 
-    if (typeof isPinned === 'boolean') {
+    if (typeof isPinned === "boolean") {
       conditions.push(eq(media.isPinned, isPinned));
     }
 
@@ -103,12 +101,17 @@ export class MediaRepositoryImpl implements MediaRepository {
 
     // Build queries
     const baseQuery = this.db.select().from(media);
-    const queryWithConditions = whereClause ? baseQuery.where(whereClause) : baseQuery;
+    const queryWithConditions = whereClause
+      ? baseQuery.where(whereClause)
+      : baseQuery;
 
     // Apply sorting
-    const sortColumn = sortBy === "fileName" ? media.fileName
-      : sortBy === "fileSize" ? media.fileSize
-      : media.createdAt;
+    const sortColumn =
+      sortBy === "fileName"
+        ? media.fileName
+        : sortBy === "fileSize"
+        ? media.fileSize
+        : media.createdAt;
 
     const orderFn = sortOrder === "asc" ? asc(sortColumn) : desc(sortColumn);
     const queryWithSort = queryWithConditions.orderBy(orderFn);
@@ -119,7 +122,9 @@ export class MediaRepositoryImpl implements MediaRepository {
 
     // Count query
     const countQueryBase = this.db.select({ count: countSql }).from(media);
-    const countQuery = whereClause ? countQueryBase.where(whereClause) : countQueryBase;
+    const countQuery = whereClause
+      ? countQueryBase.where(whereClause)
+      : countQueryBase;
 
     // Execute queries
     const [results, [{ count: totalCount }]] = await Promise.all([
@@ -143,7 +148,10 @@ export class MediaRepositoryImpl implements MediaRepository {
     };
   }
 
-  async search(query: string, params?: MediaListParams): Promise<PaginatedResponse<MediaEntity>> {
+  async search(
+    query: string,
+    params?: MediaListParams
+  ): Promise<PaginatedResponse<MediaEntity>> {
     const searchParams = {
       ...params,
       search: query,
@@ -165,17 +173,14 @@ export class MediaRepositoryImpl implements MediaRepository {
   async createMany(params: CreateMediaParams[]): Promise<MediaEntity[]> {
     logger.debug("Creating multiple media", { count: params.length });
 
-    const values = params.map(param => ({
+    const values = params.map((param) => ({
       ...param,
       isPinned: false,
     }));
 
-    const results = await this.db
-      .insert(media)
-      .values(values)
-      .returning();
+    const results = await this.db.insert(media).values(values).returning();
 
-    return results.map(result => this.mapToEntity(result));
+    return results.map((result) => this.mapToEntity(result));
   }
 
   async deleteMany(ids: string[]): Promise<number> {
@@ -188,7 +193,11 @@ export class MediaRepositoryImpl implements MediaRepository {
     return extractRowCount(result);
   }
 
-  async updateIpfsInfo(id: string, ipfsHash: string, ipfsUrl: string): Promise<MediaEntity | null> {
+  async updateIpfsInfo(
+    id: string,
+    ipfsHash: string,
+    ipfsUrl: string
+  ): Promise<MediaEntity | null> {
     logger.debug("Updating IPFS info", { id, ipfsHash });
 
     const [result] = await this.db

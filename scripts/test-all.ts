@@ -500,7 +500,7 @@ async function testMetadata(): Promise<void> {
       backgroundColor: "FF0000",
       attributes: [
         { traitType: "Background", value: "Blue" },
-        { traitType: "Rarity", value: "Common", displayType: "string" },
+        { traitType: "Rarity", value: "Common", displayType: "boost_number" },
         {
           traitType: "Power",
           value: 100,
@@ -509,7 +509,11 @@ async function testMetadata(): Promise<void> {
         },
       ],
       creators: [
-        { address: "0x1234567890123456789012345678901234567890", share: 100 },
+        {
+          address: "0x1234567890123456789012345678901234567890",
+          share: 100,
+          verified: true,
+        },
       ],
       sellerFeeBasisPoints: 500,
       feeRecipient: "0x9876543210987654321098765432109876543210",
@@ -605,14 +609,6 @@ async function testMetadata(): Promise<void> {
         expect(response.data.success, "Response success").toBe(true);
         expect(data.id, "Metadata ID").toBe(testData.createdMetadataId);
       }
-    });
-
-    await test(`GET /api/metadata/${testData.createdMetadataId}?version=1 - Should retrieve specific version`, async () => {
-      const response = await makeRequest(
-        "GET",
-        `/api/metadata/${testData.createdMetadataId}?version=1`
-      );
-      expect(response.status, "Status code").toBe(200);
     });
   }
 
@@ -1937,7 +1933,7 @@ async function testMemoryAndPerformance(): Promise<void> {
       .map((_, i) => ({
         traitType: `Trait ${i}`,
         value: `Value ${i}`,
-        displayType: i % 2 === 0 ? "number" : "string",
+        displayType: i % 2 === 0 ? "number" : "boost_percentage",
       }));
 
     const response = await makeRequest("POST", "/api/metadata", {

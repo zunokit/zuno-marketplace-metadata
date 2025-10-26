@@ -621,7 +621,7 @@ export const commonSchemas = {
       .number()
       .int()
       .min(1, "Limit must be at least 1")
-      .max(1000, "Limit cannot exceed 1000")
+      .lte(1000, "Limit cannot exceed 1000")
       .default(20),
   }),
 
