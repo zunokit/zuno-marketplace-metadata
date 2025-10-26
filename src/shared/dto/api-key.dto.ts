@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { PaginatedResponse } from "@/shared/types";
+import { toISOString, toISOStringOrNow } from "@/shared/lib/utils";
 
 // ============= API KEY RESPONSE DTO =============
 export interface ApiKeyResponseDto {
@@ -155,11 +156,9 @@ export class ApiKeyDtoMapper {
       start: apiKey.start || null,
       permissions,
       enabled: apiKey.enabled ?? true,
-      expiresAt: apiKey.expiresAt
-        ? new Date(apiKey.expiresAt).toISOString()
-        : null,
-      createdAt: new Date(apiKey.createdAt).toISOString(),
-      updatedAt: new Date(apiKey.updatedAt).toISOString(),
+      expiresAt: toISOString(apiKey.expiresAt),
+      createdAt: toISOStringOrNow(apiKey.createdAt),
+      updatedAt: toISOStringOrNow(apiKey.updatedAt),
       rateLimitEnabled: apiKey.rateLimitEnabled ?? false,
       rateLimitMax: apiKey.rateLimitMax ?? null,
       rateLimitTimeWindow: apiKey.rateLimitTimeWindow ?? null,
@@ -180,11 +179,9 @@ export class ApiKeyDtoMapper {
       start: apiKey.start || null,
       permissions,
       enabled: apiKey.enabled ?? true,
-      expiresAt: apiKey.expiresAt
-        ? new Date(apiKey.expiresAt).toISOString()
-        : null,
-      createdAt: new Date(apiKey.createdAt).toISOString(),
-      updatedAt: new Date(apiKey.updatedAt).toISOString(),
+      expiresAt: toISOString(apiKey.expiresAt),
+      createdAt: toISOStringOrNow(apiKey.createdAt),
+      updatedAt: toISOStringOrNow(apiKey.updatedAt),
       rateLimitMax: apiKey.rateLimitMax ?? null,
       remaining: apiKey.remaining ?? null,
     };
@@ -227,10 +224,8 @@ export class ApiKeyDtoMapper {
       key: apiKey.key || "", // Should always be present on creation
       name: apiKey.name || "Unnamed Key",
       permissions,
-      expiresAt: apiKey.expiresAt
-        ? new Date(apiKey.expiresAt).toISOString()
-        : null,
-      createdAt: new Date(apiKey.createdAt).toISOString(),
+      expiresAt: toISOString(apiKey.expiresAt),
+      createdAt: toISOStringOrNow(apiKey.createdAt),
     };
   }
 

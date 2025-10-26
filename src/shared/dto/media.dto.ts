@@ -1,5 +1,6 @@
 import type { MediaEntity } from "@/core/domain/media/media.entity";
 import type { PaginatedResponse } from "@/shared/types";
+import { toISOString, toISOStringOrNow } from "@/shared/lib/utils";
 
 // ============= MEDIA RESPONSE DTO =============
 export interface MediaResponseDto {
@@ -85,8 +86,8 @@ export class MediaDtoMapper {
       thumbnailUrl: entity.thumbnailUrl ?? null,
       optimizedUrl: entity.optimizedUrl ?? null,
       isPinned: entity.isPinned,
-      pinnedAt: entity.pinnedAt ? entity.pinnedAt.toISOString() : null,
-      createdAt: entity.createdAt.toISOString(),
+      pinnedAt: toISOString(entity.pinnedAt),
+      createdAt: toISOStringOrNow(entity.createdAt),
     };
   }
 
@@ -105,7 +106,7 @@ export class MediaDtoMapper {
       width: entity.width ?? null,
       height: entity.height ?? null,
       isPinned: entity.isPinned,
-      createdAt: entity.createdAt.toISOString(),
+      createdAt: toISOStringOrNow(entity.createdAt),
     };
   }
 
@@ -135,7 +136,7 @@ export class MediaDtoMapper {
       thumbnailUrl: entity.thumbnailUrl ?? null,
       width: entity.width ?? null,
       height: entity.height ?? null,
-      createdAt: entity.createdAt.toISOString(),
+      createdAt: toISOStringOrNow(entity.createdAt),
     };
   }
 

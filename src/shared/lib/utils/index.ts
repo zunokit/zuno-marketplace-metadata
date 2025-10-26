@@ -22,3 +22,6 @@ export {
   debounce,
   throttle,
 } from "./client";
+
+// Date utilities (safe for both client and server)
+export { toISOString, toISOStringOrNow } from "./date";

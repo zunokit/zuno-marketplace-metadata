@@ -1,5 +1,6 @@
 import type { MetadataEntity } from "@/core/domain/metadata/metadata.entity";
 import type { PaginatedResponse, MetadataAttribute, Creator } from "@/shared/types";
+import { toISOString, toISOStringOrNow } from "@/shared/lib/utils";
 
 // ============= METADATA RESPONSE DTO =============
 export interface MetadataResponseDto {
@@ -90,9 +91,9 @@ export class MetadataDtoMapper {
       isPinned: entity.isPinned,
       ipfsHash: entity.ipfsHash ?? null,
       ipfsUrl: entity.ipfsUrl ?? null,
-      pinnedAt: entity.pinnedAt ? entity.pinnedAt.toISOString() : null,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
+      pinnedAt: toISOString(entity.pinnedAt),
+      createdAt: toISOStringOrNow(entity.createdAt),
+      updatedAt: toISOStringOrNow(entity.updatedAt),
     };
   }
 
@@ -109,8 +110,8 @@ export class MetadataDtoMapper {
       version: entity.version,
       isLocked: entity.isLocked,
       isPinned: entity.isPinned,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
+      createdAt: toISOStringOrNow(entity.createdAt),
+      updatedAt: toISOStringOrNow(entity.updatedAt),
     };
   }
 
@@ -135,7 +136,7 @@ export class MetadataDtoMapper {
       name: entity.name,
       image: entity.image,
       version: entity.version,
-      createdAt: entity.createdAt.toISOString(),
+      createdAt: toISOStringOrNow(entity.createdAt),
     };
   }
 
