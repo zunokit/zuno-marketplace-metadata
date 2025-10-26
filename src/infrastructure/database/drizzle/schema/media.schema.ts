@@ -31,7 +31,7 @@ export const media = pgTable("media", {
 
   // Storage URLs
   url: text("url").notNull(), // Primary URL (ImageKit/Supabase)
-  ipfsHash: text("ipfs_hash").unique(),
+  ipfsHash: text("ipfs_hash"),
   ipfsUrl: text("ipfs_url"),
 
   // Dimensions

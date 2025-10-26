@@ -1,5 +1,5 @@
 {
-  "id": "2e007e43-4bc2-4162-870b-3b742dac2d33",
+  "id": "fa954c52-7cd8-4ac4-84b5-da1f0d85261e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -646,15 +646,7 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "media_ipfs_hash_unique": {
-          "name": "media_ipfs_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "ipfs_hash"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
@@ -812,15 +804,7 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "metadata_ipfs_hash_unique": {
-          "name": "metadata_ipfs_hash_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "ipfs_hash"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true

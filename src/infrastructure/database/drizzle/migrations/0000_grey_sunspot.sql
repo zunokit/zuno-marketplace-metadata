@@ -110,8 +110,7 @@ CREATE TABLE "media" (
 	"optimized_url" text,
 	"is_pinned" boolean DEFAULT false NOT NULL,
 	"pinned_at" timestamp,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "media_ipfs_hash_unique" UNIQUE("ipfs_hash")
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "media" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
@@ -138,8 +137,7 @@ CREATE TABLE "metadata" (
 	"version" integer DEFAULT 1 NOT NULL,
 	"is_locked" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "metadata_ipfs_hash_unique" UNIQUE("ipfs_hash")
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "metadata" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint

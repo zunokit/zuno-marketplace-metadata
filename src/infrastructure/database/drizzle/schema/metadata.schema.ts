@@ -51,7 +51,7 @@ export const metadata = pgTable("metadata", {
   mediaType: mediaTypeEnum("media_type").default("IMAGE").notNull(),
 
   // Storage (simplified)
-  ipfsHash: text("ipfs_hash").unique(),
+  ipfsHash: text("ipfs_hash"),
   ipfsUrl: text("ipfs_url"),
   isPinned: boolean("is_pinned").default(false).notNull(),
   pinnedAt: timestamp("pinned_at"),
