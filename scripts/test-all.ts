@@ -8,8 +8,8 @@
  */
 
 const API_KEY =
-  process.env.ZUNO_API_KEY || "zuno_mNaCbtAxnufEczgzblCzTKoryrAUKUEs";
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_API_KEY || "zuno_mNaCbtAxnufEczgzblCzTKoryrAUKUEs";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // Test results tracking
 interface TestResult {
