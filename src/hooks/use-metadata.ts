@@ -44,8 +44,8 @@ export function useMetadata(page: number = 1, limit: number = 20) {
       }
 
       const result = await response.json();
-      // API returns { success: true, data: [...], pagination: {...} }
-      return result.data || [];
+      // API returns { success: true, data: { data: [...], pagination: {...} } }
+      return result.data?.data || [];
     },
   });
 }

@@ -12,6 +12,7 @@ import {
   X,
   Activity,
   Image as ImageIcon,
+  GitBranch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -28,6 +29,11 @@ const navigation = [
     name: "API Keys",
     href: "/admin/api-keys",
     icon: Key,
+  },
+  {
+    name: "API Versions",
+    href: "/admin/api-versions",
+    icon: GitBranch,
   },
   {
     name: "Metadata",

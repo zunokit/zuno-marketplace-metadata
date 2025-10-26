@@ -17,7 +17,8 @@
       "Bash(node:*)",
       "mcp__better-auth__list_files",
       "mcp__better-auth__get_file",
-      "WebFetch(domain:docs.pinata.cloud)"
+      "WebFetch(domain:docs.pinata.cloud)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

@@ -34,13 +34,6 @@ export function createMetadataColumns({
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          {row.original.image && (
-            <img
-              src={row.original.image}
-              alt={row.original.name}
-              className="h-10 w-10 rounded object-cover"
-            />
-          )}
           <span className="font-medium">{row.original.name}</span>
         </div>
       ),

@@ -6,6 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,8 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Search, Trash2, ExternalLink, Download, Image as ImageIcon, Video, Box } from "lucide-react";
+import { MoreHorizontal, Search, Trash2, ExternalLink, Download, Image as ImageIcon, Video, Box, Eye } from "lucide-react";
 import { formatBytes } from "@/shared/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
@@ -32,6 +47,7 @@ export default function MediaPage() {
   const [page, setPage] = useState(1);
   const [selectedMedia, setSelectedMedia] = useState<MediaViewModel | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const { data: media, isLoading, error } = useMedia(page, 20);
   const deleteMutation = useDeleteMedia();
@@ -42,6 +58,11 @@ export default function MediaPage() {
   const filteredMedia = mediaArray.filter((item: MediaViewModel) =>
     item.fileName?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleViewDetail = (item: MediaViewModel) => {
+    setSelectedMedia(item);
+    setIsDetailOpen(true);
+  };
 
   const handleDelete = (item: MediaViewModel) => {
     setSelectedMedia(item);
@@ -128,91 +149,255 @@ export default function MediaPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredMedia.map((item: MediaViewModel) => (
-                <Card key={item.id} className="overflow-hidden">
-                  <div className="aspect-square relative bg-muted">
-                    {item.mediaType === "image" && (
-                      <Image
-                        src={item.thumbnailUrl || item.url}
-                        alt={item.fileName}
-                        width={100}
-                        height={100}
-                        loading="lazy"
-                        unoptimized={true}
-                      />
-                    )}
-                    {item.mediaType === "video" && (
-                      <video
-                        src={item.url}
-                        className="w-full h-full object-cover"
-                        controls={false}
-                      />
-                    )}
-                    {item.mediaType === "3d_model" && (
-                      <div className="flex h-full items-center justify-center">
-                        <Box className="h-16 w-16 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 right-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="secondary" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => window.open(item.url, "_blank")}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Open
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const link = document.createElement("a");
-                              link.href = item.url;
-                              link.download = item.fileName;
-                              link.click();
-                            }}
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(item)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <CardContent className="p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium" title={item.fileName}>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px]">Preview</TableHead>
+                    <TableHead>File Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Dimensions</TableHead>
+                    <TableHead>IPFS</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMedia.map((item: MediaViewModel) => (
+                    <TableRow key={item.id}>
+                      <TableCell>
+                        <div className="w-12 h-12 rounded bg-muted flex items-center justify-center overflow-hidden">
+                          {item.mediaType === "image" && item.thumbnailUrl ? (
+                            <Image
+                              src={item.thumbnailUrl}
+                              alt={item.fileName}
+                              width={48}
+                              height={48}
+                              className="object-cover w-full h-full"
+                              unoptimized={true}
+                            />
+                          ) : (
+                            getMediaIcon(item.mediaType)
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="max-w-[300px] truncate" title={item.fileName}>
                           {item.fileName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBytes(item.fileSize)}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">
-                        <span className="mr-1">{getMediaIcon(item.mediaType)}</span>
-                        {item.mediaType}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {item.mimeType}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize">
+                          <span className="mr-1">{getMediaIcon(item.mediaType)}</span>
+                          {item.mediaType}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatBytes(item.fileSize)}</TableCell>
+                      <TableCell>
+                        {item.width && item.height ? (
+                          <span className="text-sm">
+                            {item.width} × {item.height}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.isPinned ? (
+                          <Badge variant="default" className="bg-green-600">
+                            Pinned
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Not Pinned</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleViewDetail(item)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => window.open(item.url, "_blank")}>
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Open
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const link = document.createElement("a");
+                                link.href = item.url;
+                                link.download = item.fileName;
+                                link.click();
+                              }}
+                            >
+                              <Download className="mr-2 h-4 w-4" />
+                              Download
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(item)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Media Details</DialogTitle>
+            <DialogDescription>
+              View detailed information about this media asset
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMedia && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-center bg-muted rounded-lg p-4">
+                {selectedMedia.mediaType === "image" && (
+                  <Image
+                    src={selectedMedia.url}
+                    alt={selectedMedia.fileName}
+                    width={400}
+                    height={400}
+                    className="max-h-[400px] object-contain"
+                    unoptimized={true}
+                  />
+                )}
+                {selectedMedia.mediaType === "video" && (
+                  <video
+                    src={selectedMedia.url}
+                    className="max-h-[400px] rounded"
+                    controls
+                  />
+                )}
+                {selectedMedia.mediaType === "3d_model" && (
+                  <div className="flex h-[400px] items-center justify-center">
+                    <Box className="h-32 w-32 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">File Name</label>
+                  <p className="mt-1 text-sm">{selectedMedia.fileName}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">File Size</label>
+                  <p className="mt-1 text-sm">{formatBytes(selectedMedia.fileSize)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">MIME Type</label>
+                  <p className="mt-1 text-sm">{selectedMedia.mimeType}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Media Type</label>
+                  <p className="mt-1">
+                    <Badge variant="secondary" className="capitalize">
+                      <span className="mr-1">{getMediaIcon(selectedMedia.mediaType)}</span>
+                      {selectedMedia.mediaType}
+                    </Badge>
+                  </p>
+                </div>
+                {selectedMedia.width && selectedMedia.height && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground">Dimensions</label>
+                    <p className="mt-1 text-sm">
+                      {selectedMedia.width} × {selectedMedia.height}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">IPFS Status</label>
+                  <p className="mt-1">
+                    {selectedMedia.isPinned ? (
+                      <Badge variant="default" className="bg-green-600">Pinned</Badge>
+                    ) : (
+                      <Badge variant="outline">Not Pinned</Badge>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Created</label>
+                  <p className="mt-1 text-sm">
+                    {formatDistanceToNow(new Date(selectedMedia.createdAt), { addSuffix: true })}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">ID</label>
+                  <p className="mt-1 text-sm font-mono text-xs">{selectedMedia.id}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">URL</label>
+                <div className="mt-1 flex items-center gap-2">
+                  <Input
+                    value={selectedMedia.url}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(selectedMedia.url);
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+
+              {selectedMedia.thumbnailUrl && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Thumbnail URL</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      value={selectedMedia.thumbnailUrl}
+                      readOnly
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedMedia.thumbnailUrl || "");
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
