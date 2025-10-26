@@ -31,12 +31,12 @@ export const apiKey = pgTable("api_key", {
   remaining: integer("remaining"), // Remaining requests (for quota system)
   refillAmount: integer("refill_amount"), // Amount to refill when refilling
   refillInterval: integer("refill_interval"), // Interval in ms to refill
-  lastRefillAt: timestamp("last_refill_at"), // When was last refill
-  lastRequest: timestamp("last_request"), // When was last API request
+  lastRefillAt: timestamp("last_refill_at", { mode: "date" }), // When was last refill
+  lastRequest: timestamp("last_request", { mode: "date" }), // When was last API request
 
   // Status & Expiration
   enabled: boolean("enabled").default(true).notNull(), // Is key active/enabled
-  expiresAt: timestamp("expires_at"), // Optional expiration date
+  expiresAt: timestamp("expires_at", { mode: "date" }), // Optional expiration date
 
   // Permissions System (Better Auth built-in)
   permissions: text("permissions"), // JSON string: '{"metadata":["read","write"],"media":["read"]}'
@@ -56,8 +56,8 @@ export const apiKey = pgTable("api_key", {
   }>(),
 
   // Timestamps
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull(),
 }).enableRLS();
 
 // Export types for TypeScript inference

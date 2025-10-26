@@ -54,7 +54,7 @@ export const metadata = pgTable("metadata", {
   ipfsHash: text("ipfs_hash"),
   ipfsUrl: text("ipfs_url"),
   isPinned: boolean("is_pinned").default(false).notNull(),
-  pinnedAt: timestamp("pinned_at"),
+  pinnedAt: timestamp("pinned_at", { mode: "date" }),
 
   // Creator royalties (Magic Eden/Metaplex)
   creators: jsonb("creators").$type<{
@@ -70,8 +70,8 @@ export const metadata = pgTable("metadata", {
   isLocked: boolean("is_locked").default(false).notNull(),
 
   // Timestamps
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at")
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" })
     .defaultNow()
     .notNull()
     .$onUpdate(() => new Date()),

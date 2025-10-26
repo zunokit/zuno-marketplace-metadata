@@ -39,7 +39,7 @@ export const auditLogs = pgTable("audit_logs", {
     responseSize?: number;
   }>(),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 }).enableRLS();
 
 // Export table types for TypeScript inference

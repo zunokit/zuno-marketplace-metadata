@@ -45,9 +45,9 @@ export const media = pgTable("media", {
 
   // Metadata
   isPinned: boolean("is_pinned").default(false).notNull(),
-  pinnedAt: timestamp("pinned_at"),
+  pinnedAt: timestamp("pinned_at", { mode: "date" }),
 
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 }).enableRLS();
 
 // Export table types for TypeScript inference

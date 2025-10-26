@@ -12,8 +12,8 @@ export const apiVersions = pgTable("api_versions", {
   label: varchar("label", { length: 32 }).notNull(), // Human friendly label
   isCurrent: boolean("is_current").notNull().default(false),
   deprecated: boolean("deprecated").notNull().default(false),
-  releasedAt: timestamp("released_at").notNull(),
-  sunsetAt: timestamp("sunset_at"),
+  releasedAt: timestamp("released_at", { mode: "date" }).notNull(),
+  sunsetAt: timestamp("sunset_at", { mode: "date" }),
 }).enableRLS();
 
 // Export table types for TypeScript inference
