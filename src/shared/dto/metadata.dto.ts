@@ -14,7 +14,6 @@ export interface MetadataResponseDto {
   externalUrl: string | null;
   backgroundColor: string | null;
   attributes: MetadataAttribute[];
-  mediaType: string;
   creators: Creator[];
   sellerFeeBasisPoints: number | null;
   feeRecipient: string | null;
@@ -35,7 +34,6 @@ export interface MetadataListItemDto {
   description: string | null;
   symbol: string | null;
   image: string;
-  mediaType: string;
   version: number;
   isLocked: boolean;
   isPinned: boolean;
@@ -44,6 +42,7 @@ export interface MetadataListItemDto {
 }
 
 // ============= PAGINATED METADATA RESPONSE DTO =============
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface PaginatedMetadataResponseDto extends PaginatedResponse<MetadataListItemDto> {}
 
 // ============= CREATED METADATA RESPONSE DTO =============
@@ -51,7 +50,6 @@ export interface CreatedMetadataResponseDto {
   id: string;
   name: string;
   image: string;
-  mediaType: string;
   version: number;
   createdAt: string;
 }
@@ -84,7 +82,6 @@ export class MetadataDtoMapper {
       externalUrl: entity.externalUrl ?? null,
       backgroundColor: entity.backgroundColor ?? null,
       attributes: entity.attributes,
-      mediaType: entity.mediaType,
       creators: entity.creators,
       sellerFeeBasisPoints: entity.sellerFeeBasisPoints ?? null,
       feeRecipient: entity.feeRecipient ?? null,
@@ -109,7 +106,6 @@ export class MetadataDtoMapper {
       description: entity.description ?? null,
       symbol: entity.symbol ?? null,
       image: entity.image,
-      mediaType: entity.mediaType,
       version: entity.version,
       isLocked: entity.isLocked,
       isPinned: entity.isPinned,
@@ -138,7 +134,6 @@ export class MetadataDtoMapper {
       id: entity.id,
       name: entity.name,
       image: entity.image,
-      mediaType: entity.mediaType,
       version: entity.version,
       createdAt: entity.createdAt.toISOString(),
     };

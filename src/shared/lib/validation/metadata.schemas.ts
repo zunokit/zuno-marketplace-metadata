@@ -47,8 +47,6 @@ export const metadataSchema = z.object({
 
   attributes: z.array(metadataAttributeSchema).default([]),
 
-  mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).default("IMAGE"),
-
   creators: z.array(creatorSchema).default([]),
   sellerFeeBasisPoints: z
     .number()
@@ -83,7 +81,6 @@ export const listMetadataSchema = z.object({
         .default("createdAt"),
       sortOrder: z.enum(["asc", "desc"]).default("desc"),
       search: z.string().min(1, "Search query cannot be empty").optional(),
-      mediaType: z.enum(["IMAGE", "VIDEO", "GIF", "MODEL_3D"]).optional(),
       isPinned: z
         .enum(["true", "false"])
         .transform((val) => val === "true")
