@@ -8,11 +8,15 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url("Invalid DATABASE_URL"),
   SUPABASE_URL: z.string().url("Invalid SUPABASE_URL"),
   SUPABASE_ANON_KEY: z.string().min(1, "SUPABASE_ANON_KEY is required"),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
 
   // Redis
   UPSTASH_REDIS_REST_URL: z.string().url("Invalid UPSTASH_REDIS_REST_URL"),
-  UPSTASH_REDIS_REST_TOKEN: z.string().min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
+  UPSTASH_REDIS_REST_TOKEN: z
+    .string()
+    .min(1, "UPSTASH_REDIS_REST_TOKEN is required"),
 
   // ImageKit
   IMAGEKIT_PUBLIC_KEY: z.string().min(1, "IMAGEKIT_PUBLIC_KEY is required"),
@@ -21,12 +25,19 @@ const envSchema = z.object({
 
   // Pinata
   PINATA_JWT: z.string().min(1, "PINATA_JWT is required"),
-  PINATA_GATEWAY_URL: z.string().url("Invalid PINATA_GATEWAY_URL").default("https://gateway.pinata.cloud"),
+  PINATA_GATEWAY_URL: z
+    .string()
+    .url("Invalid PINATA_GATEWAY_URL")
+    .default("https://gateway.pinata.cloud"),
 
   // App Config
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
 
+  //
+  CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
 
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -41,7 +52,9 @@ try {
   env = envSchema.parse(process.env);
 } catch (error) {
   if (error instanceof z.ZodError) {
-    const missingVars = error.issues.map((err) => `${err.path.join('.')}: ${err.message}`).join('\n');
+    const missingVars = error.issues
+      .map((err) => `${err.path.join(".")}: ${err.message}`)
+      .join("\n");
     console.error(`Environment validation failed:\n${missingVars}`);
   }
   throw error;
@@ -51,7 +64,7 @@ export { env };
 
 // Helper to get CORS origins as array
 export const getCorsOrigins = (): string[] => {
-  return env.CORS_ORIGINS.split(',').map(origin => origin.trim());
+  return env.CORS_ORIGINS.split(",").map((origin) => origin.trim());
 };
 
 // Helper to check if we're in production
