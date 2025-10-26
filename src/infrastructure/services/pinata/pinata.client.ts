@@ -59,7 +59,7 @@ function isPinataListResponse(data: unknown): data is PinataListResponse {
 export class PinataClient {
   private static instance: PinataClient;
   private baseUrl = "https://api.pinata.cloud";
-  private gatewayUrl = env.PINATA_GATEWAY_URL || "https://gateway.pinata.cloud/ipfs";
+  private gatewayUrl = env.PINATA_GATEWAY_URL || "https://gateway.pinata.cloud";
   private jwt = env.PINATA_JWT;
 
   private constructor() {}
@@ -110,7 +110,7 @@ export class PinataClient {
 
         return {
           hash: res.IpfsHash,
-          url: `${this.gatewayUrl}/${res.IpfsHash}`,
+          url: `${this.gatewayUrl}/ipfs/${res.IpfsHash}`,
           size: res.PinSize,
           timestamp: res.Timestamp,
         };
@@ -171,7 +171,7 @@ export class PinataClient {
 
         return {
           hash: res.IpfsHash,
-          url: `${this.gatewayUrl}/${res.IpfsHash}`,
+          url: `${this.gatewayUrl}/ipfs/${res.IpfsHash}`,
           size: res.PinSize,
           timestamp: res.Timestamp,
         };
@@ -338,7 +338,7 @@ export class PinataClient {
   async retrieve<T = unknown>(hash: string): Promise<T | null> {
     const result = await tryCatch(
       async () => {
-        const gatewayUrl = `${this.gatewayUrl}/${hash}`;
+        const gatewayUrl = `${this.gatewayUrl}/ipfs/${hash}`;
         const response = await fetch(gatewayUrl);
 
         if (!response.ok) {

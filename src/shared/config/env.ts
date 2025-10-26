@@ -1,4 +1,7 @@
 import { z } from "zod";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const envSchema = z.object({
   // Database
@@ -18,7 +21,7 @@ const envSchema = z.object({
 
   // Pinata
   PINATA_JWT: z.string().min(1, "PINATA_JWT is required"),
-  PINATA_GATEWAY_URL: z.string().url("Invalid PINATA_GATEWAY_URL").default("https://gateway.pinata.cloud/ipfs"),
+  PINATA_GATEWAY_URL: z.string().url("Invalid PINATA_GATEWAY_URL").default("https://gateway.pinata.cloud"),
 
   // App Config
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

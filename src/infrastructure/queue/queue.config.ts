@@ -1,24 +1,37 @@
 import { Queue, QueueOptions } from "bullmq";
-import { RedisClient } from "@/infrastructure/cache/redis.client";
 import { env } from "@/shared/config/env";
 
 /**
  * BullMQ Queue Configuration
  *
  * Manages background job queues for async operations
+ *
+ * Note: Upstash Redis requires special configuration for BullMQ
+ * We extract the connection details from the REST URL
  */
 
-// Redis connection for BullMQ
-const connection = {
-  url: env.UPSTASH_REDIS_REST_URL,
-  token: env.UPSTASH_REDIS_REST_TOKEN,
-};
+// Parse Upstash Redis connection from REST URL
+// Format: https://your-redis.upstash.io -> your-redis.upstash.io:6379
+const redisUrl = new URL(env.UPSTASH_REDIS_REST_URL);
+/**
+ * Queue names enum for type safety
+ */
+export enum QueueName {
+  MEDIA_IPFS_PIN = "media-ipfs-pin",
+  METADATA_IPFS_PIN = "metadata-ipfs-pin",
+}
+
 
 const defaultQueueOptions: QueueOptions = {
   connection: {
-    host: new URL(env.UPSTASH_REDIS_REST_URL).hostname,
-    port: 443,
-    tls: {},
+    host: redisUrl.hostname,
+    port: 6379, // Upstash Redis port
+    password: env.UPSTASH_REDIS_REST_TOKEN,
+    tls: {
+      rejectUnauthorized: false, // Upstash uses TLS
+    },
+    enableOfflineQueue: false,
+    maxRetriesPerRequest: null, // Required for BullMQ
   },
   defaultJobOptions: {
     attempts: 3,
@@ -39,20 +52,13 @@ const defaultQueueOptions: QueueOptions = {
 /**
  * IPFS Media Pinning Queue
  */
-export const mediaQueue = new Queue("media-ipfs-pin", defaultQueueOptions);
+export const mediaQueue = new Queue(QueueName.MEDIA_IPFS_PIN, defaultQueueOptions);
 
 /**
  * IPFS Metadata Pinning Queue
  */
-export const metadataQueue = new Queue("metadata-ipfs-pin", defaultQueueOptions);
+export const metadataQueue = new Queue(QueueName.METADATA_IPFS_PIN, defaultQueueOptions);
 
-/**
- * Queue names enum for type safety
- */
-export enum QueueName {
-  MEDIA_IPFS_PIN = "media-ipfs-pin",
-  METADATA_IPFS_PIN = "metadata-ipfs-pin",
-}
 
 /**
  * Job data interfaces

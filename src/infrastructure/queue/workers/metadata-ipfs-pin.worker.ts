@@ -3,7 +3,7 @@ import { PinataClient } from "@/infrastructure/services/pinata/pinata.client";
 import { db, schema } from "@/infrastructure/database/client";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
-import type { MetadataPinJobData } from "../queue.config";
+import { MetadataPinJobData, QueueName } from "../queue.config";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
 
@@ -16,7 +16,7 @@ import { tryCatch } from "@/shared/lib/utils/server";
 const pinataClient = PinataClient.getInstance();
 
 export const metadataWorker = new Worker<MetadataPinJobData>(
-  "metadata-ipfs-pin",
+  QueueName.METADATA_IPFS_PIN,
   async (job) => {
     const { metadataId, metadata, name } = job.data;
 
@@ -73,8 +73,13 @@ export const metadataWorker = new Worker<MetadataPinJobData>(
   {
     connection: {
       host: new URL(env.UPSTASH_REDIS_REST_URL).hostname,
-      port: 443,
-      tls: {},
+      port: 6379, // Upstash Redis port
+      password: env.UPSTASH_REDIS_REST_TOKEN,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: null,
     },
     concurrency: 10, // Process 10 jobs concurrently (JSON is lightweight)
   }

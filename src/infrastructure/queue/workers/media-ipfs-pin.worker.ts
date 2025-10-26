@@ -3,7 +3,7 @@ import { PinataClient } from "@/infrastructure/services/pinata/pinata.client";
 import { db, schema } from "@/infrastructure/database/client";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
-import type { MediaPinJobData } from "../queue.config";
+import { MediaPinJobData, QueueName } from "../queue.config";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
 
@@ -16,7 +16,7 @@ import { tryCatch } from "@/shared/lib/utils/server";
 const pinataClient = PinataClient.getInstance();
 
 export const mediaWorker = new Worker<MediaPinJobData>(
-  "media-ipfs-pin",
+  QueueName.MEDIA_IPFS_PIN,
   async (job) => {
     const { mediaId, url, fileName, mediaType } = job.data;
 
@@ -50,6 +50,8 @@ export const mediaWorker = new Worker<MediaPinJobData>(
           .set({
             ipfsHash: pinResult.hash,
             ipfsUrl: pinResult.url,
+            isPinned: true,
+            pinnedAt: new Date(),
           })
           .where(eq(schema.media.id, mediaId));
 
@@ -80,8 +82,13 @@ export const mediaWorker = new Worker<MediaPinJobData>(
   {
     connection: {
       host: new URL(env.UPSTASH_REDIS_REST_URL).hostname,
-      port: 443,
-      tls: {},
+      port: 6379, // Upstash Redis port
+      password: env.UPSTASH_REDIS_REST_TOKEN,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: null,
     },
     concurrency: 5, // Process 5 jobs concurrently
   }

@@ -13,6 +13,7 @@ import {
 import { ListMediaUseCase } from "@/core/use-cases/media/list-media.use-case";
 import { UploadMediaUseCase } from "@/core/use-cases/media/upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
+import { mediaQueue } from "@/infrastructure/queue/queue.config";
 
 /**
  * GET /api/media - List all media files
@@ -69,6 +70,25 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
       file,
       folder: folder || undefined,
       tags: tags.length > 0 ? tags : undefined,
+    });
+
+    // Queue IPFS pinning job (async background task)
+    await mediaQueue.add(
+      "pin-media",
+      {
+        mediaId: media.id,
+        url: media.url,
+        fileName: media.fileName,
+        mediaType: media.mediaType,
+      },
+      {
+        removeOnComplete: true,
+        removeOnFail: false, // Keep failed jobs for debugging
+      }
+    );
+
+    logger.info("Media IPFS pinning job queued", {
+      mediaId: media.id,
     });
 
     return MediaDtoMapper.toCreatedResponseDto(media);

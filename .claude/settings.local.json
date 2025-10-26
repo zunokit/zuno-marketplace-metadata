@@ -16,7 +16,8 @@
       "Bash(pnpm typecheck:*)",
       "Bash(node:*)",
       "mcp__better-auth__list_files",
-      "mcp__better-auth__get_file"
+      "mcp__better-auth__get_file",
+      "WebFetch(domain:docs.pinata.cloud)"
     ],
     "deny": [],
     "ask": []

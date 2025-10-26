@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "workers": "tsx src/infrastructure/queue/workers/index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
@@ -13,7 +14,7 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:create-admin": "tsx scripts/create-admin.ts",
-    "test": "npx tsx api-test-suite.ts"
+    "test": "npx tsx scripts/test-all.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
