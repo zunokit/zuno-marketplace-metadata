@@ -34,7 +34,6 @@ export interface MetadataItem {
   }>;
   sellerFeeBasisPoints?: number;
   feeRecipient?: string;
-  mediaType?: "IMAGE" | "VIDEO" | "GIF" | "MODEL_3D";
 }
 
 export interface MediaItem {

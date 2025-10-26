@@ -109,7 +109,6 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       "externalUrl",
       "backgroundColor",
       "attributes",
-      "mediaType",
       "creators",
       "sellerFeeBasisPoints",
       "feeRecipient",
@@ -162,7 +161,6 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       sortBy,
       sortOrder,
       search,
-      mediaType,
       isPinned,
       isLocked,
     } = params;
@@ -178,10 +176,6 @@ export class MetadataRepositoryImpl implements MetadataRepository {
           ilike(metadata.symbol, `%${search}%`)
         )
       );
-    }
-
-    if (mediaType) {
-      conditions.push(eq(metadata.mediaType, mediaType));
     }
 
     if (typeof isPinned === "boolean") {
@@ -373,7 +367,6 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       externalUrl: row.externalUrl ?? undefined,
       backgroundColor: row.backgroundColor ?? undefined,
       attributes: row.attributes ?? [],
-      mediaType: row.mediaType,
       ipfsHash: row.ipfsHash ?? undefined,
       ipfsUrl: row.ipfsUrl ?? undefined,
       isPinned: row.isPinned,

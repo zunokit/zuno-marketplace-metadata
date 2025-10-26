@@ -42,11 +42,6 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
                     {item.symbol}
                   </span>
                 )}
-                {item.mediaType && (
-                  <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                    {item.mediaType}
-                  </span>
-                )}
               </div>
             </div>
           </div>

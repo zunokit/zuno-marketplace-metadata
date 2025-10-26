@@ -14,7 +14,6 @@ const METADATA_SAMPLE = {
     { traitType: "Background", value: "Blue" },
     { traitType: "Rarity", value: "Legendary" },
   ],
-  mediaType: "IMAGE" as const,
 };
 
 const BATCH_METADATA_SAMPLE = [

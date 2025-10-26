@@ -39,7 +39,6 @@ export const GET = ApiWrapper.create<ListMetadataInput>(
       page: listParams.page,
       limit: listParams.limit,
       search: listParams.search,
-      mediaType: listParams.mediaType,
     });
 
     // Use cache-aside pattern for list queries
@@ -85,7 +84,6 @@ export const POST = ApiWrapper.create<CreateMetadataInput>(
 
     logger.info("Creating new metadata", {
       name: body.name,
-      mediaType: body.mediaType,
       requestId: context.requestId,
       userId: context.apiKey?.userId,
     });

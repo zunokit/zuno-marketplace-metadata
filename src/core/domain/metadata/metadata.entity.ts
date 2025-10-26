@@ -13,7 +13,6 @@ export interface MetadataEntity {
   externalUrl?: string;
   backgroundColor?: string;
   attributes: MetadataAttribute[];
-  mediaType: MediaType;
   ipfsHash?: string;
   ipfsUrl?: string;
   isPinned: boolean;
@@ -39,7 +38,6 @@ export interface CreateMetadataParams {
   externalUrl?: string;
   backgroundColor?: string;
   attributes: MetadataAttribute[];
-  mediaType: MediaType;
   creators: Creator[];
   sellerFeeBasisPoints?: number;
   feeRecipient?: string;
@@ -71,7 +69,6 @@ export interface MetadataListParams {
   sortBy: "name" | "createdAt" | "updatedAt" | "version";
   sortOrder: "asc" | "desc";
   search?: string;
-  mediaType?: MediaType;
   isPinned?: boolean;
   isLocked?: boolean;
 }
@@ -79,7 +76,6 @@ export interface MetadataListParams {
 // ============= METADATA FILTERS =============
 export interface MetadataListFilters {
   search?: string;
-  mediaType?: MediaType;
   isPinned?: boolean;
   isLocked?: boolean;
 }
