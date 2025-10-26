@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import {
+  apiVersionFormSchema,
+  type ApiVersionFormValues,
+} from "@/shared/lib/validation/api-version.schemas";
 import {
   Dialog,
   DialogContent,
@@ -28,32 +31,22 @@ import { Switch } from "@/components/ui/switch";
 import { useCreateApiVersion } from "@/hooks/use-api-versions";
 import { Plus } from "lucide-react";
 
-const formSchema = z.object({
-  id: z.string().min(1, "Version ID is required").max(32),
-  label: z.string().min(1, "Label is required").max(32),
-  isCurrent: z.boolean().default(false),
-  releasedAt: z.string().min(1, "Release date is required"),
-  sunsetAt: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof formSchema>;
-
 export function ApiVersionFormDialog() {
   const [open, setOpen] = useState(false);
   const createMutation = useCreateApiVersion();
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ApiVersionFormValues>({
+    resolver: zodResolver(apiVersionFormSchema),
     defaultValues: {
       id: "",
       label: "",
       isCurrent: false,
       releasedAt: new Date().toISOString().split("T")[0],
-      sunsetAt: "",
+      sunsetAt: undefined,
     },
   });
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: ApiVersionFormValues) => {
     await createMutation.mutateAsync({
       id: data.id,
       label: data.label,
@@ -78,7 +71,8 @@ export function ApiVersionFormDialog() {
         <DialogHeader>
           <DialogTitle>Create API Version</DialogTitle>
           <DialogDescription>
-            Add a new API version to the system. This will be used for versioning IPFS uploads.
+            Add a new API version to the system. This will be used for
+            versioning IPFS uploads.
           </DialogDescription>
         </DialogHeader>
 
@@ -110,9 +104,7 @@ export function ApiVersionFormDialog() {
                   <FormControl>
                     <Input placeholder="Version 1.0" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Human-friendly display name
-                  </FormDescription>
+                  <FormDescription>Human-friendly display name</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -160,7 +152,14 @@ export function ApiVersionFormDialog() {
                 <FormItem>
                   <FormLabel>Sunset Date (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <Input
+                      type="date"
+                      {...field}
+                      value={field.value || ""}
+                      onChange={(e) =>
+                        field.onChange(e.target.value || undefined)
+                      }
+                    />
                   </FormControl>
                   <FormDescription>
                     When this version will be deprecated

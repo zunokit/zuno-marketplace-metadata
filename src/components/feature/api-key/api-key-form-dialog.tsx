@@ -3,7 +3,10 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import {
+  apiKeyFormSchema,
+  type ApiKeyFormValues,
+} from "@/shared/lib/validation/api-key.schemas";
 import ms, { StringValue } from "ms";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,46 +65,6 @@ const AVAILABLE_RESOURCES = [
     actions: ["read", "list", "write", "delete"],
   },
 ];
-
-// Form schema with zod validation
-const apiKeyFormSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters").max(100),
-  permissions: z.record(z.string(), z.array(z.string())).refine((perms) => {
-    const values = Object.values(perms) as string[][];
-    return (
-      Object.keys(perms).length > 0 &&
-      values.some((actions) => actions.length > 0)
-    );
-  }, "At least one permission must be selected"),
-  expiresIn: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 365),
-      "Expiration must be between 1 and 365 days"
-    ),
-  rateLimitEnabled: z.boolean().optional(),
-  rateLimitMax: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 10000),
-      "Max requests must be between 1 and 10000"
-    ),
-  rateLimitTimeWindow: z
-    .string()
-    .optional()
-    .refine(
-      (val) => !val || (parseInt(val) >= 1 && parseInt(val) <= 86400),
-      "Time window must be between 1 and 86400 seconds (24 hours)"
-    ),
-  notes: z
-    .string()
-    .max(500, "Notes must be less than 500 characters")
-    .optional(),
-});
-
-type ApiKeyFormValues = z.infer<typeof apiKeyFormSchema>;
 
 export function ApiKeyFormDialog({
   onCreate,
@@ -184,8 +147,12 @@ export function ApiKeyFormDialog({
       },
       expiresIn: expiresInSeconds,
       rateLimitEnabled: values.rateLimitEnabled,
-      rateLimitMax: values.rateLimitMax ? parseInt(values.rateLimitMax) : undefined,
-      rateLimitTimeWindow: values.rateLimitTimeWindow ? parseInt(values.rateLimitTimeWindow) : undefined,
+      rateLimitMax: values.rateLimitMax
+        ? parseInt(values.rateLimitMax)
+        : undefined,
+      rateLimitTimeWindow: values.rateLimitTimeWindow
+        ? parseInt(values.rateLimitTimeWindow)
+        : undefined,
     });
   };
 

@@ -32,6 +32,16 @@ export const deleteApiVersionSchema = z.object({
   }),
 });
 
+// Form schema for UI validation (simplified version for forms)
+export const apiVersionFormSchema = z.object({
+  id: z.string().min(1, "Version ID is required").max(32),
+  label: z.string().min(1, "Label is required").max(32),
+  isCurrent: z.boolean(),
+  releasedAt: z.string().min(1, "Release date is required"),
+  sunsetAt: z.string().optional(),
+});
+
 export type CreateApiVersionInput = z.infer<typeof createApiVersionSchema>;
 export type UpdateApiVersionInput = z.infer<typeof updateApiVersionSchema>;
 export type DeleteApiVersionInput = z.infer<typeof deleteApiVersionSchema>;
+export type ApiVersionFormValues = z.infer<typeof apiVersionFormSchema>;
