@@ -176,6 +176,9 @@ export default function HomePage() {
             <span className="inline-flex items-center rounded-full bg-red-100 px-4 py-1 text-sm font-medium text-red-800">
               Admin Dashboard
             </span>
+            <span className="inline-flex items-center rounded-full bg-yellow-100 px-4 py-1 text-sm font-medium text-yellow-800">
+              Cron-job.org
+            </span>
           </div>
         </div>
       </section>
