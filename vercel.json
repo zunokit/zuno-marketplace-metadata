@@ -1,8 +1,13 @@
 {
-  "deploymentProtection": {
-    "excludePaths": [
-      "/api/cron/process-metadata-ipfs",
-      "/api/cron/process-media-ipfs"
-    ]
-  }
+  "headers": [
+    {
+      "source": "/api/cron/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
+      ]
+    }
+  ]
 }
