@@ -14,6 +14,7 @@ import {
   tryCatchSync,
   unwrapOrThrow
 } from "@/shared/lib/utils/server";
+import { createLazyInitializer } from "@/shared/lib/utils/lazy-init";
 
 interface UploadOptions {
   file: File | Buffer;
@@ -41,15 +42,38 @@ interface UploadResult {
   mediaType: MediaType;
 }
 
+/**
+ * Lazy-initialized ImageKit client
+ * Defers instantiation until first access
+ */
+const getImageKitClient = createLazyInitializer(() => {
+  const publicKey = env.IMAGEKIT_PUBLIC_KEY;
+  const privateKey = env.IMAGEKIT_PRIVATE_KEY;
+  const urlEndpoint = env.IMAGEKIT_URL_ENDPOINT;
+
+  if (!publicKey || !privateKey || !urlEndpoint) {
+    throw new Error(
+      "ImageKit configuration missing. Ensure IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, and IMAGEKIT_URL_ENDPOINT are set."
+    );
+  }
+
+  return new ImageKit({
+    publicKey,
+    privateKey,
+    urlEndpoint,
+  });
+});
+
 export class ImageKitService {
-  private client: ImageKit;
+  /**
+   * Get ImageKit client instance (lazy-loaded)
+   */
+  private get client(): ImageKit {
+    return getImageKitClient();
+  }
 
   constructor() {
-    this.client = new ImageKit({
-      publicKey: env.IMAGEKIT_PUBLIC_KEY,
-      privateKey: env.IMAGEKIT_PRIVATE_KEY,
-      urlEndpoint: env.IMAGEKIT_URL_ENDPOINT,
-    });
+    // Client initialization deferred to first use
   }
 
   /**

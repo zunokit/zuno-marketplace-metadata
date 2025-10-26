@@ -1,22 +1,51 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
+import { createLazyInitializer } from "@/shared/lib/utils/lazy-init";
 
-export const redis = new Redis({
-  url: env.UPSTASH_REDIS_REST_URL,
-  token: env.UPSTASH_REDIS_REST_TOKEN,
+/**
+ * Lazy-initialized Redis client
+ * Defers instantiation until first access to prevent build-time errors
+ */
+const getRedisClient = createLazyInitializer(() => {
+  const url = env.UPSTASH_REDIS_REST_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
+    throw new Error(
+      "Redis configuration missing. Ensure UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set."
+    );
+  }
+
+  return new Redis({ url, token });
 });
 
 /**
+ * Legacy export for backward compatibility
+ * Provides direct access to Redis client with lazy initialization
+ */
+export const redis = {
+  get client() {
+    return getRedisClient();
+  },
+};
+
+/**
  * Redis Client with error handling and utilities
- * Singleton pattern for connection reuse
+ * Implements singleton pattern with lazy initialization
  */
 export class RedisClient {
   private static instance: RedisClient;
-  private client: Redis;
 
   private constructor() {
-    this.client = redis;
+    // Singleton - use getInstance()
+  }
+
+  /**
+   * Get Redis client instance (lazy-loaded)
+   */
+  private get client(): Redis {
+    return getRedisClient();
   }
 
   public static getInstance(): RedisClient {
