@@ -6,6 +6,7 @@ import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants
 import { logger } from "@/shared/lib/utils/logger";
 import { tryCatch } from "@/shared/lib/utils/server";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Cron endpoint to process unpinned metadata
@@ -98,6 +99,10 @@ export async function GET(request: NextRequest) {
                 pinnedAt: new Date(),
               })
               .where(eq(schema.metadata.id, item.id));
+
+            // Invalidate cache for this metadata item
+            const cache = getCacheService();
+            await cache.invalidateMetadata(item.id);
 
             logger.info("Metadata pinned to IPFS", {
               metadataId: item.id,

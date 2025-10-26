@@ -40,39 +40,63 @@ export default function HomePage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [uploadedItems, setUploadedItems] = useState<any[]>([]);
 
-  // Auto-refresh IPFS status every 10 seconds
+  // Auto-refresh IPFS status every 5 seconds for unpinned items (senior pattern)
   React.useEffect(() => {
-    const metadataItems = uploadedItems.filter(item => item.id && item.name && !item.ipfsUrl);
+    // Early return if no items to track
+    if (uploadedItems.length === 0) return;
 
-    if (metadataItems.length === 0) return;
+    // Identify unpinned metadata items that need polling
+    const unpinnedIds = uploadedItems
+      .filter((item) => item.id && item.name && !item.ipfsUrl)
+      .map((item) => item.id);
 
+    // Early return if no unpinned items
+    if (unpinnedIds.length === 0) return;
+
+    // Setup polling interval
     const refreshInterval = setInterval(async () => {
-      const updatedItems = await Promise.all(
-        uploadedItems.map(async (item) => {
-          if (item.id && item.name && !item.ipfsUrl) {
-            try {
-              const response = await fetch(`/api/metadata/${item.id}`, {
-                headers: {
-                  "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
-                  "x-api-version": "v1",
-                },
-              });
-              if (response.ok) {
-                const data = await response.json();
-                return data.data;
-              }
-            } catch (error) {
-              console.error("Auto-refresh failed:", error);
-            }
+      try {
+        // Fetch fresh data for unpinned items only
+        const fetchPromises = unpinnedIds.map(async (id) => {
+          try {
+            const response = await fetch(`/api/metadata/${id}`, {
+              headers: {
+                "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
+                "x-api-version": "v1",
+              },
+              cache: "no-store", // Force bypass Next.js cache
+            });
+
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            return data.data;
+          } catch (error) {
+            console.error(`Auto-refresh failed for item ${id}:`, error);
+            return null;
           }
-          return item;
-        })
-      );
-      setUploadedItems(updatedItems);
-    }, 10000); // 10 seconds
+        });
+
+        const fetchedItems = await Promise.all(fetchPromises);
+        const updatedMap = new Map(
+          fetchedItems
+            .filter((item): item is NonNullable<typeof item> => item !== null)
+            .map((item) => [item.id, item])
+        );
+
+        // Update state only if we got fresh data
+        if (updatedMap.size > 0) {
+          setUploadedItems((prevItems) =>
+            prevItems.map((item) => updatedMap.get(item.id) || item)
+          );
+        }
+      } catch (error) {
+        console.error("Auto-refresh batch failed:", error);
+      }
+    }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [uploadedItems]);
+  }, [uploadedItems]); // Stable dependency - full array
 
   const handleCopySample = () => {
     navigator.clipboard.writeText(metadataInput);

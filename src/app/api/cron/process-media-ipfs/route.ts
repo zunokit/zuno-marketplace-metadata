@@ -6,6 +6,7 @@ import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants
 import { logger } from "@/shared/lib/utils/logger";
 import { tryCatch } from "@/shared/lib/utils/server";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Cron endpoint to process unpinned media
@@ -91,6 +92,10 @@ export async function GET(request: NextRequest) {
                 pinnedAt: new Date(),
               })
               .where(eq(schema.media.id, item.id));
+
+            // Invalidate cache for this media item
+            const cache = getCacheService();
+            await cache.invalidateMedia(item.id);
 
             logger.info("Media pinned to IPFS", {
               mediaId: item.id,
