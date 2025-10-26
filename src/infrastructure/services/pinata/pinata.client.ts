@@ -1,3 +1,10 @@
+import { PinataSDK } from "pinata";
+import type {
+  GroupListResponse,
+  GroupResponseItem,
+  FileListItem,
+  UploadResponse,
+} from "pinata";
 import { env } from "@/shared/config/env";
 import { logger } from "@/shared/lib/utils/logger";
 import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
@@ -5,7 +12,7 @@ import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
 /**
  * Pinata IPFS Client
  *
- * Low-level client for interacting with Pinata API using fetch
+ * Low-level client for interacting with Pinata API using Pinata SDK v2
  */
 
 export interface PinataUploadMetadata {
@@ -19,7 +26,7 @@ export interface PinataUploadResult {
   hash: string;
   url: string;
   size: number;
-  timestamp: string;
+  timestamp?: string;
 }
 
 export interface PinataPinMetadata {
@@ -47,29 +54,72 @@ export interface PinataListResponse {
   rows: PinataFileDetails[];
 }
 
-// Type guards for runtime validation
-function isPinataListResponse(data: unknown): data is PinataListResponse {
-  if (typeof data !== 'object' || data === null) {
-    return false;
-  }
-
-  const obj = data as { rows?: unknown };
-  return 'rows' in data && Array.isArray(obj.rows);
-}
 
 export class PinataClient {
   private static instance: PinataClient;
-  private baseUrl = "https://api.pinata.cloud";
+  private pinata: PinataSDK;
   private gatewayUrl = env.PINATA_GATEWAY_URL || "https://gateway.pinata.cloud";
-  private jwt = env.PINATA_JWT;
+  private groupCache: Map<string, string> = new Map(); // Cache group IDs by name
 
-  private constructor() {}
+  private constructor() {
+    this.pinata = new PinataSDK({
+      pinataJwt: env.PINATA_JWT,
+      pinataGateway: env.PINATA_GATEWAY_URL,
+    });
+  }
 
   public static getInstance(): PinataClient {
     if (!PinataClient.instance) {
       PinataClient.instance = new PinataClient();
     }
     return PinataClient.instance;
+  }
+
+  /**
+   * Get or create a Pinata group by name
+   * Groups help organize files in Pinata dashboard
+   */
+  async getOrCreateGroup(groupName: string): Promise<string | null> {
+    try {
+      // Check cache first
+      const cachedGroupId = this.groupCache.get(groupName);
+      if (cachedGroupId) {
+        return cachedGroupId;
+      }
+
+      // Try to list existing groups and find by name
+      const groupsResponse: GroupListResponse = await this.pinata.groups.public.list();
+      const existingGroup: GroupResponseItem | undefined = groupsResponse.groups?.find(
+        (group: GroupResponseItem) => group.name === groupName
+      );
+
+      if (existingGroup) {
+        this.groupCache.set(groupName, existingGroup.id);
+        logger.info("Found existing Pinata group", {
+          groupName,
+          groupId: existingGroup.id
+        });
+        return existingGroup.id;
+      }
+
+      // Create new group
+      const newGroup: GroupResponseItem = await this.pinata.groups.public.create({
+        name: groupName,
+      });
+
+      this.groupCache.set(groupName, newGroup.id);
+      logger.info("Created new Pinata group", {
+        groupName,
+        groupId: newGroup.id
+      });
+      return newGroup.id;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to get/create Pinata group: ${groupName}`, {
+        error: errorMessage
+      });
+      return null; // Graceful fallback - continue without group
+    }
   }
 
   /**
@@ -80,6 +130,26 @@ export class PinataClient {
     const extension = name.includes('.') ? `.${name.split('.').pop()}` : '';
     const baseName = name.replace(/\.[^/.]+$/, '');
     return `${baseName}-${version}-${randomSuffix}${extension}`;
+  }
+
+  /**
+   * Map FileListItem from Pinata SDK to PinataFileDetails
+   * Centralized mapping to avoid code duplication
+   */
+  private mapFileListItemToDetails(file: FileListItem): PinataFileDetails {
+    return {
+      id: file.id,
+      ipfs_pin_hash: file.cid,
+      size: file.size,
+      user_id: "", // Not available in SDK v2
+      date_pinned: file.created_at,
+      date_unpinned: null,
+      metadata: {
+        name: file.name ?? "",
+        keyvalues: file.keyvalues ?? {},
+      },
+      regions: [],
+    };
   }
 
   /**
@@ -95,39 +165,51 @@ export class PinataClient {
         const version = metadata?.version || "v1";
         const uniqueName = this.generateUniqueFilename(baseName, version);
 
-        logger.info("Uploading JSON to Pinata", { uniqueName });
+        logger.info("Uploading JSON to Pinata", { uniqueName, groupName: metadata?.groupName });
 
-        const response = await fetch(`${this.baseUrl}/pinning/pinJSONToIPFS`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.jwt}`,
-          },
-          body: JSON.stringify({
-            pinataContent: data,
-            pinataMetadata: {
-              name: uniqueName,
-              keyvalues: metadata?.keyvalues,
-            },
-          }),
-        });
+        // Convert JSON to File blob
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const file = new File([blob], uniqueName, { type: "application/json" });
 
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
+        // Get or create group if specified
+        let groupId: string | null = null;
+        if (metadata?.groupName) {
+          groupId = await this.getOrCreateGroup(metadata.groupName);
         }
 
-        const res = await response.json();
+        // Prepare upload metadata
+        const uploadMetadata = {
+          name: uniqueName,
+          keyvalues: {
+            type: "nft-metadata",
+            version: version,
+            ...(metadata?.groupName && { group: metadata.groupName }),
+            ...metadata?.keyvalues,
+          },
+        };
+
+        // Upload with optional group
+        let uploadResult: UploadResponse;
+        if (groupId) {
+          uploadResult = await this.pinata.upload.public
+            .file(file, { metadata: uploadMetadata })
+            .group(groupId);
+        } else {
+          uploadResult = await this.pinata.upload.public
+            .file(file, { metadata: uploadMetadata });
+        }
 
         logger.info("JSON uploaded to Pinata successfully", {
-          hash: res.IpfsHash,
-          size: res.PinSize,
+          hash: uploadResult.cid,
+          size: uploadResult.size,
+          groupId,
         });
 
         return {
-          hash: res.IpfsHash,
-          url: `${this.gatewayUrl}/ipfs/${res.IpfsHash}`,
-          size: res.PinSize,
-          timestamp: res.Timestamp,
+          hash: uploadResult.cid,
+          url: `${this.gatewayUrl}/ipfs/${uploadResult.cid}`,
+          size: uploadResult.size ?? 0,
         };
       },
       {
@@ -156,46 +238,49 @@ export class PinataClient {
           originalFileName: file.name,
           uniqueName,
           fileSize: file.size,
+          groupName: metadata?.groupName,
         });
 
-        const formData = new FormData();
-        formData.append("file", file);
-
-        if (metadata) {
-          formData.append("pinataMetadata", JSON.stringify({
-            name: uniqueName,
-            keyvalues: {
-              ...metadata.keyvalues,
-              originalName: metadata.name || file.name,
-            },
-          }));
+        // Get or create group if specified
+        let groupId: string | null = null;
+        if (metadata?.groupName) {
+          groupId = await this.getOrCreateGroup(metadata.groupName);
         }
 
-        const response = await fetch(`${this.baseUrl}/pinning/pinFileToIPFS`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.jwt}`,
+        // Prepare upload metadata
+        const uploadMetadata = {
+          name: uniqueName,
+          keyvalues: {
+            type: "nft-media",
+            version: version,
+            originalName: metadata?.name || file.name,
+            ...(metadata?.groupName && { group: metadata.groupName }),
+            ...metadata?.keyvalues,
           },
-          body: formData,
-        });
+        };
 
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
+        // Upload with optional group
+        let uploadResult: UploadResponse;
+        if (groupId) {
+          uploadResult = await this.pinata.upload.public
+            .file(file, { metadata: uploadMetadata })
+            .group(groupId);
+        } else {
+          uploadResult = await this.pinata.upload.public
+            .file(file, { metadata: uploadMetadata });
         }
-
-        const res = await response.json();
 
         logger.info("File uploaded to Pinata successfully", {
-          hash: res.IpfsHash,
-          size: res.PinSize,
+          hash: uploadResult.cid,
+          size: uploadResult.size,
           fileName: file.name,
+          groupId,
         });
 
         return {
-          hash: res.IpfsHash,
-          url: `${this.gatewayUrl}/ipfs/${res.IpfsHash}`,
-          size: res.PinSize,
-          timestamp: res.Timestamp,
+          hash: uploadResult.cid,
+          url: `${this.gatewayUrl}/ipfs/${uploadResult.cid}`,
+          size: uploadResult.size ?? file.size,
         };
       },
       {
@@ -218,21 +303,12 @@ export class PinataClient {
       async () => {
         logger.info("Pinning hash to Pinata", { hash, metadata });
 
-        const response = await fetch(`${this.baseUrl}/pinning/pinByHash`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${this.jwt}`,
+        await this.pinata.upload.public.cid(hash, {
+          metadata: {
+            name: metadata?.name || hash,
+            keyvalues: metadata?.keyvalues,
           },
-          body: JSON.stringify({
-            hashToPin: hash,
-            pinataMetadata: metadata,
-          }),
         });
-
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
-        }
 
         logger.info("Hash pinned to Pinata successfully", { hash });
       },
@@ -253,19 +329,17 @@ export class PinataClient {
       async () => {
         logger.info("Unpinning from Pinata", { hash });
 
-        const response = await fetch(`${this.baseUrl}/pinning/unpin/${hash}`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${this.jwt}`,
-          },
-        });
+        // Find the file by CID first
+        const files = await this.pinata.files.public.list().cid(hash).limit(1);
 
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
+        if (files && files.files && files.files.length > 0) {
+          await this.pinata.files.public.delete([files.files[0].id]);
+          logger.info("Unpinned from Pinata successfully", { hash });
+          return true;
         }
 
-        logger.info("Unpinned from Pinata successfully", { hash });
-        return true;
+        logger.warn("File not found for unpinning", { hash });
+        return false;
       },
       {
         errorMessage: "Failed to unpin from Pinata",
@@ -283,24 +357,13 @@ export class PinataClient {
   async getFileDetails(hash: string): Promise<PinataFileDetails | null> {
     const result = await tryCatch(
       async () => {
-        const response = await fetch(`${this.baseUrl}/data/pinList?hashContains=${hash}`, {
-          headers: {
-            Authorization: `Bearer ${this.jwt}`,
-          },
-        });
+        const files = await this.pinata.files.public.list().cid(hash).limit(1);
 
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
+        if (files?.files?.length > 0) {
+          return this.mapFileListItemToDetails(files.files[0]);
         }
 
-        const data: unknown = await response.json();
-
-        if (!isPinataListResponse(data)) {
-          logger.error("Invalid response from Pinata API", { hash });
-          return null;
-        }
-
-        return data.rows.length > 0 ? data.rows[0] : null;
+        return null;
       },
       {
         errorMessage: "Failed to get file details from Pinata",
@@ -321,29 +384,21 @@ export class PinataClient {
   }): Promise<PinataFileDetails[]> {
     const result = await tryCatch(
       async () => {
-        const params = new URLSearchParams();
+        let query = this.pinata.files.public.list();
+
         if (filters?.limit) {
-          params.append("pageLimit", filters.limit.toString());
+          query = query.limit(filters.limit);
         }
 
-        const response = await fetch(`${this.baseUrl}/data/pinList?${params}`, {
-          headers: {
-            Authorization: `Bearer ${this.jwt}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Pinata API error: ${response.statusText}`);
+        if (filters?.metadata) {
+          query = query.keyvalues(filters.metadata);
         }
 
-        const data: unknown = await response.json();
+        const files = await query;
 
-        if (!isPinataListResponse(data)) {
-          logger.error("Invalid response from Pinata API");
-          return [];
-        }
-
-        return data.rows;
+        return files.files.map((file: FileListItem) =>
+          this.mapFileListItemToDetails(file)
+        );
       },
       {
         errorMessage: "Failed to list files from Pinata",
@@ -405,13 +460,8 @@ export class PinataClient {
     const result = await tryCatch(
       async () => {
         // Try to list files as a health check
-        const response = await fetch(`${this.baseUrl}/data/pinList?pageLimit=1`, {
-          headers: {
-            Authorization: `Bearer ${this.jwt}`,
-          },
-        });
-
-        return response.ok;
+        const files = await this.pinata.files.public.list().limit(1);
+        return !!files;
       },
       {
         errorMessage: "Pinata health check failed",

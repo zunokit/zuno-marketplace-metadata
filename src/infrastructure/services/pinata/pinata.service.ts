@@ -1,4 +1,5 @@
 import { PinataClient } from "./pinata.client";
+import { PINATA_GROUPS } from "./pinata.constants";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MediaType } from "@/shared/types";
 import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
@@ -75,9 +76,10 @@ export class PinataService {
           Object.assign(metadata, params.metadata);
         }
 
-        // Upload to IPFS
+        // Upload to IPFS with group
         const res = await this.client.uploadJSON(metadata, {
           name: `${params.name} - Metadata`,
+          groupName: PINATA_GROUPS.METADATA,
           keyvalues: {
             type: "nft-metadata",
             name: params.name,
@@ -121,6 +123,7 @@ export class PinataService {
 
         const res = await this.client.uploadFile(params.file, {
           name: params.metadata?.name || params.file.name,
+          groupName: PINATA_GROUPS.MEDIA,
           keyvalues: {
             type: "nft-media",
             mediaType: params.mediaType,
