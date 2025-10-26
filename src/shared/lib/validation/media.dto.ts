@@ -71,3 +71,16 @@ export const BulkDeleteMediaSchema = z.object({
 });
 
 export type BulkDeleteMediaInput = z.infer<typeof BulkDeleteMediaSchema>;
+
+// ============= BATCH UPLOAD MEDIA SCHEMA =============
+export const BatchUploadMediaSchema = z.object({
+  body: z.instanceof(FormData).refine(
+    (formData) => {
+      const files = formData.getAll("files");
+      return files.length > 0 && files.length <= 20;
+    },
+    "Between 1 and 20 files required"
+  ),
+});
+
+export type BatchUploadMediaInput = z.infer<typeof BatchUploadMediaSchema>;
