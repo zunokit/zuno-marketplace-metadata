@@ -12,6 +12,7 @@ export interface PinataUploadMetadata {
   name?: string;
   keyvalues?: Record<string, string>;
   groupName?: string;
+  version?: string; // API version (e.g., 'v1', '1.0.0')
 }
 
 export interface PinataUploadResult {
@@ -72,6 +73,16 @@ export class PinataClient {
   }
 
   /**
+   * Generate unique filename: basename-version-random.ext
+   */
+  private generateUniqueFilename(name: string, version: string): string {
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const extension = name.includes('.') ? `.${name.split('.').pop()}` : '';
+    const baseName = name.replace(/\.[^/.]+$/, '');
+    return `${baseName}-${version}-${randomSuffix}${extension}`;
+  }
+
+  /**
    * Upload JSON to IPFS via Pinata
    */
   async uploadJSON(
@@ -80,7 +91,11 @@ export class PinataClient {
   ): Promise<PinataUploadResult> {
     const result = await tryCatch(
       async () => {
-        logger.info("Uploading JSON to Pinata", { metadata });
+        const baseName = metadata?.name || "metadata.json";
+        const version = metadata?.version || "v1";
+        const uniqueName = this.generateUniqueFilename(baseName, version);
+
+        logger.info("Uploading JSON to Pinata", { uniqueName });
 
         const response = await fetch(`${this.baseUrl}/pinning/pinJSONToIPFS`, {
           method: "POST",
@@ -91,7 +106,7 @@ export class PinataClient {
           body: JSON.stringify({
             pinataContent: data,
             pinataMetadata: {
-              name: metadata?.name,
+              name: uniqueName,
               keyvalues: metadata?.keyvalues,
             },
           }),
@@ -133,10 +148,14 @@ export class PinataClient {
   ): Promise<PinataUploadResult> {
     const result = await tryCatch(
       async () => {
+        const baseName = metadata?.name || file.name;
+        const version = metadata?.version || "v1";
+        const uniqueName = this.generateUniqueFilename(baseName, version);
+
         logger.info("Uploading file to Pinata", {
-          fileName: file.name,
+          originalFileName: file.name,
+          uniqueName,
           fileSize: file.size,
-          metadata,
         });
 
         const formData = new FormData();
@@ -144,8 +163,11 @@ export class PinataClient {
 
         if (metadata) {
           formData.append("pinataMetadata", JSON.stringify({
-            name: metadata.name || file.name,
-            keyvalues: metadata.keyvalues,
+            name: uniqueName,
+            keyvalues: {
+              ...metadata.keyvalues,
+              originalName: metadata.name || file.name,
+            },
           }));
         }
 

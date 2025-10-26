@@ -1,11 +1,13 @@
 import { Worker } from "bullmq";
 import { PinataClient } from "@/infrastructure/services/pinata/pinata.client";
+import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants";
 import { db, schema } from "@/infrastructure/database/client";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import { MetadataPinJobData, QueueName } from "../queue.config";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
+import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
 
 /**
  * Metadata IPFS Pinning Worker
@@ -24,13 +26,19 @@ export const metadataWorker = new Worker<MetadataPinJobData>(
 
     const result = await tryCatch(
       async () => {
-        // Upload JSON to Pinata
+        // Get current API version
+        const apiVersion = await getCurrentApiVersion();
+
+        // Upload JSON to Pinata with unique filename: name-version-random.json
         const pinResult = await pinataClient.uploadJSON(metadata, {
-          name: `${name} - Metadata`,
+          name: `${name}-Metadata`,
+          version: apiVersion,
+          groupName: PINATA_GROUPS.METADATA,
           keyvalues: {
             metadataId,
             type: "nft-metadata",
             name,
+            apiVersion,
             pinnedAt: new Date().toISOString(),
           },
         });
