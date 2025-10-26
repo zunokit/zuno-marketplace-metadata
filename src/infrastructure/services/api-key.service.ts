@@ -9,9 +9,13 @@ import { db } from "@/infrastructure/database/client";
 import { apiKey } from "@/infrastructure/database/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/infrastructure/auth/better-auth.config";
+import type { BetterAuthOptions } from "better-auth";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { tryCatch, type TryCatchResult } from "@/shared/lib/utils/server";
+
+// Type for Better Auth API (inferred from auth.api)
+type BetterAuthApi = typeof auth.api;
 
 // ============ Types ============
 
@@ -32,6 +36,7 @@ export interface ApiKeyListParams {
 export type ApiKeyDto = {
   id: string;
   name: string | null;
+  start: string | null;
   userId: string;
   enabled: boolean | null;
   permissions: string | null;
@@ -85,6 +90,7 @@ export class ApiKeyService {
           .select({
             id: apiKey.id,
             name: apiKey.name,
+            start: apiKey.start,
             userId: apiKey.userId,
             enabled: apiKey.enabled,
             permissions: apiKey.permissions,
@@ -225,7 +231,7 @@ export class ApiKeyService {
       permissions?: Record<string, string[]>;
       metadata?: Record<string, unknown>;
     },
-    betterAuthApi: any
+    betterAuthApi: BetterAuthApi
   ): Promise<
     TryCatchResult<{
       id: string;
@@ -264,15 +270,15 @@ export class ApiKeyService {
         }
 
         return {
-          id: result.id,
-          key: result.key,
-          name: result.name,
-          userId: result.userId,
-          expiresAt: result.expiresAt,
-          permissions: result.permissions,
+          id: result.id as string,
+          key: result.key as string,
+          name: (result.name as string | null) ?? input.name,
+          userId: result.userId as string,
+          expiresAt: result.expiresAt ? new Date(result.expiresAt) : null,
+          permissions: result.permissions as Record<string, string[]> | null,
           metadata: input.metadata || {},
-          createdAt: result.createdAt,
-          updatedAt: result.updatedAt || result.createdAt,
+          createdAt: new Date(result.createdAt),
+          updatedAt: result.updatedAt ? new Date(result.updatedAt) : new Date(result.createdAt),
         };
       },
       {
@@ -292,9 +298,9 @@ export class ApiKeyService {
       permissions?: Record<string, string[]>;
       metadata?: Record<string, unknown>;
     },
-    betterAuthApi: any,
+    betterAuthApi: BetterAuthApi,
     headers?: Headers
-  ): Promise<TryCatchResult<any>> {
+  ): Promise<TryCatchResult<Record<string, unknown>>> {
     return tryCatch(
       async () => {
         const result = await betterAuthApi.updateApiKey({
@@ -313,7 +319,7 @@ export class ApiKeyService {
           );
         }
 
-        return result;
+        return result as Record<string, unknown>;
       },
       {
         errorMessage: "Failed to update API key",
@@ -326,7 +332,7 @@ export class ApiKeyService {
    */
   static async delete(
     id: string,
-    betterAuthApi: any,
+    betterAuthApi: BetterAuthApi,
     headers?: Headers
   ): Promise<TryCatchResult<{ success: boolean }>> {
     return tryCatch(

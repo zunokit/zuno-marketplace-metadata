@@ -86,12 +86,23 @@ export function useApiKeys() {
 
         const metadata = key.metadata as ApiKeyViewModel["metadata"] | undefined;
 
+        // Derive scopes from metadata first, fallback to generating from permissions
+        let scopes: string[] = [];
+        if (metadata?.scopes && Array.isArray(metadata.scopes) && metadata.scopes.length > 0) {
+          scopes = metadata.scopes as string[];
+        } else {
+          // Generate scopes from permissions if not in metadata
+          scopes = Object.entries(permissions).flatMap(([resource, actions]) =>
+            actions.map(action => `${resource}:${action}`)
+          );
+        }
+
         return {
           id: key.id,
           name: key.name || "Unnamed Key",
-          start: key.start || null,
+          start: key.start ?? null,
           permissions,
-          scopes: (metadata?.scopes as string[]) || [],
+          scopes,
           enabled: key.enabled ?? true,
           expiresAt: key.expiresAt ? new Date(key.expiresAt) : null,
           createdAt: new Date(key.createdAt),

@@ -33,6 +33,7 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     const betterAuthKeys = listResult.keys.map((key) => ({
       id: key.id,
       name: key.name,
+      start: key.start,
       userId: key.userId,
       enabled: key.enabled,
       permissions: key.permissions,
@@ -40,7 +41,6 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
       expiresAt: key.expiresAt,
       createdAt: key.createdAt,
       updatedAt: key.updatedAt,
-      start: null,
       rateLimitEnabled: null,
       rateLimitMax: null,
       rateLimitTimeWindow: null,

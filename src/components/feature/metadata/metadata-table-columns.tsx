@@ -34,18 +34,30 @@ export function createMetadataColumns({
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium">{row.original.name}</span>
+          <div
+            className="font-medium truncate max-w-[200px] overflow-hidden whitespace-nowrap"
+            style={{ width: "200px" }}
+          >
+            {row.original.name}
+          </div>
         </div>
       ),
+      size: 200,
+      maxSize: 200,
     },
     {
       accessorKey: "description",
       header: "Description",
       cell: ({ row }) => (
-        <div className="max-w-md truncate text-sm text-muted-foreground">
+        <div
+          className="max-w-[250px] truncate text-sm text-muted-foreground overflow-hidden whitespace-nowrap"
+          style={{ width: "250px" }}
+        >
           {row.original.description || "-"}
         </div>
       ),
+      size: 250,
+      maxSize: 250,
     },
     {
       accessorKey: "attributes",
@@ -71,7 +83,9 @@ export function createMetadataColumns({
           <div className="text-sm">
             <div className="font-medium">{collection.name}</div>
             {collection.family && (
-              <div className="text-xs text-muted-foreground">{collection.family}</div>
+              <div className="text-xs text-muted-foreground">
+                {collection.family}
+              </div>
             )}
           </div>
         );
