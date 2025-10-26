@@ -32,7 +32,6 @@ export class MetadataQueryService {
       sortBy = "createdAt",
       sortOrder = "desc",
       search,
-      mediaType,
       isPinned,
       isLocked,
     } = input;
@@ -70,7 +69,6 @@ export class MetadataQueryService {
       sortBy,
       sortOrder,
       search,
-      mediaType,
       isPinned,
       isLocked,
     };
@@ -82,7 +80,6 @@ export class MetadataQueryService {
   static buildFilters(input: ListQueryInput): MetadataListFilters {
     return {
       search: input.search,
-      mediaType: input.mediaType,
       isPinned: input.isPinned,
       isLocked: input.isLocked,
     };
