@@ -1,0 +1,118 @@
+import { Worker } from "bullmq";
+import { PinataClient } from "@/infrastructure/services/pinata/pinata.client";
+import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants";
+import { db, schema } from "@/infrastructure/database/client";
+import { eq } from "drizzle-orm";
+import { logger } from "@/shared/lib/utils/logger";
+import { MediaPinJobData, QueueName } from "../queue.config";
+import { env } from "@/shared/config/env";
+import { tryCatch } from "@/shared/lib/utils/server";
+import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
+
+/**
+ * Media IPFS Pinning Worker
+ *
+ * Background worker that pins media files to IPFS via Pinata
+ */
+
+const pinataClient = PinataClient.getInstance();
+
+export const mediaWorker = new Worker<MediaPinJobData>(
+  QueueName.MEDIA_IPFS_PIN,
+  async (job) => {
+    const { mediaId, url, fileName, mediaType } = job.data;
+
+    logger.info("Processing media IPFS pin job", { mediaId, fileName });
+
+    const result = await tryCatch(
+      async () => {
+        // Get current API version
+        const apiVersion = await getCurrentApiVersion();
+
+        // Fetch the file from ImageKit URL
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch media: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: blob.type });
+
+        // Upload to Pinata with unique filename
+        const pinResult = await pinataClient.uploadFile(file, {
+          name: fileName,
+          version: apiVersion,
+          groupName: PINATA_GROUPS.MEDIA,
+          keyvalues: {
+            mediaId,
+            mediaType,
+            apiVersion,
+            originalUrl: url,
+            pinnedAt: new Date().toISOString(),
+          },
+        });
+
+        // Update database with IPFS info
+        await db
+          .update(schema.media)
+          .set({
+            ipfsHash: pinResult.hash,
+            ipfsUrl: pinResult.url,
+            isPinned: true,
+            pinnedAt: new Date(),
+          })
+          .where(eq(schema.media.id, mediaId));
+
+        logger.info("Media pinned to IPFS successfully", {
+          mediaId,
+          ipfsHash: pinResult.hash,
+        });
+
+        return {
+          success: true,
+          mediaId,
+          ipfsHash: pinResult.hash,
+          ipfsUrl: pinResult.url,
+        };
+      },
+      {
+        errorMessage: "Failed to pin media to IPFS",
+        context: { mediaId },
+      }
+    );
+
+    if (!result.success) {
+      throw result.error; // BullMQ will retry
+    }
+
+    return result.data;
+  },
+  {
+    connection: {
+      host: new URL(env.UPSTASH_REDIS_REST_URL).hostname,
+      port: 6379, // Upstash Redis port
+      password: env.UPSTASH_REDIS_REST_TOKEN,
+      tls: {
+        rejectUnauthorized: false,
+      },
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: null,
+    },
+    concurrency: 5, // Process 5 jobs concurrently
+  }
+);
+
+mediaWorker.on("completed", (job) => {
+  logger.info("Media IPFS pin job completed", {
+    jobId: job.id,
+    mediaId: job.data.mediaId,
+  });
+});
+
+mediaWorker.on("failed", (job, error) => {
+  logger.error("Media IPFS pin job failed", {
+    jobId: job?.id,
+    mediaId: job?.data.mediaId,
+    error: error.message,
+  });
+});
