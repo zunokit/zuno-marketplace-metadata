@@ -4,6 +4,7 @@ import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { validateAttributes, validateCreators } from "@/shared/lib/validation/metadata.schemas";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 interface UpdateMetadataInput {
   metadataId: string;
@@ -12,9 +13,11 @@ interface UpdateMetadataInput {
 
 /**
  * Update Metadata Use Case
- * Handles the business logic for updating metadata
+ * Handles the business logic for updating metadata with cache invalidation
  */
 export class UpdateMetadataUseCase {
+  private readonly cache = getCacheService();
+
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
   async execute(input: UpdateMetadataInput): Promise<MetadataEntity> {
@@ -113,6 +116,9 @@ export class UpdateMetadataUseCase {
     if (!updatedMetadata) {
       throw new ApiError("Failed to update metadata", ErrorCode.INTERNAL_ERROR, 500);
     }
+
+    // 8. Invalidate cache (fire and forget - don't await)
+    void this.cache.invalidateMetadata(metadataId);
 
     logger.info("Metadata updated successfully", {
       metadataId,

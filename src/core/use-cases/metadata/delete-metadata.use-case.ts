@@ -3,12 +3,15 @@ import type { MetadataEntity } from "@/core/domain/metadata/metadata.entity";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Delete Metadata Use Case
- * Handles the business logic for deleting metadata
+ * Handles the business logic for deleting metadata with cache invalidation
  */
 export class DeleteMetadataUseCase {
+  private readonly cache = getCacheService();
+
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
   async execute(metadataId: string): Promise<MetadataEntity> {
@@ -38,6 +41,9 @@ export class DeleteMetadataUseCase {
     if (!deleted) {
       throw new ApiError("Failed to delete metadata", ErrorCode.INTERNAL_ERROR, 500);
     }
+
+    // 4. Invalidate cache (fire and forget - don't await)
+    void this.cache.invalidateMetadata(metadataId);
 
     logger.info("Metadata deleted successfully", {
       metadataId,

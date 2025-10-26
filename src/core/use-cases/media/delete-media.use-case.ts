@@ -5,12 +5,15 @@ import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { tryCatch } from "@/shared/lib/utils/server";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Delete Media Use Case
- * Handles the business logic for deleting media files
+ * Handles the business logic for deleting media files with cache invalidation
  */
 export class DeleteMediaUseCase {
+  private readonly cache = getCacheService();
+
   constructor(
     private readonly mediaRepository: MediaRepository,
     private readonly imageKitService: ImageKitService
@@ -54,6 +57,9 @@ export class DeleteMediaUseCase {
     if (!deleted) {
       throw new ApiError("Failed to delete media from database", ErrorCode.INTERNAL_ERROR, 500);
     }
+
+    // 5. Invalidate cache (fire and forget - don't await)
+    void this.cache.invalidateMedia(mediaId);
 
     logger.info("Media deleted successfully", {
       mediaId,

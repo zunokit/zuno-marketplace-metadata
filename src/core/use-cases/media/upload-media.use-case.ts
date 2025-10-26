@@ -4,6 +4,7 @@ import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 interface UploadMediaInput {
   file: File;
@@ -13,9 +14,11 @@ interface UploadMediaInput {
 
 /**
  * Upload Media Use Case
- * Handles the business logic for uploading media files
+ * Handles the business logic for uploading media files with cache invalidation
  */
 export class UploadMediaUseCase {
+  private readonly cache = getCacheService();
+
   constructor(
     private readonly mediaRepository: MediaRepository,
     private readonly imageKitService: ImageKitService
@@ -66,6 +69,9 @@ export class UploadMediaUseCase {
       width: uploadResult.width,
       height: uploadResult.height,
     });
+
+    // 4. Invalidate list caches (fire and forget - don't await)
+    void this.cache.invalidateMedia();
 
     logger.info("Media record saved to database", {
       mediaId: media.id,

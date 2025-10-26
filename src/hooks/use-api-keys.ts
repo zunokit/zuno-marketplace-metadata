@@ -2,6 +2,13 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import {
+  createApiKey,
+  updateApiKey,
+  deleteApiKey,
+  getApiKeyById,
+  listApiKeys,
+} from "@/app/admin/api-keys/actions";
 
 export interface ApiKeyViewModel {
   id: string;
@@ -63,37 +70,35 @@ export function useApiKeys() {
   return useQuery({
     queryKey: ["api-keys"],
     queryFn: async () => {
-      // Use custom admin API route
-      const response = await fetch("/api/admin/api-keys", {
-        credentials: "include",
-      });
+      // Use Server Actions instead of API routes
+      const result = await listApiKeys();
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch API keys");
-      }
+      console.log(
+        "[useApiKeys] API keys:",
+        JSON.stringify(result.data, null, 2)
+      );
+      return result.data.map((key: BetterAuthApiKey): ApiKeyViewModel => {
+        const permissions =
+          typeof key.permissions === "string"
+            ? (JSON.parse(key.permissions) as Record<string, string[]>)
+            : key.permissions || {};
 
-      const response_data = await response.json();
-
-      // API wrapper returns: { success: true, data: { data: [...], pagination: {...} } }
-      const paginatedResponse = response_data.data;
-      const apiKeys = paginatedResponse?.data || [];
-
-      console.log("[useApiKeys] API keys:", JSON.stringify(apiKeys, null, 2));
-      return apiKeys.map((key: BetterAuthApiKey): ApiKeyViewModel => {
-        const permissions = typeof key.permissions === "string"
-          ? (JSON.parse(key.permissions) as Record<string, string[]>)
-          : (key.permissions || {});
-
-        const metadata = key.metadata as ApiKeyViewModel["metadata"] | undefined;
+        const metadata = key.metadata as
+          | ApiKeyViewModel["metadata"]
+          | undefined;
 
         // Derive scopes from metadata first, fallback to generating from permissions
         let scopes: string[] = [];
-        if (metadata?.scopes && Array.isArray(metadata.scopes) && metadata.scopes.length > 0) {
+        if (
+          metadata?.scopes &&
+          Array.isArray(metadata.scopes) &&
+          metadata.scopes.length > 0
+        ) {
           scopes = metadata.scopes as string[];
         } else {
           // Generate scopes from permissions if not in metadata
           scopes = Object.entries(permissions).flatMap(([resource, actions]) =>
-            actions.map(action => `${resource}:${action}`)
+            actions.map((action) => `${resource}:${action}`)
           );
         }
 
@@ -126,26 +131,12 @@ export function useCreateApiKey() {
 
   return useMutation({
     mutationFn: async (input: CreateApiKeyInput) => {
-      const response = await fetch("/api/admin/api-keys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(input),
-      });
+      // Use Server Actions instead of API routes
+      const result = await createApiKey(input);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to create API key");
-      }
-
-      const result = await response.json();
-
-      // API wrapper returns: { success: true, data: { id, key, ... } }
       return {
-        id: result?.data?.id,
-        key: result?.data?.key, // The actual key value (only shown once!)
+        id: result.id,
+        key: result.key, // The actual key value (only shown once!)
       };
     },
     onSuccess: () => {
@@ -175,21 +166,8 @@ export function useUpdateApiKey() {
       permissions?: Record<string, string[]>;
       metadata?: ApiKeyViewModel["metadata"];
     }) => {
-      const response = await fetch(`/api/admin/api-keys/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(updates),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to update API key");
-      }
-
-      return await response.json();
+      // Use Server Actions instead of API routes
+      return await updateApiKey(id, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
@@ -209,17 +187,8 @@ export function useDeleteApiKey() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/admin/api-keys/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to delete API key");
-      }
-
-      return await response.json();
+      // Use Server Actions instead of API routes
+      return await deleteApiKey(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });

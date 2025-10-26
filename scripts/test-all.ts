@@ -7,7 +7,8 @@
  * Usage: npx tsx api-test-suite.ts
  */
 
-const API_KEY = process.env.ZUNO_API_KEY || "";
+const API_KEY =
+  process.env.ZUNO_API_KEY || "zuno_mNaCbtAxnufEczgzblCzTKoryrAUKUEs";
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
 // Test results tracking

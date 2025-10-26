@@ -12,6 +12,11 @@ import { MetadataQueryService } from "@/core/services/metadata/metadata-query.se
 import { getMetadataRepository } from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
+import {
+  getCacheService,
+  CacheKeyBuilder,
+  CacheTTL,
+} from "@/infrastructure/cache/cache.service";
 
 /**
  * GET /api/metadata - List all metadata
@@ -28,14 +33,30 @@ export const GET = ApiWrapper.create<ListMetadataInput>(
     // Build list params using service
     const listParams = MetadataQueryService.buildListParams(query);
 
-    // Fetch data using repository
-    const metadataRepository = getMetadataRepository();
-    const result = await metadataRepository.list(listParams);
+    // Build cache key from query params
+    const cache = getCacheService();
+    const cacheKey = CacheKeyBuilder.metadataList({
+      page: listParams.page,
+      limit: listParams.limit,
+      search: listParams.search,
+      mediaType: listParams.mediaType,
+    });
+
+    // Use cache-aside pattern for list queries
+    const result = await cache.getOrSet(
+      cacheKey,
+      async () => {
+        const metadataRepository = getMetadataRepository();
+        return await metadataRepository.list(listParams);
+      },
+      CacheTTL.METADATA_LIST
+    );
 
     logger.info("Metadata listed successfully", {
       total: result.pagination.total,
       returned: result.data.length,
       page: result.pagination.page,
+      cached: true,
     });
 
     return result;

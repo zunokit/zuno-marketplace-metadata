@@ -89,7 +89,6 @@ export default function AuditLogsPage() {
     data: logsData,
     isLoading,
     isFetching,
-    refetch,
   } = useAuditLogs(page, limit, filters, {
     sortBy: "createdAt",
     sortOrder: "desc",
@@ -102,7 +101,6 @@ export default function AuditLogsPage() {
   const { invalidateAll } = useInvalidateAuditLogs();
 
   const logs = logsData?.data || [];
-  const pagination = logsData?.pagination;
 
   const handleView = (log: AuditLogEntity) => {
     setSelectedLog(log);
@@ -133,6 +131,8 @@ export default function AuditLogsPage() {
           </div>
         </div>
       ),
+      size: 120,
+      maxSize: 120,
     },
     {
       accessorKey: "method",
@@ -142,6 +142,8 @@ export default function AuditLogsPage() {
           {row.original.method}
         </Badge>
       ),
+      size: 80,
+      maxSize: 80,
     },
     {
       accessorKey: "path",
@@ -150,7 +152,9 @@ export default function AuditLogsPage() {
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="font-mono text-sm truncate block max-w-[200px] cursor-help">
+              <span
+                className="font-mono text-sm truncate block max-w-[300px] cursor-help overflow-hidden whitespace-nowrap"
+              >
                 {row.original.path}
               </span>
             </TooltipTrigger>
@@ -160,6 +164,8 @@ export default function AuditLogsPage() {
           </Tooltip>
         </TooltipProvider>
       ),
+      size: 300,
+      maxSize: 300,
     },
     {
       accessorKey: "action",
@@ -167,6 +173,8 @@ export default function AuditLogsPage() {
       cell: ({ row }) => (
         <Badge variant="secondary">{row.original.action}</Badge>
       ),
+      size: 100,
+      maxSize: 100,
     },
     {
       accessorKey: "statusCode",
@@ -186,6 +194,8 @@ export default function AuditLogsPage() {
           </Badge>
         );
       },
+      size: 80,
+      maxSize: 80,
     },
     {
       accessorKey: "duration",
@@ -196,6 +206,8 @@ export default function AuditLogsPage() {
           {row.original.duration ? `${row.original.duration}ms` : "-"}
         </div>
       ),
+      size: 100,
+      maxSize: 100,
     },
     {
       accessorKey: "userId",
@@ -206,7 +218,9 @@ export default function AuditLogsPage() {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="font-mono text-xs cursor-help">
+                  <span
+                    className="font-mono text-xs cursor-help truncate max-w-[150px] overflow-hidden whitespace-nowrap block"
+                  >
                     {row.original.userId.slice(0, 8)}...
                   </span>
                 </TooltipTrigger>
@@ -233,6 +247,8 @@ export default function AuditLogsPage() {
           )}
         </span>
       ),
+      size: 150,
+      maxSize: 150,
     },
     {
       id: "actions",
@@ -246,6 +262,8 @@ export default function AuditLogsPage() {
           View
         </Button>
       ),
+      size: 80,
+      maxSize: 80,
     },
   ];
 
@@ -435,7 +453,6 @@ export default function AuditLogsPage() {
       <Card>
         <CardContent className="pt-6">
           <DataTable columns={columns} data={logs} />
-          
         </CardContent>
       </Card>
 
