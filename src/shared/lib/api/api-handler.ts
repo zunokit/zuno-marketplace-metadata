@@ -9,6 +9,11 @@ import { logger } from "@/shared/lib/utils/logger";
 import { auditLogger } from "@/infrastructure/monitoring/audit-logger";
 import { getIpAddress, getUserAgent } from "./request-context";
 import { tryCatch } from "@/shared/lib/utils/server";
+import {
+  validateApiVersion,
+  isVersionDeprecated,
+  getCurrentApiVersion,
+} from "@/shared/lib/utils/api-version";
 
 export interface ApiContext {
   request: NextRequest;
@@ -56,6 +61,10 @@ export interface ApiRouteConfig<
   rateLimit?: {
     max: number;
     window: number;
+  };
+  versioning?: {
+    required?: boolean; // Require API version validation
+    allowDeprecated?: boolean; // Allow deprecated versions
   };
 }
 
@@ -110,23 +119,40 @@ export class ApiWrapper {
             requestId,
           };
 
-          // 4. Handle authentication if required
+          // 4. Handle API version validation if required
+          if (config.versioning?.required !== false) {
+            await this.handleVersioning(apiContext, config.versioning);
+          }
+
+          // 5. Handle authentication if required
           if (config.auth?.required !== false) {
             await this.handleAuth(apiContext, config.auth);
           }
 
-          // 5. Execute the handler
+          // 6. Execute the handler
           // Type assertion is safe here because parseRequest validates the data against TInput schema
           const result = await handler(parsedData as TInput, apiContext);
 
-          // 6. Return success response
+          // 7. Return success response
           const response = NextResponse.json(createSuccessResponse(result), {
             status: 200,
           });
 
           // Add request tracking headers
           response.headers.set("X-Request-ID", requestId);
-          response.headers.set("X-API-Version", "v1.0.0");
+
+          // Add API version headers
+          const clientVersion =
+            request.headers.get("x-api-version") ||
+            request.headers.get("accept-version") ||
+            "v1";
+          response.headers.set("X-API-Version", clientVersion);
+
+          // Add version status headers
+          const currentVersion = await getCurrentApiVersion();
+          const isDeprecated = await isVersionDeprecated(clientVersion);
+          response.headers.set("X-API-Current-Version", currentVersion);
+          response.headers.set("X-API-Deprecated", isDeprecated.toString());
 
           // Add rate limit headers if available
           if (apiContext.rateLimit) {
@@ -512,6 +538,62 @@ export class ApiWrapper {
       return 400;
     }
     return 500;
+  }
+
+  /**
+   * Handle API version validation
+   */
+  private static async handleVersioning(
+    context: ApiContext,
+    versioningConfig?: ApiRouteConfig["versioning"]
+  ) {
+    const { request } = context;
+
+    // Extract version from headers
+    const clientVersion =
+      request.headers.get("x-api-version") ||
+      request.headers.get("accept-version") ||
+      "v1";
+
+    // Validate version if required
+    if (versioningConfig?.required !== false) {
+      const isValidVersion = await validateApiVersion(clientVersion);
+
+      if (!isValidVersion) {
+        const currentVersion = await getCurrentApiVersion();
+        throw new ApiError(
+          `Unsupported API version '${clientVersion}'. Supported versions: ${currentVersion}`,
+          ErrorCode.VALIDATION_ERROR,
+          400,
+          {
+            supportedVersion: currentVersion,
+            requestedVersion: clientVersion,
+          }
+        );
+      }
+
+      // Check if version is deprecated
+      const isDeprecated = await isVersionDeprecated(clientVersion);
+      if (isDeprecated && !versioningConfig?.allowDeprecated) {
+        const currentVersion = await getCurrentApiVersion();
+        throw new ApiError(
+          `API version '${clientVersion}' is deprecated. Please upgrade to version '${currentVersion}'`,
+          ErrorCode.VALIDATION_ERROR,
+          400,
+          {
+            deprecatedVersion: clientVersion,
+            currentVersion,
+          }
+        );
+      }
+
+      // Log version usage
+      logger.debug("API version validated", {
+        version: clientVersion,
+        deprecated: isDeprecated,
+        requestId: context.requestId,
+      });
+    }
   }
 }
 

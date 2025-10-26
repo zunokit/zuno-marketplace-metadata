@@ -69,6 +69,10 @@ export const GET = ApiWrapper.create<ListMetadataInput>(
     validation: {
       query: listMetadataSchema.shape.query,
     },
+    versioning: {
+      required: true,
+      allowDeprecated: false,
+    },
   }
 );
 
@@ -169,6 +173,10 @@ export const POST = ApiWrapper.create<CreateMetadataInput>(
     },
     validation: {
       body: createMetadataSchema.shape.body,
+    },
+    versioning: {
+      required: true,
+      allowDeprecated: false,
     },
   }
 );

@@ -42,13 +42,18 @@ export class DeleteMetadataUseCase {
       throw new ApiError("Failed to delete metadata", ErrorCode.INTERNAL_ERROR, 500);
     }
 
-    // 4. Invalidate cache (fire and forget - don't await)
-    void this.cache.invalidateMetadata(metadataId);
-
     logger.info("Metadata deleted successfully", {
       metadataId,
       name: metadata.name,
       version: metadata.version,
+    });
+
+    // 4. Invalidate cache (fire and forget - don't await, catch errors)
+    this.cache.invalidateMetadata(metadataId).catch((error) => {
+      logger.error("Cache invalidation failed (non-critical)", {
+        metadataId,
+        error: String(error),
+      });
     });
 
     return metadata;

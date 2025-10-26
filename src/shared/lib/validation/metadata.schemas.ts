@@ -26,7 +26,8 @@ export const metadataSchema = z.object({
     .string()
     .max(2000, "Description too long")
     .nullable()
-    .optional(),
+    .optional()
+    .transform((val) => val === null ? undefined : val),
   symbol: z.string().max(10, "Symbol too long").optional(),
 
   image: z.string().url("Invalid image URL"),
@@ -34,7 +35,7 @@ export const metadataSchema = z.object({
   featuredImage: z.string().url("Invalid featured image URL").optional(),
 
   animationUrl: z.string().url("Invalid animation URL").optional(),
-  externalUrl: z.string().url("Invalid external URL").nullable().optional(),
+  externalUrl: z.string().url("Invalid external URL").nullable().optional().transform((val) => val === null ? undefined : val),
 
   backgroundColor: z
     .string()
@@ -98,15 +99,6 @@ export const listMetadataSchema = z.object({
 // Get metadata schema
 export const getMetadataSchema = z.object({
   params: commonSchemas.id,
-  query: z
-    .object({
-      version: z.coerce
-        .number()
-        .int()
-        .min(1, "Version must be at least 1")
-        .optional(),
-    })
-    .optional(),
 });
 
 // Delete metadata schema

@@ -11,7 +11,6 @@ import {
 
 interface GetMetadataInput {
   metadataId: string;
-  version?: number;
 }
 
 /**
@@ -24,9 +23,9 @@ export class GetMetadataUseCase {
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
   async execute(input: GetMetadataInput): Promise<MetadataEntity> {
-    const { metadataId, version } = input;
+    const { metadataId } = input;
 
-    logger.debug("Getting metadata by ID", { metadataId, version });
+    logger.debug("Getting metadata by ID", { metadataId });
 
     // Use cache-aside pattern for single item retrieval
     const cacheKey = CacheKeyBuilder.metadata(metadataId);
@@ -49,20 +48,6 @@ export class GetMetadataUseCase {
       },
       CacheTTL.METADATA_ITEM
     );
-
-    // If specific version requested, validate it
-    if (version !== undefined && metadata.version !== version) {
-      logger.warn("Metadata version mismatch", {
-        metadataId,
-        requestedVersion: version,
-        currentVersion: metadata.version,
-      });
-      throw new ApiError(
-        `Metadata version ${version} not found. Current version is ${metadata.version}`,
-        ErrorCode.NOT_FOUND,
-        404
-      );
-    }
 
     logger.debug("Metadata retrieved successfully", {
       metadataId,

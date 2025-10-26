@@ -70,12 +70,16 @@ export class UploadMediaUseCase {
       height: uploadResult.height,
     });
 
-    // 4. Invalidate list caches (fire and forget - don't await)
-    void this.cache.invalidateMedia();
-
     logger.info("Media record saved to database", {
       mediaId: media.id,
       fileName: media.fileName,
+    });
+
+    // 4. Invalidate list caches (fire and forget - don't await, catch errors)
+    this.cache.invalidateMedia().catch((error) => {
+      logger.error("Cache invalidation failed (non-critical)", {
+        error: String(error),
+      });
     });
 
     return media;

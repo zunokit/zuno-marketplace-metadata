@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  validateApiVersion,
+  getCurrentApiVersion,
+} from "@/shared/lib/utils/api-version";
 
 /**
  * Global Middleware
@@ -7,8 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
  * - CORS headers
  * - Security headers
  * - Request ID generation
- *
- * Note: API versioning is handled in route handlers to avoid database calls in Edge Runtime
+ * - API version validation (early validation for better performance)
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,7 +24,40 @@ export async function proxy(request: NextRequest) {
       request.headers.get("accept-version") ||
       "v1"; // Default to v1
 
-    // Create response - version validation will happen in route handlers
+    // Early API version validation for better performance
+    try {
+      const isValidVersion = await validateApiVersion(clientVersion);
+
+      if (!isValidVersion) {
+        const currentVersion = await getCurrentApiVersion();
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "UNSUPPORTED_API_VERSION",
+              message: `Unsupported API version '${clientVersion}'. Supported version: ${currentVersion}`,
+              details: {
+                supportedVersion: currentVersion,
+                requestedVersion: clientVersion,
+              },
+            },
+          },
+          {
+            status: 400,
+            headers: {
+              "X-API-Version": clientVersion,
+              "X-API-Current-Version": currentVersion,
+              "X-API-Deprecated": "false",
+            },
+          }
+        );
+      }
+    } catch (error) {
+      // If version validation fails, log error but continue
+      console.warn("API version validation failed:", error);
+    }
+
+    // Create response
     const response = NextResponse.next();
 
     // Set internal header for use in route handlers
@@ -34,9 +70,12 @@ export async function proxy(request: NextRequest) {
     // Add CORS headers
     const origin = request.headers.get("origin");
     const corsOrigins = process.env.CORS_ORIGINS || "http://localhost:3000";
-    const allowedOrigins = corsOrigins.split(",").map(o => o.trim());
+    const allowedOrigins = corsOrigins.split(",").map((o) => o.trim());
 
-    if (origin && (allowedOrigins.includes("*") || allowedOrigins.includes(origin))) {
+    if (
+      origin &&
+      (allowedOrigins.includes("*") || allowedOrigins.includes(origin))
+    ) {
       response.headers.set("access-control-allow-origin", origin);
       response.headers.set("access-control-allow-credentials", "true");
     }
@@ -45,12 +84,21 @@ export async function proxy(request: NextRequest) {
     if (request.method === "OPTIONS") {
       const preflightResponse = new NextResponse(null, { status: 204 });
 
-      if (origin && (allowedOrigins.includes("*") || allowedOrigins.includes(origin))) {
+      if (
+        origin &&
+        (allowedOrigins.includes("*") || allowedOrigins.includes(origin))
+      ) {
         preflightResponse.headers.set("access-control-allow-origin", origin);
       }
 
-      preflightResponse.headers.set("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS");
-      preflightResponse.headers.set("access-control-allow-headers", "Content-Type, Authorization, X-API-Key, X-API-Version");
+      preflightResponse.headers.set(
+        "access-control-allow-methods",
+        "GET, POST, PUT, DELETE, OPTIONS"
+      );
+      preflightResponse.headers.set(
+        "access-control-allow-headers",
+        "Content-Type, Authorization, X-API-Key, X-API-Version"
+      );
       preflightResponse.headers.set("access-control-max-age", "86400"); // 24 hours
 
       return preflightResponse;

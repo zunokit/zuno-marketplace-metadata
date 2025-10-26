@@ -58,12 +58,17 @@ export class DeleteMediaUseCase {
       throw new ApiError("Failed to delete media from database", ErrorCode.INTERNAL_ERROR, 500);
     }
 
-    // 5. Invalidate cache (fire and forget - don't await)
-    void this.cache.invalidateMedia(mediaId);
-
     logger.info("Media deleted successfully", {
       mediaId,
       fileName: media.fileName,
+    });
+
+    // 5. Invalidate cache (fire and forget - don't await, catch errors)
+    this.cache.invalidateMedia(mediaId).catch((error) => {
+      logger.error("Cache invalidation failed (non-critical)", {
+        mediaId,
+        error: String(error),
+      });
     });
 
     return media;

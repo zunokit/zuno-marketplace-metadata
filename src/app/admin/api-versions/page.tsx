@@ -81,7 +81,7 @@ export default function ApiVersionsPage() {
           <DataTable
             columns={columns}
             data={versions}
-            loading={isLoading}
+            isLoading={isLoading}
             searchKey="label"
             searchPlaceholder="Search versions..."
           />

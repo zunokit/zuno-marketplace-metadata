@@ -86,23 +86,8 @@ export async function updateApiKey(
 
   const apiKey = unwrapOrThrow(result);
 
-  // Map service DTO to Better Auth format for DTO mapper
-  const betterAuthKey = {
-    id: apiKey.id as string,
-    name: apiKey.name as string | null,
-    start: apiKey.start as string | null,
-    userId: apiKey.userId as string,
-    enabled: apiKey.enabled as boolean,
-    permissions: apiKey.permissions as Record<string, string[]>,
-    metadata: apiKey.metadata as Record<string, unknown> | null,
-    expiresAt: apiKey.expiresAt as Date | null,
-    createdAt: apiKey.createdAt as Date,
-    updatedAt: apiKey.updatedAt as Date,
-    rateLimitEnabled: (apiKey.rateLimitEnabled as boolean) ?? null,
-    rateLimitMax: (apiKey.rateLimitMax as number) ?? null,
-    rateLimitTimeWindow: (apiKey.rateLimitTimeWindow as number) ?? null,
-    remaining: (apiKey.remaining as number) ?? null,
-  } as BetterAuthApiKey;
+  // Convert service DTO to Better Auth format using utility
+  const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(apiKey);
 
   // Map to response DTO
   return ApiKeyDtoMapper.toResponseDto(betterAuthKey);
@@ -133,23 +118,8 @@ export async function deleteApiKey(id: string) {
   const result = await ApiKeyService.delete(id, auth.api, await headers());
   unwrapOrThrow(result);
 
-  // Map service DTO to Better Auth format for DTO mapper
-  const betterAuthKey = {
-    id: existingKey.id,
-    name: existingKey.name,
-    userId: existingKey.userId,
-    enabled: existingKey.enabled,
-    permissions: existingKey.permissions,
-    metadata: existingKey.metadata,
-    expiresAt: existingKey.expiresAt,
-    createdAt: existingKey.createdAt,
-    updatedAt: existingKey.updatedAt,
-    start: existingKey.start ?? null,
-    rateLimitEnabled: existingKey.rateLimitEnabled ?? null,
-    rateLimitMax: existingKey.rateLimitMax ?? null,
-    rateLimitTimeWindow: existingKey.rateLimitTimeWindow ?? null,
-    remaining: existingKey.remaining ?? null,
-  };
+  // Convert service DTO to Better Auth format using utility
+  const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(existingKey);
 
   // Map to deleted response DTO
   return ApiKeyDtoMapper.toDeletedResponseDto(betterAuthKey);
@@ -209,23 +179,17 @@ export async function listApiKeys(input?: ListApiKeysInput["query"]) {
   const result = await ApiKeyService.list(params);
   const listResult = unwrapOrThrow(result);
 
-  // Map service DTOs to Better Auth format for DTO mapper
-  const betterAuthKeys = listResult.keys.map((key) => ({
-    id: key.id,
-    name: key.name,
-    start: key.start,
-    userId: key.userId,
-    enabled: key.enabled,
-    permissions: key.permissions,
-    metadata: (key.metadata as Record<string, unknown>) ?? null,
-    expiresAt: key.expiresAt,
-    createdAt: key.createdAt,
-    updatedAt: key.updatedAt,
-    rateLimitEnabled: null,
-    rateLimitMax: null,
-    rateLimitTimeWindow: null,
-    remaining: null,
-  }));
+  // Map service DTOs to Better Auth format using utility
+  const betterAuthKeys = listResult.keys.map((key) =>
+    ApiKeyDtoMapper.fromServiceResult({
+      ...key,
+      metadata: (key.metadata as Record<string, unknown>) ?? null,
+      rateLimitEnabled: null,
+      rateLimitMax: null,
+      rateLimitTimeWindow: null,
+      remaining: null,
+    })
+  );
 
   // Map to paginated DTO response
   return ApiKeyDtoMapper.toPaginatedResponseDto(

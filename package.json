@@ -14,7 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:create-admin": "tsx scripts/create-admin.ts",
-    "test": "npx tsx scripts/test-all.ts"
+    "test": "npx tsx scripts/test-all.ts",
+    "init-versions": "tsx scripts/init-api-versions.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

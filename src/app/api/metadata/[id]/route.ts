@@ -19,13 +19,11 @@ import {
  */
 export const GET = ApiWrapper.create<GetMetadataInput>(
   async (input, context) => {
-    const { params, query } = input;
+    const { params } = input;
     const { id } = params;
-    const version = query?.version;
 
     logger.info("Getting metadata by ID", {
       metadataId: id,
-      version,
       requestId: context.requestId,
     });
 
@@ -33,7 +31,6 @@ export const GET = ApiWrapper.create<GetMetadataInput>(
     const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository());
     const metadata = await getMetadataUseCase.execute({
       metadataId: id,
-      version,
     });
 
     return MetadataDtoMapper.toResponseDto(metadata);
@@ -45,7 +42,10 @@ export const GET = ApiWrapper.create<GetMetadataInput>(
     },
     validation: {
       params: getMetadataSchema.shape.params,
-      query: getMetadataSchema.shape.query,
+    },
+    versioning: {
+      required: true,
+      allowDeprecated: false,
     },
   }
 );
@@ -65,7 +65,9 @@ export const PUT = ApiWrapper.create<UpdateMetadataInput>(
     });
 
     // Execute use case
-    const updateMetadataUseCase = new UpdateMetadataUseCase(getMetadataRepository());
+    const updateMetadataUseCase = new UpdateMetadataUseCase(
+      getMetadataRepository()
+    );
     const updatedMetadata = await updateMetadataUseCase.execute({
       metadataId: id,
       updates: body,
@@ -81,6 +83,10 @@ export const PUT = ApiWrapper.create<UpdateMetadataInput>(
     validation: {
       params: updateMetadataSchema.shape.params,
       body: updateMetadataSchema.shape.body,
+    },
+    versioning: {
+      required: true,
+      allowDeprecated: false,
     },
   }
 );
@@ -100,7 +106,9 @@ export const DELETE = ApiWrapper.create<DeleteMetadataInput>(
     });
 
     // Execute use case
-    const deleteMetadataUseCase = new DeleteMetadataUseCase(getMetadataRepository());
+    const deleteMetadataUseCase = new DeleteMetadataUseCase(
+      getMetadataRepository()
+    );
     const metadata = await deleteMetadataUseCase.execute(id);
 
     return MetadataDtoMapper.toDeletedResponseDto(metadata);
@@ -112,6 +120,10 @@ export const DELETE = ApiWrapper.create<DeleteMetadataInput>(
     },
     validation: {
       params: deleteMetadataSchema.shape.params,
+    },
+    versioning: {
+      required: true,
+      allowDeprecated: false,
     },
   }
 );

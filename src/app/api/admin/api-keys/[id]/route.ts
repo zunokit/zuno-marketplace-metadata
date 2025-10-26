@@ -3,7 +3,10 @@ import { auth } from "@/infrastructure/auth/better-auth.config";
 import { ErrorCode } from "@/shared/types";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
-import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import {
+  ApiKeyDtoMapper,
+  type BetterAuthApiKey,
+} from "@/shared/dto/api-key.dto";
 import {
   updateApiKeySchema,
   deleteApiKeySchema,
@@ -26,10 +29,13 @@ export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
       auth.api,
       context.request.headers
     );
-    const apiKey = unwrapOrThrow(result);
+    const apiKeyData = unwrapOrThrow(result);
+
+    // Convert service result to BetterAuthApiKey format using utility
+    const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(apiKeyData);
 
     // Map to response DTO
-    return ApiKeyDtoMapper.toResponseDto(apiKey);
+    return ApiKeyDtoMapper.toResponseDto(betterAuthKey);
   },
   {
     auth: {
@@ -62,26 +68,15 @@ export const DELETE = ApiWrapper.create<DeleteApiKeyInput>(
     }
 
     // Delete through service layer (pass request headers for Better Auth session)
-    const result = await ApiKeyService.delete(id, auth.api, context.request.headers);
+    const result = await ApiKeyService.delete(
+      id,
+      auth.api,
+      context.request.headers
+    );
     unwrapOrThrow(result);
 
-    // Map service DTO to Better Auth format for DTO mapper
-    const betterAuthKey = {
-      id: existingKey.id,
-      name: existingKey.name,
-      userId: existingKey.userId,
-      enabled: existingKey.enabled,
-      permissions: existingKey.permissions,
-      metadata: existingKey.metadata,
-      expiresAt: existingKey.expiresAt,
-      createdAt: existingKey.createdAt,
-      updatedAt: existingKey.updatedAt,
-      start: existingKey.start ?? null,
-      rateLimitEnabled: existingKey.rateLimitEnabled ?? null,
-      rateLimitMax: existingKey.rateLimitMax ?? null,
-      rateLimitTimeWindow: existingKey.rateLimitTimeWindow ?? null,
-      remaining: existingKey.remaining ?? null,
-    };
+    // Convert service DTO to Better Auth format using utility
+    const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(existingKey);
 
     // Map to deleted response DTO
     return ApiKeyDtoMapper.toDeletedResponseDto(betterAuthKey);

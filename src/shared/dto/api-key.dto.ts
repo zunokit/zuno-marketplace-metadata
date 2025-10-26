@@ -39,7 +39,8 @@ export interface ApiKeyListItemDto {
 }
 
 // ============= PAGINATED API KEY RESPONSE DTO =============
-export interface PaginatedApiKeyResponseDto extends PaginatedResponse<ApiKeyListItemDto> {}
+export interface PaginatedApiKeyResponseDto
+  extends PaginatedResponse<ApiKeyListItemDto> {}
 
 // ============= CREATED API KEY RESPONSE DTO =============
 export interface CreatedApiKeyResponseDto {
@@ -80,6 +81,33 @@ export interface BetterAuthApiKey {
 
 // ============= API KEY DTO MAPPER =============
 export class ApiKeyDtoMapper {
+  /**
+   * Convert service result to BetterAuthApiKey format
+   * This utility helps avoid code duplication when mapping service responses
+   */
+  static fromServiceResult(
+    apiKeyData: Record<string, unknown>
+  ): BetterAuthApiKey {
+    return {
+      id: apiKeyData.id as string,
+      name: apiKeyData.name as string | null,
+      start: apiKeyData.start as string | null,
+      permissions: apiKeyData.permissions as
+        | string
+        | Record<string, string[]>
+        | null,
+      metadata: apiKeyData.metadata as string | Record<string, unknown> | null,
+      enabled: apiKeyData.enabled as boolean | null,
+      expiresAt: apiKeyData.expiresAt as string | Date | null,
+      createdAt: apiKeyData.createdAt as string | Date,
+      updatedAt: apiKeyData.updatedAt as string | Date,
+      rateLimitEnabled: apiKeyData.rateLimitEnabled as boolean | null,
+      rateLimitMax: apiKeyData.rateLimitMax as number | null,
+      rateLimitTimeWindow: apiKeyData.rateLimitTimeWindow as number | null,
+      remaining: apiKeyData.remaining as number | null,
+    };
+  }
+
   /**
    * Parse permissions from Better Auth response
    */
@@ -189,7 +217,9 @@ export class ApiKeyDtoMapper {
   /**
    * Map created Better Auth API key to response DTO
    */
-  static toCreatedResponseDto(apiKey: BetterAuthApiKey): CreatedApiKeyResponseDto {
+  static toCreatedResponseDto(
+    apiKey: BetterAuthApiKey
+  ): CreatedApiKeyResponseDto {
     const permissions = this.parsePermissions(apiKey.permissions);
 
     return {
@@ -207,7 +237,9 @@ export class ApiKeyDtoMapper {
   /**
    * Map deleted API key to response DTO
    */
-  static toDeletedResponseDto(apiKey: BetterAuthApiKey): DeletedApiKeyResponseDto {
+  static toDeletedResponseDto(
+    apiKey: BetterAuthApiKey
+  ): DeletedApiKeyResponseDto {
     return {
       message: "API key deleted successfully",
       deletedApiKey: {

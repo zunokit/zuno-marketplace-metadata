@@ -117,14 +117,19 @@ export class UpdateMetadataUseCase {
       throw new ApiError("Failed to update metadata", ErrorCode.INTERNAL_ERROR, 500);
     }
 
-    // 8. Invalidate cache (fire and forget - don't await)
-    void this.cache.invalidateMetadata(metadataId);
-
     logger.info("Metadata updated successfully", {
       metadataId,
       oldVersion: currentMetadata.version,
       newVersion: updatedMetadata.version,
       hasContentChanges,
+    });
+
+    // 8. Invalidate cache (fire and forget - don't await, catch errors)
+    this.cache.invalidateMetadata(metadataId).catch((error) => {
+      logger.error("Cache invalidation failed (non-critical)", {
+        metadataId,
+        error: String(error),
+      });
     });
 
     return updatedMetadata;

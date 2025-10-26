@@ -29,26 +29,23 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     const result = await ApiKeyService.list(params);
     const listResult = unwrapOrThrow(result);
 
-    // Map service DTOs to Better Auth format for DTO mapper
-    const betterAuthKeys = listResult.keys.map((key) => ({
-      id: key.id,
-      name: key.name,
-      start: key.start,
-      userId: key.userId,
-      enabled: key.enabled,
-      permissions: key.permissions,
-      metadata: (key.metadata as Record<string, unknown>) ?? null,
-      expiresAt: key.expiresAt,
-      createdAt: key.createdAt,
-      updatedAt: key.updatedAt,
-      rateLimitEnabled: null,
-      rateLimitMax: null,
-      rateLimitTimeWindow: null,
-      remaining: null,
-    }));
+    // Map service DTOs to Better Auth format using utility
+    const betterAuthKeys = listResult.keys.map((key) =>
+      ApiKeyDtoMapper.fromServiceResult({
+        ...key,
+        metadata: (key.metadata as Record<string, unknown>) ?? null,
+        rateLimitEnabled: null,
+        rateLimitMax: null,
+        rateLimitTimeWindow: null,
+        remaining: null,
+      })
+    );
 
     // Map to paginated DTO response
-    console.log("[GET /api/admin/api-keys] Better Auth keys:", JSON.stringify(betterAuthKeys, null, 2));
+    console.log(
+      "[GET /api/admin/api-keys] Better Auth keys:",
+      JSON.stringify(betterAuthKeys, null, 2)
+    );
     return ApiKeyDtoMapper.toPaginatedResponseDto(
       betterAuthKeys,
       input.query?.page || 1,
