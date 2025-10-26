@@ -1,25 +1,44 @@
-# Zuno Marketplace Metadata Management System
+<div align="center">
 
-A comprehensive metadata management platform for NFT marketplaces, built with Next.js 16, TypeScript, and modern web technologies. This system provides APIs and admin interfaces for managing NFT metadata, media files, and IPFS storage.
+# Zuno Marketplace Metadata
 
-## 🚀 Features
+**Enterprise-grade NFT Metadata Management Platform**
 
-### Core Functionality
+[![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
-- **Metadata Management**: Create, read, update, and delete NFT metadata following OpenSea standards
-- **Media Upload & Processing**: Support for images, videos, and animations with automatic optimization
-- **IPFS Integration**: Automatic pinning to Pinata IPFS for decentralized storage
-- **API Key Management**: Secure API access with scoped permissions
-- **Admin Dashboard**: Comprehensive web interface for system management
+A production-ready metadata management platform for NFT marketplaces. Built with Next.js 16, TypeScript, and Clean Architecture, providing OpenSea-compatible APIs, IPFS storage, and enterprise-grade infrastructure.
 
-### Technical Features
+[Features](#-features) • [Quick Start](#-quick-start) • [API Docs](#-api-documentation) • [Architecture](#-architecture) • [Deploy](#-deployment)
 
-- **OpenSea Compatible**: Full support for OpenSea metadata standards
-- **Multi-format Media**: Support for images, videos, animations, and audio files
-- **IPFS Storage**: Decentralized storage with Pinata integration
-- **Rate Limiting**: Built-in API rate limiting and throttling
-- **Authentication**: Secure API key-based authentication
-- **Background Jobs**: Asynchronous processing for media uploads and IPFS pinning
+</div>
+
+---
+
+## ✨ Features
+
+### 🎯 Core Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **NFT Metadata API** | RESTful API for creating and managing NFT metadata with OpenSea standard compliance |
+| **Media Processing** | Automatic image optimization, video transcoding, and CDN delivery via ImageKit |
+| **IPFS Storage** | Decentralized storage with automatic pinning to Pinata IPFS |
+| **API Key Management** | Scoped API keys with granular permissions (`metadata:read`, `metadata:write`, `media:read`, `media:write`) |
+| **Admin Dashboard** | Modern web interface for managing metadata, media, API keys, and system monitoring |
+| **Batch Operations** | Bulk create metadata and upload media files for efficient operations |
+
+### 🔧 Technical Highlights
+
+- ✅ **OpenSea & Magic Eden Compatible** - Industry-standard metadata format
+- ⚡ **Background Job Processing** - Asynchronous IPFS pinning with BullMQ
+- 🔐 **Multi-auth Support** - API keys for external integrations, sessions for admin dashboard
+- 📊 **Comprehensive Monitoring** - Health checks, audit logs, and request tracking
+- 🚀 **Production-Ready** - Rate limiting, CORS, error handling, and structured logging
+- 🏗️ **Clean Architecture** - Testable, maintainable, and scalable codebase
+- 💾 **Redis Caching** - Fast response times with intelligent cache invalidation
+- 📝 **API Versioning** - Backward-compatible API evolution
 
 ## 🏗️ Architecture
 
@@ -54,97 +73,206 @@ src/
 └── shared/               # Shared utilities and types
 ```
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- PostgreSQL database
-- Redis instance
-- ImageKit account
-- Pinata account
+| Requirement | Version | Purpose |
+|------------|---------|---------|
+| **Node.js** | 18+ | Runtime environment |
+| **PostgreSQL** | 14+ | Primary database |
+| **Redis** | 7+ | Caching & job queue |
+| **pnpm** | 8+ | Package manager |
 
-### Environment Setup
+### Third-Party Services
 
-1. **Environment Configuration**
-   Create a `.env.local` file with the following variables:
+- **[ImageKit](https://imagekit.io/)** - Media CDN and optimization
+- **[Pinata](https://pinata.cloud/)** - IPFS pinning service
+- **[Upstash](https://upstash.com/)** (optional) - Serverless Redis
 
-```env
-# Database
-DATABASE_URL=postgresql://username:password@localhost:5432/zuno_metadata
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-# Redis
-UPSTASH_REDIS_REST_URL=your_redis_url
-UPSTASH_REDIS_REST_TOKEN=your_redis_token
-
-# ImageKit
-IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
-IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
-IMAGEKIT_URL_ENDPOINT=your_imagekit_endpoint
-
-# Pinata IPFS
-PINATA_JWT=your_pinata_jwt
-PINATA_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
-
-# App Configuration
-NODE_ENV=development
-CORS_ORIGINS=http://localhost:3000
-LOG_LEVEL=info
-```
-
-2. **Database Setup**
+### Installation
 
 ```bash
-# Generate database migrations
-pnpm db:generate
+# Clone repository
+git clone https://github.com/your-org/zuno-marketplace-metadata.git
+cd zuno-marketplace-metadata
 
-# Run migrations
+# Install dependencies
+pnpm install
+
+# Copy environment template
+cp .env.example .env.local
+```
+
+### Environment Configuration
+
+Edit `.env.local` with your credentials:
+
+```env
+# Database (PostgreSQL or Supabase)
+DATABASE_URL=postgresql://user:password@localhost:5432/zuno_metadata
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-key
+
+# Redis Cache (Upstash or self-hosted)
+UPSTASH_REDIS_REST_URL=https://your-redis.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your-token
+
+# Media Processing (ImageKit)
+IMAGEKIT_PUBLIC_KEY=public_key
+IMAGEKIT_PRIVATE_KEY=private_key
+IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your-id
+
+# IPFS Storage (Pinata)
+PINATA_JWT=your-jwt-token
+PINATA_GATEWAY_URL=https://gateway.pinata.cloud/ipfs
+
+# Authentication
+BETTER_AUTH_SECRET=your-secret-min-32-chars
+BETTER_AUTH_URL=http://localhost:3000
+
+# Application
+NODE_ENV=development
+CORS_ORIGINS=http://localhost:3000
+LOG_LEVEL=debug
+CRON_SECRET=your-cron-secret
+
+# Admin Credentials
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=  # Leave empty for auto-generation
+```
+
+### Database Setup
+
+```bash
+# Run database migrations
 pnpm db:migrate
 
-# Create admin user
+# Create initial admin user
 pnpm db:create-admin
+
+# (Optional) Open Drizzle Studio to inspect database
+pnpm db:studio
 ```
+
+### Start Development Server
+
+```bash
+# Terminal 1: Start Next.js app
+pnpm dev
+
+# Terminal 2: Start background workers
+pnpm workers
+```
+
+Visit **http://localhost:3000** to access the application.
+Admin dashboard: **http://localhost:3000/admin**
 
 
 ## 📚 API Documentation
 
 ### Authentication
 
-All API endpoints (except health checks) require authentication via API key:
+All API endpoints require authentication via **API key** (except health checks):
 
 ```bash
-curl -H "Authorization: Bearer YOUR_API_KEY" \
-     -H "Content-Type: application/json" \
-     https://your-domain.com/api/metadata
+# Using Authorization header
+curl -X GET https://your-domain.com/api/metadata \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-version: v1" \
+  -H "Content-Type: application/json"
+
+# Using X-API-Key header
+curl -X GET https://your-domain.com/api/metadata \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "x-api-version: v1"
 ```
 
-### Core Endpoints
+**API Version Header**: Include `x-api-version: v1` or `accept-version: v1` in all requests.
+
+### Core API Endpoints
 
 #### Metadata Management
 
-- `GET /api/metadata` - List metadata entries
-- `POST /api/metadata` - Create new metadata
-- `GET /api/metadata/[id]` - Get specific metadata
-- `PUT /api/metadata/[id]` - Update metadata
-- `DELETE /api/metadata/[id]` - Delete metadata
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/metadata` | List metadata with pagination | Required |
+| `POST` | `/api/metadata` | Create new metadata | Required |
+| `POST` | `/api/metadata/batch` | Batch create multiple metadata | Required |
+| `GET` | `/api/metadata/[id]` | Get metadata by ID | Required |
+| `PUT` | `/api/metadata/[id]` | Update metadata | Required |
+| `DELETE` | `/api/metadata/[id]` | Delete metadata | Required |
 
 #### Media Management
 
-- `GET /api/media` - List media files
-- `POST /api/media` - Upload media file
-- `GET /api/media/[id]` - Get media details
-- `DELETE /api/media/[id]` - Delete media file
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/media` | List media files | Required |
+| `POST` | `/api/media` | Upload media file | Required |
+| `POST` | `/api/media/batch` | Batch upload media files | Required |
+| `GET` | `/api/media/[id]` | Get media details | Required |
+| `DELETE` | `/api/media/[id]` | Delete media file | Required |
 
-#### System
+#### System Health
 
-- `GET /api/health` - Health check endpoint
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/health` | Health check (DB, Redis, IPFS, Queue) | None |
 
-### Metadata Schema
+### Request Examples
 
-The system supports OpenSea-compatible metadata:
+<details>
+<summary><b>Create Metadata</b></summary>
+
+```bash
+curl -X POST https://your-domain.com/api/metadata \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-version: v1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Awesome NFT #1",
+    "description": "A unique digital collectible",
+    "image": "https://your-cdn.com/image.png",
+    "animation_url": "https://your-cdn.com/animation.mp4",
+    "external_url": "https://your-website.com",
+    "attributes": [
+      { "trait_type": "Rarity", "value": "Legendary" },
+      { "trait_type": "Power", "value": 95 }
+    ],
+    "creators": [
+      { "address": "0x1234...", "share": 100 }
+    ]
+  }'
+```
+
+</details>
+
+<details>
+<summary><b>Upload Media</b></summary>
+
+```bash
+curl -X POST https://your-domain.com/api/media \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-version: v1" \
+  -F "file=@./image.png" \
+  -F "alt=NFT Image"
+```
+
+</details>
+
+<details>
+<summary><b>List Metadata</b></summary>
+
+```bash
+curl -X GET "https://your-domain.com/api/metadata?page=1&limit=20&search=Awesome" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "x-api-version: v1"
+```
+
+</details>
+
+### OpenSea-Compatible Metadata Format
 
 ```json
 {
@@ -154,143 +282,289 @@ The system supports OpenSea-compatible metadata:
   "animation_url": "https://example.com/video.mp4",
   "external_url": "https://example.com",
   "attributes": [
-    {
-      "trait_type": "Color",
-      "value": "Blue"
-    }
+    { "trait_type": "Color", "value": "Blue" },
+    { "trait_type": "Level", "value": 5 }
   ],
   "creators": [
-    {
-      "address": "0x...",
-      "share": 100
-    }
+    { "address": "0x...", "share": 100 }
   ]
 }
 ```
 
+**Required Fields**: `name`, `image`
+**Creator Shares**: Must sum to exactly 100
+
 ## 🛠️ Development
 
-### Available Scripts
+### Available Commands
+
+#### Application
 
 ```bash
-pnpm dev          # Start development server
-pnpm build        # Build for production
-pnpm start        # Start production server
-pnpm lint         # Run ESLint
-pnpm typecheck    # Run TypeScript checks
+pnpm dev              # Start Next.js dev server
+pnpm build            # Build for production
+pnpm start            # Start production server
+pnpm workers          # Start BullMQ background workers
 ```
 
-### Database Scripts
+#### Code Quality
 
 ```bash
-pnpm db:generate     # Generate migrations
-pnpm db:migrate      # Run migrations
-pnpm db:studio       # Open Drizzle Studio
-pnpm db:push         # Push schema changes
-pnpm db:create-admin # Create admin user
+pnpm typecheck        # Run TypeScript type checking
+pnpm lint             # Run ESLint
+pnpm test             # Run all tests
 ```
 
-### Code Quality
+#### Database
 
-- **ESLint**: Code linting with TypeScript support
-- **Prettier**: Code formatting
-- **TypeScript**: Strict type checking
-- **Clean Architecture**: Separation of concerns
+```bash
+pnpm db:generate      # Generate migrations from schema changes
+pnpm db:migrate       # Apply pending migrations
+pnpm db:push          # Push schema directly (dev only)
+pnpm db:studio        # Open Drizzle Studio (GUI)
+pnpm db:create-admin  # Create admin user from .env
+```
+
+#### Utilities
+
+```bash
+pnpm init-versions    # Initialize API version data
+```
+
+### Development Workflow
+
+1. **Make schema changes** in `src/infrastructure/database/drizzle/schema/`
+2. **Generate migration**: `pnpm db:generate`
+3. **Apply migration**: `pnpm db:migrate`
+4. **Update types**: TypeScript types auto-update from schema
+
+### Code Quality Standards
+
+- **TypeScript Strict Mode** - Full type safety across the codebase
+- **ESLint** - Enforces code style and catches common errors
+- **Zod Validation** - Runtime type validation for all API inputs
+- **Clean Architecture** - Domain-driven design with clear layer separation
+- **Error Handling** - Consistent error responses with proper logging
 
 ## 🚀 Deployment
 
-### Production Build
+### Platform Support
 
-```bash
-pnpm build
-pnpm start
+This application can be deployed to:
+
+- **[Vercel](https://vercel.com)** - Recommended for Next.js (requires separate worker hosting)
+- **[Railway](https://railway.app)** - Full-stack deployment with workers
+- **[Docker](https://docker.com)** - Self-hosted containerized deployment
+- **AWS / GCP / Azure** - Cloud infrastructure deployment
+
+### Production Checklist
+
+- [ ] Set `NODE_ENV=production`
+- [ ] Configure all required environment variables
+- [ ] Set up PostgreSQL database (Supabase, Railway, etc.)
+- [ ] Set up Redis instance (Upstash, Railway, etc.)
+- [ ] Run database migrations: `pnpm db:migrate`
+- [ ] Create admin user: `pnpm db:create-admin`
+- [ ] Configure CORS origins for your domain
+- [ ] Set up SSL/TLS certificates
+- [ ] Deploy background workers separately (required for IPFS pinning)
+- [ ] Set up monitoring and logging
+- [ ] Configure cron jobs for `/api/cron/*` endpoints
+
+### Environment Variables (Production)
+
+```env
+# CRITICAL: Change these in production
+BETTER_AUTH_SECRET=<strong-random-secret-min-32-chars>
+CRON_SECRET=<strong-random-secret-for-cron-jobs>
+ADMIN_PASSWORD=<secure-admin-password>
+
+# Update these with production URLs
+BETTER_AUTH_URL=https://your-domain.com
+CORS_ORIGINS=https://your-domain.com,https://app.your-domain.com
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+
+# Production logging
+NODE_ENV=production
+LOG_LEVEL=info
 ```
 
-### Environment Variables
-
-Ensure all required environment variables are set in production:
-
-- Database connection strings
-- Redis configuration
-- ImageKit credentials
-- Pinata IPFS credentials
-- CORS origins for your domain
-
-### Database Migration
+### Docker Deployment
 
 ```bash
-pnpm db:migrate
+# Build production image
+docker build -t zuno-metadata .
+
+# Run with docker-compose
+docker-compose up -d
 ```
 
-## 📊 Monitoring
+### Worker Process
 
-### Health Checks
+**Important**: Background workers must run separately from the web server.
 
-The system provides comprehensive health monitoring:
+```bash
+# In production
+NODE_ENV=production pnpm workers
+```
 
-- Database connectivity
-- Redis cache status
-- ImageKit service status
-- Pinata IPFS connectivity
-- Background job queue status
+For platforms like Vercel (serverless), deploy workers to:
+- Railway
+- AWS Lambda with SQS
+- Google Cloud Run
+- Separate compute instance
 
-### Logging
+## 📊 Monitoring & Observability
 
-Structured logging with different levels:
+### Health Check Endpoint
 
-- `debug`: Detailed debugging information
-- `info`: General application flow
-- `warn`: Warning conditions
-- `error`: Error conditions
+**Endpoint**: `GET /api/health`
+
+Monitors:
+- ✅ PostgreSQL database connectivity
+- ✅ Redis cache availability
+- ✅ ImageKit service status
+- ✅ Pinata IPFS connectivity
+- ✅ BullMQ job queue health
+
+```bash
+curl https://your-domain.com/api/health
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "healthy",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "services": {
+      "database": "healthy",
+      "redis": "healthy",
+      "imagekit": "healthy",
+      "pinata": "healthy",
+      "queue": "healthy"
+    }
+  }
+}
+```
+
+### Audit Logging
+
+All API requests are logged to the database with:
+- User/API key identification
+- Request method and path
+- Response status and duration
+- IP address and user agent
+- Request/response metadata
+
+Access logs via admin dashboard or directly from `audit_logs` table.
+
+### Structured Logging
+
+Application uses structured logging with levels:
+
+| Level | Use Case |
+|-------|----------|
+| `debug` | Detailed debugging (dev only) |
+| `info` | Request/response tracking |
+| `warn` | Non-critical issues |
+| `error` | Critical errors requiring attention |
+
+Configure via `LOG_LEVEL` environment variable.
 
 ## 🔒 Security
 
-### API Security
+### Authentication & Authorization
 
-- API key authentication
-- Rate limiting and throttling
-- CORS protection
-- Input validation and sanitization
+- **API Key Authentication** - Scoped permissions for external integrations
+- **Session-based Auth** - Secure admin dashboard access via Better Auth
+- **Role-based Access Control** - Admin-only endpoints protected
+- **Permission Scopes** - Granular control (`metadata:read`, `metadata:write`, `media:read`, `media:write`)
 
-### Data Protection
+### API Protection
 
-- Secure database connections
-- Encrypted API keys
-- IPFS content addressing
-- Audit logging
+- ✅ **Rate Limiting** - Redis-backed rate limiting per API key
+- ✅ **CORS Protection** - Configurable allowed origins
+- ✅ **Input Validation** - Zod schema validation on all inputs
+- ✅ **SQL Injection Protection** - Parameterized queries via Drizzle ORM
+- ✅ **XSS Protection** - Sanitized inputs and outputs
+
+### Data Security
+
+- 🔐 **Encrypted Connections** - TLS/SSL for all external services
+- 🔐 **Hashed API Keys** - Never stored in plaintext
+- 🔐 **Environment Secrets** - Sensitive data in environment variables
+- 📝 **Audit Trail** - Complete request logging for compliance
+- 🛡️ **IPFS Content Addressing** - Tamper-proof content via CIDs
+
+### Best Practices
+
+1. **Rotate API keys regularly** via admin dashboard
+2. **Use environment variables** for all secrets (never commit)
+3. **Enable HTTPS** in production
+4. **Monitor audit logs** for suspicious activity
+5. **Keep dependencies updated** with `pnpm update`
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'feat: add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+We welcome contributions! Please follow these guidelines:
+
+### Development Process
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** with conventional commits: `git commit -m 'feat: add amazing feature'`
+4. **Test** your changes: `pnpm typecheck && pnpm lint`
+5. **Push** to your fork: `git push origin feature/amazing-feature`
+6. **Open** a Pull Request with detailed description
 
 ### Commit Convention
 
-We follow conventional commits:
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
-- `feat:` New features
-- `fix:` Bug fixes
-- `docs:` Documentation changes
-- `style:` Code style changes
-- `refactor:` Code refactoring
-- `test:` Adding tests
-- `chore:` Maintenance tasks
+| Type | Description | Example |
+|------|-------------|---------|
+| `feat` | New features | `feat: add batch delete metadata` |
+| `fix` | Bug fixes | `fix: correct IPFS hash validation` |
+| `docs` | Documentation | `docs: update API examples` |
+| `refactor` | Code refactoring | `refactor: simplify media service` |
+| `test` | Tests | `test: add metadata validation tests` |
+| `chore` | Maintenance | `chore: update dependencies` |
+| `perf` | Performance | `perf: optimize database queries` |
+
+### Code Standards
+
+- ✅ Run `pnpm typecheck` before committing
+- ✅ Follow existing code style (enforced by ESLint)
+- ✅ Add JSDoc comments for public functions
+- ✅ Update CLAUDE.md if changing architecture
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 📞 Support & Community
 
-For support and questions:
+### Getting Help
 
-- Create an issue in the repository
-- Check the documentation
-- Review the API endpoints
+- 📖 **Documentation** - Check [CLAUDE.md](CLAUDE.md) for architecture details
+- 🐛 **Issues** - [Report bugs or request features](https://github.com/your-org/zuno-marketplace-metadata/issues)
+- 💬 **Discussions** - [Community discussions](https://github.com/your-org/zuno-marketplace-metadata/discussions)
+
+### Resources
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Drizzle ORM](https://orm.drizzle.team/)
+- [Better Auth](https://www.better-auth.com/)
+- [OpenSea Metadata Standards](https://docs.opensea.io/docs/metadata-standards)
 
 ---
 
-Built with ❤️ for the Zuno Marketplace ecosystem.
+<div align="center">
+
+**Built with ❤️ for the Zuno Marketplace Ecosystem**
+
+[⭐ Star us on GitHub](https://github.com/your-org/zuno-marketplace-metadata) • [🐦 Follow updates](https://twitter.com/your-handle) • [📧 Contact](mailto:support@zuno-marketplace.com)
+
+</div>
