@@ -19,7 +19,7 @@ const pinataClient = PinataClient.getInstance();
 
 export async function GET(request: NextRequest) {
   // Security: Verify cron secret
-  const authHeader = request.headers.get("authorization");
+  const authHeader = request.headers.get("Authorization");
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {

@@ -1,0 +1,8 @@
+{
+  "deploymentProtection": {
+    "excludePaths": [
+      "/api/cron/process-metadata-ipfs",
+      "/api/cron/process-media-ipfs"
+    ]
+  }
+}
