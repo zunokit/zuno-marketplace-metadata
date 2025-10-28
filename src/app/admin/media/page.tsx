@@ -48,6 +48,7 @@ export default function MediaPage() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const { data: media, isLoading, error } = useMedia(1, 20);
+  console.log(media);
   const deleteMutation = useDeleteMedia();
 
   // Ensure media is always an array

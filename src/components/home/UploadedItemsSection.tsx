@@ -1,4 +1,4 @@
-import { UploadedItemCard } from "@/components/UploadedItemCard";
+import { UploadedItemCard } from "@/components/home/UploadedItemCard";
 
 interface UploadedItemsSectionProps {
   items: any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
