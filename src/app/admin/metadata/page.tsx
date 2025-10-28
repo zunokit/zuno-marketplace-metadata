@@ -184,7 +184,7 @@ export default function MetadataPage() {
                 )}
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">ID</label>
-                  <p className="mt-1 text-sm font-mono text-xs">{selectedMetadata.id}</p>
+                  <p className="mt-1 text-sm font-mono">{selectedMetadata.id}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Created</label>
