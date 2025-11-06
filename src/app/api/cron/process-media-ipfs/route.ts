@@ -6,7 +6,7 @@ import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants
 import { logger } from "@/shared/lib/utils/logger";
 import { tryCatch } from "@/shared/lib/utils/server";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
+import { getCacheService } from "@/infrastructure/di/container";
 
 /**
  * Cron endpoint to process unpinned media

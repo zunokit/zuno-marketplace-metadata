@@ -6,6 +6,8 @@ import type { MetadataRepository } from "@/core/domain/metadata/metadata.reposit
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import { AuditLogRepositoryImpl } from "@/infrastructure/repositories/audit-log.repository.impl";
 import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repository";
+import { CacheService } from "@/infrastructure/cache/cache.service";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 
 
 
@@ -14,6 +16,7 @@ let metadataRepositoryInstance: MetadataRepository | null = null;
 let mediaRepositoryInstance: MediaRepository | null = null;
 let imageKitServiceInstance: ImageKitService | null = null;
 let auditLogRepository: AuditLogRepository | null = null;
+let cacheServiceInstance: ICacheService | null = null;
 
 
 // ============= REPOSITORY FACTORIES =============
@@ -48,6 +51,13 @@ export function getAuditLogRepository(): AuditLogRepository {
   return auditLogRepository;
 }
 
+export function getCacheService(): ICacheService {
+  if (!cacheServiceInstance) {
+    cacheServiceInstance = new CacheService();
+  }
+  return cacheServiceInstance;
+}
+
 
 // ============= CLEANUP =============
 
@@ -56,4 +66,5 @@ export function clearContainer(): void {
   mediaRepositoryInstance = null;
   imageKitServiceInstance = null;
   auditLogRepository = null;
+  cacheServiceInstance = null;
 }

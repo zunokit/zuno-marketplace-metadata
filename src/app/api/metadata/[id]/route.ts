@@ -1,5 +1,5 @@
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { getMetadataRepository } from "@/infrastructure/di/container";
+import { getMetadataRepository, getCacheService } from "@/infrastructure/di/container";
 import { MetadataDtoMapper } from "@/shared/dto/metadata.dto";
 import { GetMetadataUseCase } from "@/core/use-cases/metadata/get-metadata.use-case";
 import { UpdateMetadataUseCase } from "@/core/use-cases/metadata/update-metadata.use-case";
@@ -28,7 +28,7 @@ export const GET = ApiWrapper.create<GetMetadataInput>(
     });
 
     // Execute use case
-    const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository());
+    const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository(), getCacheService());
     const metadata = await getMetadataUseCase.execute({
       metadataId: id,
     });
@@ -66,7 +66,8 @@ export const PUT = ApiWrapper.create<UpdateMetadataInput>(
 
     // Execute use case
     const updateMetadataUseCase = new UpdateMetadataUseCase(
-      getMetadataRepository()
+      getMetadataRepository(),
+      getCacheService()
     );
     const updatedMetadata = await updateMetadataUseCase.execute({
       metadataId: id,
@@ -107,7 +108,8 @@ export const DELETE = ApiWrapper.create<DeleteMetadataInput>(
 
     // Execute use case
     const deleteMetadataUseCase = new DeleteMetadataUseCase(
-      getMetadataRepository()
+      getMetadataRepository(),
+      getCacheService()
     );
     const metadata = await deleteMetadataUseCase.execute(id);
 
