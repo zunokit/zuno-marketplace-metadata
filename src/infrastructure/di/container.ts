@@ -1,9 +1,11 @@
 import { db } from "@/infrastructure/database/client";
 import { MetadataRepositoryImpl } from "@/infrastructure/repositories/metadata.repository.impl";
 import { MediaRepositoryImpl } from "@/infrastructure/repositories/media.repository.impl";
+import { ApiKeyRepositoryImpl } from "@/infrastructure/repositories/api-key.repository.impl";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type { MediaRepository } from "@/core/domain/media/media.repository";
+import type { ApiKeyRepository } from "@/core/domain/api-key/api-key.repository";
 import { AuditLogRepositoryImpl } from "@/infrastructure/repositories/audit-log.repository.impl";
 import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repository";
 
@@ -12,6 +14,7 @@ import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repos
 // ============= SINGLETON INSTANCES =============
 let metadataRepositoryInstance: MetadataRepository | null = null;
 let mediaRepositoryInstance: MediaRepository | null = null;
+let apiKeyRepositoryInstance: ApiKeyRepository | null = null;
 let imageKitServiceInstance: ImageKitService | null = null;
 let auditLogRepository: AuditLogRepository | null = null;
 
@@ -30,6 +33,13 @@ export function getMediaRepository(): MediaRepository {
     mediaRepositoryInstance = new MediaRepositoryImpl(db);
   }
   return mediaRepositoryInstance;
+}
+
+export function getApiKeyRepository(): ApiKeyRepository {
+  if (!apiKeyRepositoryInstance) {
+    apiKeyRepositoryInstance = new ApiKeyRepositoryImpl(db);
+  }
+  return apiKeyRepositoryInstance;
 }
 
 // ============= SERVICE FACTORIES =============
@@ -54,6 +64,7 @@ export function getAuditLogRepository(): AuditLogRepository {
 export function clearContainer(): void {
   metadataRepositoryInstance = null;
   mediaRepositoryInstance = null;
+  apiKeyRepositoryInstance = null;
   imageKitServiceInstance = null;
   auditLogRepository = null;
 }
