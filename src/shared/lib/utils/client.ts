@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Client-safe utilities
  * These utilities can be safely imported in Client Components

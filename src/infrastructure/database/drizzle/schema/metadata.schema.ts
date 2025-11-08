@@ -6,13 +6,19 @@ import {
   integer,
   jsonb,
 } from "drizzle-orm/pg-core";
-  import { mediaTypeEnum } from "./media.schema";
+import { mediaTypeEnum } from "./media.schema";
+import { user } from "./user.schema";
 
 // ============= METADATA =============
 export const metadata = pgTable("metadata", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+
+  // Ownership - required for access control
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
 
   // OpenSea Standard Fields
   name: text("name").notNull(),

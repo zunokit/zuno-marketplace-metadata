@@ -1,33 +1,43 @@
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
-import { ErrorCode } from "@/shared/types";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
+import { ErrorCode, type MediaType } from "@/shared/types";
+import {
+  validateFileSize,
+  getMaxFileSize,
+  formatFileSize
+} from "@/shared/config/file-size.config";
+import {
+  isValidImageType,
+  isValidVideoType,
+  isValid3DModelType,
+} from "@/shared/lib/utils";
 
 interface UploadMediaInput {
   file: File;
   folder?: string;
   tags?: string[];
+  userId: string; // Owner of the media (required for access control)
 }
 
 /**
  * Upload Media Use Case
- * Handles the business logic for uploading media files with cache invalidation
+ * Handles the business logic for uploading media files with cache invalidation and ownership tracking
  */
 export class UploadMediaUseCase {
-  private readonly cache = getCacheService();
-
   constructor(
     private readonly mediaRepository: MediaRepository,
-    private readonly imageKitService: ImageKitService
+    private readonly imageKitService: ImageKitService,
+    private readonly cache: ICacheService
   ) {}
 
   async execute(input: UploadMediaInput): Promise<MediaEntity> {
-    const { file, folder, tags } = input;
+    const { file, folder, tags, userId } = input;
 
-    // 1. Validate file
+    // 1. Validate file exists
     if (!file) {
       throw new ApiError("No file provided", ErrorCode.INVALID_INPUT, 400);
     }
@@ -36,10 +46,36 @@ export class UploadMediaUseCase {
       throw new ApiError("File is empty", ErrorCode.INVALID_INPUT, 400);
     }
 
+    // 2. Validate file type and get media type
+    const mediaType = this.getMediaType(file.type);
+    if (!mediaType) {
+      throw new ApiError(
+        `Unsupported file type: ${file.type}`,
+        ErrorCode.INVALID_INPUT,
+        400
+      );
+    }
+
+    // 3. Validate file size early (before uploading to ImageKit)
+    try {
+      validateFileSize(file.size, mediaType, file.name);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "File size validation failed";
+      logger.warn("File size validation failed", {
+        fileName: file.name,
+        fileSize: formatFileSize(file.size),
+        maxSize: formatFileSize(getMaxFileSize(mediaType)),
+        mediaType,
+      });
+      throw new ApiError(errorMessage, ErrorCode.INVALID_INPUT, 400);
+    }
+
     logger.info("Uploading file to ImageKit", {
       fileName: file.name,
-      fileSize: file.size,
+      fileSize: formatFileSize(file.size),
       fileType: file.type,
+      mediaType,
       folder,
       tags,
     });
@@ -58,8 +94,9 @@ export class UploadMediaUseCase {
       mediaType: uploadResult.mediaType,
     });
 
-    // 3. Save to database
+    // 3. Save to database with userId for ownership tracking
     const media = await this.mediaRepository.create({
+      userId,
       fileName: uploadResult.name,
       fileSize: uploadResult.size,
       mimeType: uploadResult.mimeType,
@@ -83,5 +120,21 @@ export class UploadMediaUseCase {
     });
 
     return media;
+  }
+
+  /**
+   * Determine media type from MIME type
+   */
+  private getMediaType(mimeType: string): MediaType | null {
+    if (isValidImageType(mimeType)) {
+      return mimeType === "image/gif" ? "GIF" : "IMAGE";
+    }
+    if (isValidVideoType(mimeType)) {
+      return "VIDEO";
+    }
+    if (isValid3DModelType(mimeType)) {
+      return "MODEL_3D";
+    }
+    return null;
   }
 }
