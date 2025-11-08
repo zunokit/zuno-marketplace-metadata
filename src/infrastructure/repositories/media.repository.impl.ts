@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, ilike, sql } from "drizzle-orm";
+import { eq, desc, asc, and, ilike, inArray, sql } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { media } from "@/infrastructure/database/drizzle/schema";
 import type { MediaRepository } from "@/core/domain/media/media.repository";
@@ -78,7 +78,7 @@ export class MediaRepositoryImpl implements MediaRepository {
   async list(params: MediaListParams): Promise<PaginatedResponse<MediaEntity>> {
     logger.debug("Listing media", { params });
 
-    const { page, limit, sortBy, sortOrder, search, mediaType, isPinned } =
+    const { page, limit, sortBy, sortOrder, search, mediaType, isPinned, userId } =
       params;
 
     // Build conditions
@@ -94,6 +94,11 @@ export class MediaRepositoryImpl implements MediaRepository {
 
     if (typeof isPinned === "boolean") {
       conditions.push(eq(media.isPinned, isPinned));
+    }
+
+    // Filter by userId for access control
+    if (userId) {
+      conditions.push(eq(media.userId, userId));
     }
 
     // Build base query with type safety
@@ -173,24 +178,60 @@ export class MediaRepositoryImpl implements MediaRepository {
   async createMany(params: CreateMediaParams[]): Promise<MediaEntity[]> {
     logger.debug("Creating multiple media", { count: params.length });
 
+    if (params.length === 0) {
+      return [];
+    }
+
     const values = params.map((param) => ({
       ...param,
       isPinned: false,
     }));
 
-    const results = await this.db.insert(media).values(values).returning();
+    // Use transaction to ensure all-or-nothing creation
+    return this.db.transaction(async (tx) => {
+      logger.debug("Executing batch media create in transaction", {
+        count: values.length,
+      });
 
-    return results.map((result) => this.mapToEntity(result));
+      const results = await tx.insert(media).values(values).returning();
+
+      logger.debug("Batch media create transaction committed", {
+        count: results.length,
+      });
+
+      return results.map((result) => this.mapToEntity(result));
+    });
   }
 
   async deleteMany(ids: string[]): Promise<number> {
     logger.debug("Deleting multiple media", { ids });
 
+    if (ids.length === 0) {
+      return 0;
+    }
+
     const result = await this.db
       .delete(media)
-      .where(sql`${media.id} = ANY(${ids})`);
+      .where(inArray(media.id, ids));
 
-    return extractRowCount(result);
+    // Use transaction to ensure atomicity
+    return this.db.transaction(async (tx) => {
+      logger.debug("Executing batch media delete in transaction", {
+        count: ids.length,
+      });
+
+      const result = await tx
+        .delete(media)
+        .where(sql`${media.id} = ANY(${ids})`);
+
+      const deletedCount = extractRowCount(result);
+
+      logger.debug("Batch media delete transaction committed", {
+        deletedCount,
+      });
+
+      return deletedCount;
+    });
   }
 
   async updateIpfsInfo(
@@ -232,6 +273,7 @@ export class MediaRepositoryImpl implements MediaRepository {
   private mapToEntity(row: MediaRow): MediaEntity {
     return {
       id: row.id,
+      userId: row.userId,
       fileName: row.fileName,
       fileSize: row.fileSize,
       mimeType: row.mimeType,

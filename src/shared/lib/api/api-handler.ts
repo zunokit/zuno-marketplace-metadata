@@ -91,6 +91,46 @@ export type InferApiInput<TConfig extends ApiRouteConfig> = {
     : undefined;
 };
 
+/**
+ * Set CORS headers on response
+ *
+ * Validates origin against allowed origins from environment config
+ * and sets appropriate CORS headers for cross-origin requests.
+ *
+ * @param response - NextResponse to add headers to
+ * @param request - Original NextRequest to get origin from
+ * @returns Modified response with CORS headers
+ */
+function setCorsHeaders(
+  response: NextResponse,
+  request: NextRequest
+): NextResponse {
+  const origin = request.headers.get("origin");
+  const allowedOrigins = getCorsOrigins();
+
+  // Check if origin is allowed
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+  } else if (allowedOrigins.includes("*")) {
+    // Allow all origins if wildcard is configured
+    response.headers.set("Access-Control-Allow-Origin", "*");
+  }
+
+  // Set other CORS headers
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-api-key, x-api-version, accept-version"
+  );
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
+
+  return response;
+}
+
 export class ApiWrapper {
   static create<TInput = unknown, TOutput = unknown>(
     handler: ApiHandler<TInput, TOutput>,
@@ -102,6 +142,13 @@ export class ApiWrapper {
     ) => {
       const startTime = Date.now();
       let statusCode = 200;
+
+      // Handle CORS preflight requests
+      if (request.method === "OPTIONS") {
+        const response = new NextResponse(null, { status: 204 });
+        setCorsHeaders(response, request);
+        return response;
+      }
 
       const handlerResult = await tryCatch(
         async () => {
@@ -202,6 +249,9 @@ export class ApiWrapper {
             },
           });
 
+          // Add CORS headers
+          setCorsHeaders(response, request);
+
           return response;
         },
         {
@@ -299,7 +349,18 @@ export class ApiWrapper {
       if (contentType?.includes("application/json")) {
         const jsonResult = await tryCatch(
           async () => {
+            // Security: Check request body size before parsing
             const text = await request.text();
+            const bodySize = new TextEncoder().encode(text).length;
+
+            if (bodySize > MAX_REQUEST_BODY_SIZE) {
+              throw new ApiError(
+                `Request body too large. Maximum allowed size is ${MAX_REQUEST_BODY_SIZE / 1024 / 1024}MB`,
+                ErrorCode.VALIDATION_ERROR,
+                413
+              );
+            }
+
             if (text.trim()) {
               return JSON.parse(text);
             }
@@ -596,6 +657,9 @@ export class ApiWrapper {
       }
       response.headers.set("X-RateLimit-Remaining", "0"); // Always 0 when rate limited
     }
+
+    // Add CORS headers
+    setCorsHeaders(response, request);
 
     return response;
   }

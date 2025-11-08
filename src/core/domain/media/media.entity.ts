@@ -3,6 +3,7 @@ import type { MediaType } from "@/shared/types";
 // ============= MEDIA ENTITY =============
 export interface MediaEntity {
   id: string;
+  userId: string; // Owner of the media
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -22,6 +23,7 @@ export interface MediaEntity {
 
 // ============= MEDIA CREATION =============
 export interface CreateMediaParams {
+  userId: string; // Owner of the media (required for access control)
   fileName: string;
   fileSize: number;
   mimeType: string;
@@ -52,6 +54,7 @@ export interface MediaListParams {
   search?: string;
   mediaType?: MediaType;
   isPinned?: boolean;
+  userId?: string; // Filter by owner (for access control)
 }
 
 // ============= MEDIA FILTERS =============
