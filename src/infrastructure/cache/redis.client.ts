@@ -1,6 +1,7 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
+import { logger } from "@/shared/lib/utils/logger";
 
 export const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,
@@ -67,7 +68,7 @@ export class RedisClient {
           return JSON.parse(value) as T;
         }
 
-        console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
+        logger.warn("Unexpected Redis value type", { key, type: typeof value });
         return null;
       },
       {

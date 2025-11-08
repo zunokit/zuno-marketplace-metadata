@@ -1,8 +1,11 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { env } from "@/shared/config/env";
 import * as schema from "./drizzle/schema";
 import { tryCatch } from "@/shared/lib/utils/server";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
 
 // Create database connection with optimized settings
 const connection = postgres(env.DATABASE_URL, {
@@ -29,6 +32,31 @@ const connection = postgres(env.DATABASE_URL, {
 
 // Create Drizzle instance
 export const db = drizzle(connection, { schema });
+
+// Transaction type for external use
+export type TransactionClient = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
+/**
+ * Execute operations in a database transaction
+ * All operations will be rolled back if any error occurs
+ *
+ * @example
+ * ```ts
+ * await transaction(async (tx) => {
+ *   await tx.insert(metadata).values([...]);
+ *   await tx.insert(media).values([...]);
+ * });
+ * ```
+ */
+export async function transaction<T>(
+  callback: (tx: TransactionClient) => Promise<T>
+): Promise<T> {
+  return db.transaction(callback);
+}
 
 // Connection health check
 export async function checkDbConnection(): Promise<boolean> {

@@ -1,7 +1,9 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { ErrorCode } from "@/shared/types";
 import {
   getMediaRepository,
   getImageKitService,
+  getCacheService,
 } from "@/infrastructure/di/container";
 import { MediaDtoMapper } from "@/shared/dto/media.dto";
 import {
@@ -9,7 +11,7 @@ import {
   UploadMediaSchema,
   type ListMediaInput,
   type UploadMediaInput,
-} from "@/shared/lib/validation/media.dto";
+} from "@/shared/lib/validation/media.schemas";
 import { ListMediaUseCase } from "@/core/use-cases/media/list-media.use-case";
 import { UploadMediaUseCase } from "@/core/use-cases/media/upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
@@ -28,7 +30,7 @@ export const GET = ApiWrapper.create<ListMediaInput>(
     });
 
     // Execute use case
-    const listMediaUseCase = new ListMediaUseCase(getMediaRepository());
+    const listMediaUseCase = new ListMediaUseCase(getMediaRepository(), getCacheService());
     const result = await listMediaUseCase.execute(query);
 
     return MediaDtoMapper.toPaginatedResponseDto(result);
@@ -51,9 +53,19 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
   async (input, context) => {
     const { body } = input;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Starting media upload", {
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
     // Extract file and optional parameters from form data
@@ -61,15 +73,17 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
     const folder = body.get("folder") as string | null;
     const tags = body.getAll("tags") as string[];
 
-    // Execute use case
+    // Execute use case with userId for ownership tracking
     const uploadMediaUseCase = new UploadMediaUseCase(
       getMediaRepository(),
-      getImageKitService()
+      getImageKitService(),
+      getCacheService()
     );
     const media = await uploadMediaUseCase.execute({
       file,
       folder: folder || undefined,
       tags: tags.length > 0 ? tags : undefined,
+      userId,
     });
 
     // Queue IPFS pinning job (async background task)

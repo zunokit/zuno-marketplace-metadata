@@ -14,6 +14,7 @@ import {
   tryCatchSync,
   unwrapOrThrow
 } from "@/shared/lib/utils/server";
+import { validateFileSize } from "@/shared/config/file-size.config";
 
 interface UploadOptions {
   file: File | Buffer;
@@ -82,11 +83,8 @@ export class ImageKitService {
           throw new Error(`Unsupported file type: ${mimeType}`);
         }
 
-        // Validate file size (100MB limit)
-        const maxSize = 100 * 1024 * 1024; // 100MB
-        if (fileBuffer.length > maxSize) {
-          throw new Error(`File too large. Maximum size is ${formatBytes(maxSize)}`);
-        }
+        // Validate file size based on media type
+        validateFileSize(fileBuffer.length, mediaType, sanitizedFileName);
 
         logger.info("Uploading file to ImageKit", {
           fileName: sanitizedFileName,
