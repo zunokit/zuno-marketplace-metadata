@@ -9,11 +9,13 @@ import { getCacheService } from "@/infrastructure/cache/cache.service";
 interface UpdateMetadataInput {
   metadataId: string;
   updates: UpdateMetadataParams & { version?: number };
+  userId?: string; // For ownership validation
+  isAdmin?: boolean; // Admins can update all metadata
 }
 
 /**
  * Update Metadata Use Case
- * Handles the business logic for updating metadata with cache invalidation
+ * Handles the business logic for updating metadata with cache invalidation and ownership validation
  */
 export class UpdateMetadataUseCase {
   private readonly cache = getCacheService();
@@ -21,9 +23,9 @@ export class UpdateMetadataUseCase {
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
   async execute(input: UpdateMetadataInput): Promise<MetadataEntity> {
-    const { metadataId, updates } = input;
+    const { metadataId, updates, userId, isAdmin = false } = input;
 
-    logger.info("Updating metadata", { metadataId });
+    logger.info("Updating metadata", { metadataId, userId, isAdmin });
 
     // 1. Get current metadata
     const currentMetadata = await this.metadataRepository.findById(metadataId);
@@ -33,7 +35,21 @@ export class UpdateMetadataUseCase {
       throw new ApiError(`Metadata with ID ${metadataId} not found`, ErrorCode.NOT_FOUND, 404);
     }
 
-    // 2. Check if locked
+    // 2. Ownership validation (IDOR protection)
+    if (!isAdmin && userId && currentMetadata.userId !== userId) {
+      logger.warn("Unauthorized update attempt to metadata", {
+        metadataId,
+        requestUserId: userId,
+        ownerUserId: currentMetadata.userId,
+      });
+      throw new ApiError(
+        "You do not have permission to update this metadata",
+        ErrorCode.FORBIDDEN,
+        403
+      );
+    }
+
+    // 3. Check if locked
     if (currentMetadata.isLocked) {
       logger.warn("Attempted to update locked metadata", {
         metadataId,

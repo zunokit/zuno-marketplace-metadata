@@ -11,11 +11,13 @@ import {
 
 interface GetMetadataInput {
   metadataId: string;
+  userId?: string; // For ownership validation
+  isAdmin?: boolean; // Admins can access all metadata
 }
 
 /**
  * Get Metadata Use Case
- * Handles the business logic for retrieving metadata with caching
+ * Handles the business logic for retrieving metadata with caching and ownership validation
  */
 export class GetMetadataUseCase {
   private readonly cache = getCacheService();
@@ -23,9 +25,9 @@ export class GetMetadataUseCase {
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
   async execute(input: GetMetadataInput): Promise<MetadataEntity> {
-    const { metadataId } = input;
+    const { metadataId, userId, isAdmin = false } = input;
 
-    logger.debug("Getting metadata by ID", { metadataId });
+    logger.debug("Getting metadata by ID", { metadataId, userId, isAdmin });
 
     // Use cache-aside pattern for single item retrieval
     const cacheKey = CacheKeyBuilder.metadata(metadataId);
@@ -48,6 +50,20 @@ export class GetMetadataUseCase {
       },
       CacheTTL.METADATA_ITEM
     );
+
+    // Ownership validation (IDOR protection)
+    if (!isAdmin && userId && metadata.userId !== userId) {
+      logger.warn("Unauthorized access attempt to metadata", {
+        metadataId,
+        requestUserId: userId,
+        ownerUserId: metadata.userId,
+      });
+      throw new ApiError(
+        "You do not have permission to access this metadata",
+        ErrorCode.FORBIDDEN,
+        403
+      );
+    }
 
     logger.debug("Metadata retrieved successfully", {
       metadataId,

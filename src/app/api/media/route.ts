@@ -1,4 +1,5 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { ErrorCode } from "@/shared/types";
 import {
   getMediaRepository,
   getImageKitService,
@@ -51,9 +52,19 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
   async (input, context) => {
     const { body } = input;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Starting media upload", {
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
     // Extract file and optional parameters from form data
@@ -61,7 +72,7 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
     const folder = body.get("folder") as string | null;
     const tags = body.getAll("tags") as string[];
 
-    // Execute use case
+    // Execute use case with userId for ownership tracking
     const uploadMediaUseCase = new UploadMediaUseCase(
       getMediaRepository(),
       getImageKitService()
@@ -70,6 +81,7 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
       file,
       folder: folder || undefined,
       tags: tags.length > 0 ? tags : undefined,
+      userId,
     });
 
     // Queue IPFS pinning job (async background task)

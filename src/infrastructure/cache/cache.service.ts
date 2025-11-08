@@ -50,6 +50,7 @@ export class CacheKeyBuilder {
     page?: number;
     limit?: number;
     search?: string;
+    userId?: string;
   }): string {
     const queryString = Object.entries(params)
       .filter(([_, value]) => value !== undefined && value !== null)

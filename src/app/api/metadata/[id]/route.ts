@@ -22,15 +22,23 @@ export const GET = ApiWrapper.create<GetMetadataInput>(
     const { params } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Getting metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
+    // Execute use case with ownership validation
     const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository());
     const metadata = await getMetadataUseCase.execute({
       metadataId: id,
+      userId,
+      isAdmin,
     });
 
     return MetadataDtoMapper.toResponseDto(metadata);
@@ -58,19 +66,26 @@ export const PUT = ApiWrapper.create<UpdateMetadataInput>(
     const { params, body } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Updating metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
+    // Execute use case with ownership validation
     const updateMetadataUseCase = new UpdateMetadataUseCase(
       getMetadataRepository()
     );
     const updatedMetadata = await updateMetadataUseCase.execute({
       metadataId: id,
       updates: body,
+      userId,
+      isAdmin,
     });
 
     return MetadataDtoMapper.toResponseDto(updatedMetadata);
@@ -99,17 +114,26 @@ export const DELETE = ApiWrapper.create<DeleteMetadataInput>(
     const { params } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Deleting metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
+    // Execute use case with ownership validation
     const deleteMetadataUseCase = new DeleteMetadataUseCase(
       getMetadataRepository()
     );
-    const metadata = await deleteMetadataUseCase.execute(id);
+    const metadata = await deleteMetadataUseCase.execute({
+      metadataId: id,
+      userId,
+      isAdmin,
+    });
 
     return MetadataDtoMapper.toDeletedResponseDto(metadata);
   },

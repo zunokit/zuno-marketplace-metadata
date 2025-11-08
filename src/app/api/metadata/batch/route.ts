@@ -21,10 +21,20 @@ export const POST = ApiWrapper.create<BatchCreateMetadataInput>(
     const { body } = input;
     const { metadata } = body;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Batch creating metadata", {
       count: metadata.length,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
     // Validate all items before processing
@@ -48,11 +58,17 @@ export const POST = ApiWrapper.create<BatchCreateMetadataInput>(
       }
     }
 
+    // Add userId to each metadata item for ownership tracking
+    const metadataWithUserId = metadata.map((item) => ({
+      ...item,
+      userId,
+    }));
+
     // Execute batch create use case
     const batchCreateUseCase = new BatchCreateMetadataUseCase(
       getMetadataRepository()
     );
-    const result = await batchCreateUseCase.execute({ metadata });
+    const result = await batchCreateUseCase.execute({ metadata: metadataWithUserId });
 
     logger.info("Batch metadata creation completed", {
       total: metadata.length,

@@ -10,11 +10,12 @@ interface UploadMediaInput {
   file: File;
   folder?: string;
   tags?: string[];
+  userId: string; // Owner of the media (required for access control)
 }
 
 /**
  * Upload Media Use Case
- * Handles the business logic for uploading media files with cache invalidation
+ * Handles the business logic for uploading media files with cache invalidation and ownership tracking
  */
 export class UploadMediaUseCase {
   private readonly cache = getCacheService();
@@ -25,7 +26,7 @@ export class UploadMediaUseCase {
   ) {}
 
   async execute(input: UploadMediaInput): Promise<MediaEntity> {
-    const { file, folder, tags } = input;
+    const { file, folder, tags, userId } = input;
 
     // 1. Validate file
     if (!file) {
@@ -58,8 +59,9 @@ export class UploadMediaUseCase {
       mediaType: uploadResult.mediaType,
     });
 
-    // 3. Save to database
+    // 3. Save to database with userId for ownership tracking
     const media = await this.mediaRepository.create({
+      userId,
       fileName: uploadResult.name,
       fileSize: uploadResult.size,
       mimeType: uploadResult.mimeType,

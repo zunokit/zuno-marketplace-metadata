@@ -10,6 +10,7 @@ interface BatchUploadMediaInput {
   files: File[];
   folder?: string;
   tags?: string[];
+  userId: string; // Owner of the media (required for access control)
 }
 
 interface BatchUploadMediaResult {
@@ -34,7 +35,7 @@ export class BatchUploadMediaUseCase {
   ) {}
 
   async execute(input: BatchUploadMediaInput): Promise<BatchUploadMediaResult> {
-    const { files, folder, tags } = input;
+    const { files, folder, tags, userId } = input;
 
     logger.info("Batch uploading media files", { count: files.length });
 
@@ -92,8 +93,9 @@ export class BatchUploadMediaUseCase {
           url: uploadResult.url,
         });
 
-        // Save to database
+        // Save to database with userId for ownership tracking
         const media = await this.mediaRepository.create({
+          userId,
           fileName: uploadResult.name,
           fileSize: uploadResult.size,
           mimeType: uploadResult.mimeType,

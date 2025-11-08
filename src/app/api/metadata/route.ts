@@ -25,20 +25,32 @@ export const GET = ApiWrapper.create<ListMetadataInput>(
   async (input, context) => {
     const { query } = input;
 
+    // Get userId for ownership filtering
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Listing metadata", {
       query,
       requestId: context.requestId,
+      userId,
+      isAdmin,
     });
 
     // Build list params using service
     const listParams = MetadataQueryService.buildListParams(query);
 
-    // Build cache key from query params
+    // For non-admin users, filter by userId to prevent IDOR
+    if (!isAdmin && userId) {
+      listParams.userId = userId;
+    }
+
+    // Build cache key from query params (include userId for user-specific caching)
     const cache = getCacheService();
     const cacheKey = CacheKeyBuilder.metadataList({
       page: listParams.page,
       limit: listParams.limit,
       search: listParams.search,
+      userId: listParams.userId, // Include in cache key
     });
 
     // Use cache-aside pattern for list queries
@@ -82,10 +94,20 @@ export const POST = ApiWrapper.create<CreateMetadataInput>(
   async (input, context) => {
     const { body } = input;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Creating new metadata", {
       name: body.name,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
     // Additional validation
@@ -105,9 +127,12 @@ export const POST = ApiWrapper.create<CreateMetadataInput>(
       );
     }
 
-    // Create metadata using repository - body already matches CreateMetadataParams
+    // Create metadata with userId for ownership tracking
     const metadataRepository = getMetadataRepository();
-    const metadataEntity = await metadataRepository.create(body);
+    const metadataEntity = await metadataRepository.create({
+      ...body,
+      userId, // Add userId for access control
+    });
 
     logger.info("Metadata created successfully", {
       metadataId: metadataEntity.id,

@@ -1,4 +1,5 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { ErrorCode } from "@/shared/types";
 import {
   getMediaRepository,
   getImageKitService,
@@ -19,9 +20,19 @@ export const POST = ApiWrapper.create<BatchUploadMediaInput>(
   async (input, context) => {
     const { body } = input;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Starting batch media upload", {
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
     // Extract files and optional parameters from form data
@@ -29,7 +40,7 @@ export const POST = ApiWrapper.create<BatchUploadMediaInput>(
     const folder = body.get("folder") as string | null;
     const tags = body.getAll("tags") as string[];
 
-    // Execute batch upload use case
+    // Execute batch upload use case with userId for ownership tracking
     const batchUploadUseCase = new BatchUploadMediaUseCase(
       getMediaRepository(),
       getImageKitService()
@@ -38,6 +49,7 @@ export const POST = ApiWrapper.create<BatchUploadMediaInput>(
       files,
       folder: folder || undefined,
       tags: tags.length > 0 ? tags : undefined,
+      userId,
     });
 
     logger.info("Batch media upload completed", {
