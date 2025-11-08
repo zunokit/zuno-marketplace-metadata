@@ -12,7 +12,9 @@ CREATE INDEX IF NOT EXISTS idx_metadata_is_pinned ON metadata(is_pinned);
 
 -- Index for name column with trigram for ILIKE searches
 -- Query: SELECT * FROM metadata WHERE name ILIKE '%search%'
--- Note: Requires pg_trgm extension for text search optimization
+-- Note: Requires pg_trgm extension and superuser privileges
+-- WARNING: If pg_trgm extension creation fails, the GIN index below will also fail
+-- In managed databases without superuser access, this section may need to be removed
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS idx_metadata_name_trgm ON metadata USING gin(name gin_trgm_ops);
 
@@ -52,18 +54,18 @@ CREATE INDEX IF NOT EXISTS idx_api_key_user_id ON api_key(user_id);
 -- Query: DELETE FROM api_key WHERE expires_at < NOW()
 CREATE INDEX IF NOT EXISTS idx_api_key_expires_at ON api_key(expires_at) WHERE expires_at IS NOT NULL;
 
--- Index for key hash (used in authentication lookups)
--- Query: SELECT * FROM api_key WHERE key_hash = ?
-CREATE INDEX IF NOT EXISTS idx_api_key_hash ON api_key(key_hash);
+-- Index for key (used in authentication lookups)
+-- Query: SELECT * FROM api_key WHERE key = ?
+CREATE INDEX IF NOT EXISTS idx_api_key_key ON api_key(key);
 
 -- ============================================
--- AUDIT LOG TABLE INDEXES (if exists)
+-- AUDIT LOGS TABLE INDEXES
 -- ============================================
 
 -- Index for createdAt for time-range queries
--- Query: SELECT * FROM audit_log WHERE created_at BETWEEN ? AND ?
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at DESC);
+-- Query: SELECT * FROM audit_logs WHERE created_at BETWEEN ? AND ?
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
 
 -- Composite index for user + timestamp
--- Query: SELECT * FROM audit_log WHERE user_id = ? ORDER BY created_at DESC
-CREATE INDEX IF NOT EXISTS idx_audit_log_user_created ON audit_log(user_id, created_at DESC);
+-- Query: SELECT * FROM audit_logs WHERE user_id = ? ORDER BY created_at DESC
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_created ON audit_logs(user_id, created_at DESC);
