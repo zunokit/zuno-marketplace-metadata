@@ -14,6 +14,7 @@ import {
   isVersionDeprecated,
   getCurrentApiVersion,
 } from "@/shared/lib/utils/api-version";
+import { getCorsOrigins } from "@/shared/config/env";
 
 export interface ApiContext {
   request: NextRequest;
@@ -87,6 +88,46 @@ export type InferApiInput<TConfig extends ApiRouteConfig> = {
     : undefined;
 };
 
+/**
+ * Set CORS headers on response
+ *
+ * Validates origin against allowed origins from environment config
+ * and sets appropriate CORS headers for cross-origin requests.
+ *
+ * @param response - NextResponse to add headers to
+ * @param request - Original NextRequest to get origin from
+ * @returns Modified response with CORS headers
+ */
+function setCorsHeaders(
+  response: NextResponse,
+  request: NextRequest
+): NextResponse {
+  const origin = request.headers.get("origin");
+  const allowedOrigins = getCorsOrigins();
+
+  // Check if origin is allowed
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+  } else if (allowedOrigins.includes("*")) {
+    // Allow all origins if wildcard is configured
+    response.headers.set("Access-Control-Allow-Origin", "*");
+  }
+
+  // Set other CORS headers
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-api-key, x-api-version, accept-version"
+  );
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
+
+  return response;
+}
+
 export class ApiWrapper {
   static create<TInput = unknown, TOutput = unknown>(
     handler: ApiHandler<TInput, TOutput>,
@@ -98,6 +139,13 @@ export class ApiWrapper {
     ) => {
       const startTime = Date.now();
       let statusCode = 200;
+
+      // Handle CORS preflight requests
+      if (request.method === "OPTIONS") {
+        const response = new NextResponse(null, { status: 204 });
+        setCorsHeaders(response, request);
+        return response;
+      }
 
       const handlerResult = await tryCatch(
         async () => {
@@ -197,6 +245,9 @@ export class ApiWrapper {
               responseSize: JSON.stringify(result).length,
             },
           });
+
+          // Add CORS headers
+          setCorsHeaders(response, request);
 
           return response;
         },
@@ -526,6 +577,9 @@ export class ApiWrapper {
         response.headers.set("Retry-After", String(details.retryAfter));
       }
     }
+
+    // Add CORS headers
+    setCorsHeaders(response, request);
 
     return response;
   }
