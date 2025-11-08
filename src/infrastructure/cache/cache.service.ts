@@ -52,7 +52,7 @@ export class CacheKeyBuilder {
     search?: string;
   }): string {
     const queryString = Object.entries(params)
-      .filter(([_, value]) => value !== undefined && value !== null)
+      .filter(([, value]) => value !== undefined && value !== null)
       .sort(([a], [b]) => a.localeCompare(b)) // Consistent ordering
       .map(([key, value]) => `${key}:${value}`)
       .join("_");
@@ -77,7 +77,7 @@ export class CacheKeyBuilder {
     mediaType?: string;
   }): string {
     const queryString = Object.entries(params)
-      .filter(([_, value]) => value !== undefined && value !== null)
+      .filter(([, value]) => value !== undefined && value !== null)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}:${value}`)
       .join("_");

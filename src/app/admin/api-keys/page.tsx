@@ -86,7 +86,7 @@ export default function ApiKeysPage() {
     setNewKey(null);
   };
 
-  const handleEdit = (key: ApiKeyViewModel) => {
+  const handleEdit = () => {
     // For now, we can only toggle enabled/disabled via the table
     // Editing permissions requires Better Auth update support
     toast.info("To modify this API key, use the toggle switch in the table to enable/disable it, or delete and recreate with new permissions.");

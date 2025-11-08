@@ -9,7 +9,6 @@ import { db } from "@/infrastructure/database/client";
 import { apiKey } from "@/infrastructure/database/drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/infrastructure/auth/better-auth.config";
-import type { BetterAuthOptions } from "better-auth";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { tryCatch, type TryCatchResult } from "@/shared/lib/utils/server";
@@ -51,27 +50,6 @@ export interface ApiKeyListResult {
   total: number;
   limit: number;
   offset: number;
-}
-
-// ============ Query Builder Helper ============
-
-class QueryBuilder<T> {
-  constructor(private query: T) {}
-
-  applyIf(condition: boolean, filterFn: (query: T) => T): QueryBuilder<T> {
-    if (condition) {
-      this.query = filterFn(this.query);
-    }
-    return this;
-  }
-
-  build(): T {
-    return this.query;
-  }
-}
-
-function buildQuery<T>(initialQuery: T): QueryBuilder<T> {
-  return new QueryBuilder(initialQuery);
 }
 
 // ============ API Key Service ============
