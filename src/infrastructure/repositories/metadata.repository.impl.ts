@@ -21,6 +21,8 @@ import type {
   MetadataListParams,
 } from "@/core/domain/metadata/metadata.entity";
 import type { PaginatedResponse } from "@/shared/types";
+import { ErrorCode } from "@/shared/types";
+import { ApiError } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
 import {
   hasRows,
@@ -123,13 +125,24 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       version: hasContentChanges ? current.version + 1 : current.version,
     };
 
+    // Optimistic locking: Update only if version matches
+    // This prevents lost updates from concurrent modifications
     const [result] = await this.db
       .update(metadata)
       .set(updateData)
-      .where(eq(metadata.id, id))
+      .where(and(eq(metadata.id, id), eq(metadata.version, current.version)))
       .returning();
 
-    return result ? this.mapToEntity(result) : null;
+    // If no rows were updated, version mismatch occurred
+    if (!result) {
+      throw new ApiError(
+        "Metadata was modified by another process. Please retry with the latest version.",
+        ErrorCode.CONFLICT,
+        409
+      );
+    }
+
+    return this.mapToEntity(result);
   }
 
   async delete(id: string): Promise<boolean> {
