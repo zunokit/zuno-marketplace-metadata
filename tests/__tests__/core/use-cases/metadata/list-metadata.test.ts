@@ -1,15 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { IMetadataRepository } from "@/core/domain/metadata/repository";
 import type { ListMetadataParams } from "@/core/domain/metadata/types";
 
 // Mock repository
 const mockMetadataRepository = (): IMetadataRepository => ({
-  create: vi.fn(),
-  findById: vi.fn(),
-  findAll: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-  count: vi.fn(),
+  create: jest.fn(),
+  findById: jest.fn(),
+  findAll: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  count: jest.fn(),
 });
 
 describe("ListMetadataUseCase", () => {
@@ -46,10 +45,10 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
-      vi.mocked(metadataRepository.count).mockResolvedValue(2);
+      jest.mocked(metadataRepository.count).mockResolvedValue(2);
 
       const result = await metadataRepository.findAll(params);
       const total = await metadataRepository.count({ apiKeyId: "api-key-id" });
@@ -79,7 +78,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 
@@ -111,7 +110,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 
@@ -141,7 +140,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 
@@ -180,7 +179,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 
@@ -222,7 +221,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 
@@ -249,7 +248,7 @@ describe("ListMetadataUseCase", () => {
           limit: testCase.limit,
         };
 
-        vi.mocked(metadataRepository.findAll).mockResolvedValue([]);
+        jest.mocked(metadataRepository.findAll).mockResolvedValue([]);
 
         await metadataRepository.findAll(params);
 
@@ -264,8 +263,8 @@ describe("ListMetadataUseCase", () => {
         limit: 20,
       };
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue([]);
-      vi.mocked(metadataRepository.count).mockResolvedValue(0);
+      jest.mocked(metadataRepository.findAll).mockResolvedValue([]);
+      jest.mocked(metadataRepository.count).mockResolvedValue(0);
 
       const result = await metadataRepository.findAll(params);
       const total = await metadataRepository.count({ apiKeyId: "api-key-id" });
@@ -300,7 +299,7 @@ describe("ListMetadataUseCase", () => {
         },
       ];
 
-      vi.mocked(metadataRepository.findAll).mockResolvedValue(
+      jest.mocked(metadataRepository.findAll).mockResolvedValue(
         mockMetadata as any
       );
 

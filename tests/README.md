@@ -1,6 +1,6 @@
 # Test Suite Documentation
 
-This directory contains comprehensive tests for the Zuno Marketplace Metadata Management System.
+This directory contains comprehensive tests for the Zuno Marketplace Metadata Management System using **Jest**.
 
 ## Test Structure
 
@@ -57,7 +57,7 @@ Located in `scripts/test-all.ts`, integration tests validate the entire system:
 
 ## Running Tests
 
-### Unit Tests (Vitest)
+### Unit Tests (Jest)
 
 ```bash
 # Run all unit tests once
@@ -65,9 +65,6 @@ pnpm test
 
 # Run tests in watch mode (for development)
 pnpm test:watch
-
-# Run tests with UI (interactive)
-pnpm test:ui
 
 # Run tests with coverage report
 pnpm test:coverage
@@ -158,12 +155,11 @@ The test suite covers:
 ### Unit Test Example
 
 ```typescript
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { IMetadataRepository } from "@/core/domain/metadata/repository";
 
 const mockMetadataRepository = (): IMetadataRepository => ({
-  create: vi.fn(),
-  findById: vi.fn(),
+  create: jest.fn(),
+  findById: jest.fn(),
   // ... other methods
 });
 
@@ -178,7 +174,7 @@ describe("YourFeature", () => {
     it("should do something", async () => {
       // Arrange
       const input = { /* test data */ };
-      vi.mocked(repository.create).mockResolvedValue(/* mock result */);
+      (repository.create as jest.Mock).mockResolvedValue(/* mock result */);
 
       // Act
       const result = await repository.create(input);
@@ -241,7 +237,7 @@ Tests are run automatically on:
 ### Tests Failing Locally
 
 1. **Check environment variables**: Ensure `.env` file is properly configured
-2. **Clear cache**: Run `rm -rf .vitest node_modules/.vitest`
+2. **Clear cache**: Run `rm -rf node_modules/.cache`
 3. **Reinstall dependencies**: Run `pnpm install`
 4. **Check for database connection**: Ensure PostgreSQL is running
 5. **Check for Redis connection**: Ensure Redis/Upstash is accessible
@@ -263,6 +259,7 @@ When adding new features:
 
 ## Resources
 
-- [Vitest Documentation](https://vitest.dev/)
+- [Jest Documentation](https://jestjs.io/)
 - [Testing Library](https://testing-library.com/)
 - [MSW (Mock Service Worker)](https://mswjs.io/)
+- [ts-jest](https://kulshekhar.github.io/ts-jest/)

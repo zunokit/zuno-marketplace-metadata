@@ -1,5 +1,4 @@
 import "@testing-library/jest-dom";
-import { beforeAll, afterAll, afterEach } from "vitest";
 
 // Global test setup
 beforeAll(() => {
@@ -20,6 +19,7 @@ beforeAll(() => {
 
 afterEach(() => {
   // Clean up after each test
+  jest.clearAllMocks();
 });
 
 afterAll(() => {

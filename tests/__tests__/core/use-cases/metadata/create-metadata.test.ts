@@ -1,15 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { IMetadataRepository } from "@/core/domain/metadata/repository";
 import type { CreateMetadataDTO } from "@/shared/dto/metadata/create-metadata.dto";
 
 // Mock repository
 const mockMetadataRepository = (): IMetadataRepository => ({
-  create: vi.fn(),
-  findById: vi.fn(),
-  findAll: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-  count: vi.fn(),
+  create: jest.fn(),
+  findById: jest.fn(),
+  findAll: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  count: jest.fn(),
 });
 
 describe("CreateMetadataUseCase", () => {
@@ -50,7 +49,7 @@ describe("CreateMetadataUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(metadataRepository.create).mockResolvedValue(
+      (metadataRepository.create as jest.Mock).mockResolvedValue(
         expectedMetadata as any
       );
 
@@ -106,7 +105,7 @@ describe("CreateMetadataUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(metadataRepository.create).mockResolvedValue(
+      (metadataRepository.create as jest.Mock).mockResolvedValue(
         expectedMetadata as any
       );
 
@@ -162,7 +161,7 @@ describe("CreateMetadataUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(metadataRepository.create).mockResolvedValue(
+      (metadataRepository.create as jest.Mock).mockResolvedValue(
         expectedMetadata as any
       );
 
@@ -222,7 +221,7 @@ describe("CreateMetadataUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(metadataRepository.create).mockResolvedValue(
+      (metadataRepository.create as jest.Mock).mockResolvedValue(
         expectedMetadata as any
       );
 
@@ -271,7 +270,7 @@ describe("CreateMetadataUseCase", () => {
           updatedAt: new Date(),
         };
 
-        vi.mocked(metadataRepository.create).mockResolvedValue(
+        (metadataRepository.create as jest.Mock).mockResolvedValue(
           expectedMetadata as any
         );
 

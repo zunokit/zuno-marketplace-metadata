@@ -1,13 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { IMediaRepository } from "@/core/domain/media/repository";
 
 // Mock repository
 const mockMediaRepository = (): IMediaRepository => ({
-  create: vi.fn(),
-  findById: vi.fn(),
-  findAll: vi.fn(),
-  delete: vi.fn(),
-  count: vi.fn(),
+  create: jest.fn(),
+  findById: jest.fn(),
+  findAll: jest.fn(),
+  delete: jest.fn(),
+  count: jest.fn(),
 });
 
 describe("UploadMediaUseCase", () => {
@@ -37,7 +35,7 @@ describe("UploadMediaUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+      jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
       const result = await mediaRepository.create({
         apiKeyId: "api-key-id",
@@ -77,7 +75,7 @@ describe("UploadMediaUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+      jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
       const result = await mediaRepository.create({
         apiKeyId: "api-key-id",
@@ -116,7 +114,7 @@ describe("UploadMediaUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+      jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
       const result = await mediaRepository.create({
         apiKeyId: "api-key-id",
@@ -154,7 +152,7 @@ describe("UploadMediaUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+      jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
       const result = await mediaRepository.create({
         apiKeyId: "api-key-id",
@@ -194,7 +192,7 @@ describe("UploadMediaUseCase", () => {
         updatedAt: new Date(),
       };
 
-      vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+      jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
       const result = await mediaRepository.create({
         apiKeyId: "api-key-id",
@@ -241,7 +239,7 @@ describe("UploadMediaUseCase", () => {
           updatedAt: new Date(),
         };
 
-        vi.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
+        jest.mocked(mediaRepository.create).mockResolvedValue(mockMedia);
 
         const result = await mediaRepository.create({
           apiKeyId: "api-key-id",
