@@ -1,5 +1,6 @@
 import { RedisClient } from "./redis.client";
 import { logger } from "@/shared/lib/utils/logger";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 
 /**
  * Cache Service
@@ -50,9 +51,10 @@ export class CacheKeyBuilder {
     page?: number;
     limit?: number;
     search?: string;
+    userId?: string;
   }): string {
     const queryString = Object.entries(params)
-      .filter(([_, value]) => value !== undefined && value !== null)
+      .filter(([, value]) => value !== undefined && value !== null)
       .sort(([a], [b]) => a.localeCompare(b)) // Consistent ordering
       .map(([key, value]) => `${key}:${value}`)
       .join("_");
@@ -77,7 +79,7 @@ export class CacheKeyBuilder {
     mediaType?: string;
   }): string {
     const queryString = Object.entries(params)
-      .filter(([_, value]) => value !== undefined && value !== null)
+      .filter(([, value]) => value !== undefined && value !== null)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, value]) => `${key}:${value}`)
       .join("_");
@@ -109,8 +111,9 @@ export class CacheKeyBuilder {
 
 /**
  * High-level cache service with business logic
+ * Implements ICacheService interface for dependency inversion
  */
-export class CacheService {
+export class CacheService implements ICacheService {
   private readonly redis: RedisClient;
 
   constructor() {
@@ -284,14 +287,4 @@ export class CacheService {
       return { totalKeys: 0, keys: [] };
     }
   }
-}
-
-// Singleton instance
-let cacheServiceInstance: CacheService | null = null;
-
-export function getCacheService(): CacheService {
-  if (!cacheServiceInstance) {
-    cacheServiceInstance = new CacheService();
-  }
-  return cacheServiceInstance;
 }

@@ -1,8 +1,12 @@
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
-import type { MetadataEntity, CreateMetadataParams } from "@/core/domain/metadata/metadata.entity";
+import type {
+  MetadataEntity,
+  CreateMetadataParams,
+} from "@/core/domain/metadata/metadata.entity";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { validateAttributes } from "@/shared/lib/validation/metadata.schemas";
 
 interface BatchCreateMetadataInput {
   metadata: CreateMetadataParams[];
@@ -24,7 +28,9 @@ interface BatchCreateMetadataResult {
 export class BatchCreateMetadataUseCase {
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
-  async execute(input: BatchCreateMetadataInput): Promise<BatchCreateMetadataResult> {
+  async execute(
+    input: BatchCreateMetadataInput
+  ): Promise<BatchCreateMetadataResult> {
     const { metadata } = input;
 
     logger.info("Batch creating metadata", { count: metadata.length });
@@ -56,6 +62,26 @@ export class BatchCreateMetadataUseCase {
     for (let i = 0; i < metadata.length; i++) {
       try {
         const item = metadata[i];
+
+        // Defense-in-depth validation
+        if (!validateAttributes(item.attributes ?? [])) {
+          throw new ApiError(
+            `Invalid attributes at index ${i}: duplicate trait types found`,
+            ErrorCode.VALIDATION_ERROR,
+            400
+          );
+        }
+
+        if (Array.isArray(item.creators) && item.creators.length > 0) {
+          const sum = item.creators.reduce((acc, c) => acc + (c.share ?? 0), 0);
+          if (sum !== 100) {
+            throw new ApiError(
+              `Invalid creators at index ${i}: shares must sum to exactly 100`,
+              ErrorCode.VALIDATION_ERROR,
+              400
+            );
+          }
+        }
         const created = await this.metadataRepository.create(item);
         success.push(created);
 
@@ -65,7 +91,8 @@ export class BatchCreateMetadataUseCase {
           name: created.name,
         });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const errorMessage =
+          error instanceof Error ? error.message : "Unknown error";
         failed.push({
           index: i,
           error: errorMessage,

@@ -78,7 +78,7 @@ export class MediaRepositoryImpl implements MediaRepository {
   async list(params: MediaListParams): Promise<PaginatedResponse<MediaEntity>> {
     logger.debug("Listing media", { params });
 
-    const { page, limit, sortBy, sortOrder, search, mediaType, isPinned } =
+    const { page, limit, sortBy, sortOrder, search, mediaType, isPinned, userId } =
       params;
 
     // Build conditions
@@ -94,6 +94,11 @@ export class MediaRepositoryImpl implements MediaRepository {
 
     if (typeof isPinned === "boolean") {
       conditions.push(eq(media.isPinned, isPinned));
+    }
+
+    // Filter by userId for access control
+    if (userId) {
+      conditions.push(eq(media.userId, userId));
     }
 
     // Build base query with type safety
@@ -232,6 +237,7 @@ export class MediaRepositoryImpl implements MediaRepository {
   private mapToEntity(row: MediaRow): MediaEntity {
     return {
       id: row.id,
+      userId: row.userId,
       fileName: row.fileName,
       fileSize: row.fileSize,
       mimeType: row.mimeType,

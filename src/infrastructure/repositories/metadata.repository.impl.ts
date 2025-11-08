@@ -4,11 +4,8 @@ import {
   asc,
   and,
   or,
-  gte,
-  lte,
   ilike,
   sql,
-  count,
 } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { metadata } from "@/infrastructure/database/drizzle/schema";
@@ -25,7 +22,6 @@ import { logger } from "@/shared/lib/utils/logger";
 import {
   hasRows,
   extractRowCount,
-  buildQuery,
   countSql,
 } from "@/shared/lib/utils/drizzle-helpers";
 
@@ -163,6 +159,7 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       search,
       isPinned,
       isLocked,
+      userId,
     } = params;
 
     // Build conditions
@@ -184,6 +181,11 @@ export class MetadataRepositoryImpl implements MetadataRepository {
 
     if (typeof isLocked === "boolean") {
       conditions.push(eq(metadata.isLocked, isLocked));
+    }
+
+    // Filter by userId for access control
+    if (userId) {
+      conditions.push(eq(metadata.userId, userId));
     }
 
     // Apply conditions
@@ -357,6 +359,7 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   private mapToEntity(row: Metadata): MetadataEntity {
     return {
       id: row.id,
+      userId: row.userId,
       name: row.name,
       description: row.description ?? undefined,
       symbol: row.symbol ?? undefined,
