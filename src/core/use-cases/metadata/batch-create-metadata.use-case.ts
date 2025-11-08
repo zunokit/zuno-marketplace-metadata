@@ -45,49 +45,74 @@ export class BatchCreateMetadataUseCase {
       );
     }
 
-    const success: MetadataEntity[] = [];
-    const failed: Array<{
-      index: number;
-      error: string;
-      data: CreateMetadataParams;
-    }> = [];
+    // Try atomic batch creation first (using transaction)
+    try {
+      logger.debug("Attempting atomic batch creation with transaction");
 
-    // Process each metadata item individually for better error handling
-    for (let i = 0; i < metadata.length; i++) {
-      try {
-        const item = metadata[i];
-        const created = await this.metadataRepository.create(item);
-        success.push(created);
+      const created = await this.metadataRepository.createMany(metadata);
 
-        logger.debug("Metadata item created in batch", {
-          index: i,
-          metadataId: created.id,
-          name: created.name,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        failed.push({
-          index: i,
-          error: errorMessage,
-          data: metadata[i],
-        });
+      logger.info("Batch metadata creation completed atomically", {
+        total: metadata.length,
+        success: created.length,
+        failed: 0,
+      });
 
-        logger.warn("Failed to create metadata item in batch", {
-          index: i,
-          error: errorMessage,
-        });
+      return {
+        success: created,
+        failed: [],
+      };
+    } catch (error) {
+      // If atomic operation fails, fall back to individual processing
+      // to identify which specific items failed
+      logger.warn("Atomic batch creation failed, falling back to individual processing", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      const success: MetadataEntity[] = [];
+      const failed: Array<{
+        index: number;
+        error: string;
+        data: CreateMetadataParams;
+      }> = [];
+
+      // Process each metadata item individually for detailed error reporting
+      for (let i = 0; i < metadata.length; i++) {
+        try {
+          const item = metadata[i];
+          const created = await this.metadataRepository.create(item);
+          success.push(created);
+
+          logger.debug("Metadata item created in batch", {
+            index: i,
+            metadataId: created.id,
+            name: created.name,
+          });
+        } catch (itemError) {
+          const errorMessage =
+            itemError instanceof Error ? itemError.message : "Unknown error";
+          failed.push({
+            index: i,
+            error: errorMessage,
+            data: metadata[i],
+          });
+
+          logger.warn("Failed to create metadata item in batch", {
+            index: i,
+            error: errorMessage,
+          });
+        }
       }
+
+      logger.info("Batch metadata creation completed with fallback", {
+        total: metadata.length,
+        success: success.length,
+        failed: failed.length,
+      });
+
+      return {
+        success,
+        failed,
+      };
     }
-
-    logger.info("Batch metadata creation completed", {
-      total: metadata.length,
-      success: success.length,
-      failed: failed.length,
-    });
-
-    return {
-      success,
-      failed,
-    };
   }
 }

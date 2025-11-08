@@ -173,24 +173,56 @@ export class MediaRepositoryImpl implements MediaRepository {
   async createMany(params: CreateMediaParams[]): Promise<MediaEntity[]> {
     logger.debug("Creating multiple media", { count: params.length });
 
+    if (params.length === 0) {
+      return [];
+    }
+
     const values = params.map((param) => ({
       ...param,
       isPinned: false,
     }));
 
-    const results = await this.db.insert(media).values(values).returning();
+    // Use transaction to ensure all-or-nothing creation
+    return this.db.transaction(async (tx) => {
+      logger.debug("Executing batch media create in transaction", {
+        count: values.length,
+      });
 
-    return results.map((result) => this.mapToEntity(result));
+      const results = await tx.insert(media).values(values).returning();
+
+      logger.debug("Batch media create transaction committed", {
+        count: results.length,
+      });
+
+      return results.map((result) => this.mapToEntity(result));
+    });
   }
 
   async deleteMany(ids: string[]): Promise<number> {
     logger.debug("Deleting multiple media", { ids });
 
-    const result = await this.db
-      .delete(media)
-      .where(sql`${media.id} = ANY(${ids})`);
+    if (ids.length === 0) {
+      return 0;
+    }
 
-    return extractRowCount(result);
+    // Use transaction to ensure atomicity
+    return this.db.transaction(async (tx) => {
+      logger.debug("Executing batch media delete in transaction", {
+        count: ids.length,
+      });
+
+      const result = await tx
+        .delete(media)
+        .where(sql`${media.id} = ANY(${ids})`);
+
+      const deletedCount = extractRowCount(result);
+
+      logger.debug("Batch media delete transaction committed", {
+        deletedCount,
+      });
+
+      return deletedCount;
+    });
   }
 
   async updateIpfsInfo(
