@@ -14,6 +14,10 @@ import {
   isVersionDeprecated,
   getCurrentApiVersion,
 } from "@/shared/lib/utils/api-version";
+import {
+  RateLimitService,
+  RateLimitError,
+} from "@/infrastructure/services/rate-limit.service";
 
 export interface ApiContext {
   request: NextRequest;
@@ -403,6 +407,61 @@ export class ApiWrapper {
             userId: context.apiKey.userId,
             scopes: context.apiKey.scopes,
           });
+
+          // Check rate limits for API key requests
+          try {
+            const rateLimitResult = await RateLimitService.checkLimit(
+              { id: apiKey.id, metadata: apiKey.metadata || null },
+              {
+                ip: getIpAddress(request),
+                origin: request.headers.get("origin") || undefined,
+              }
+            );
+
+            // Store rate limit info in context for response headers
+            context.rateLimit = {
+              limit: rateLimitResult.limit,
+              remaining: rateLimitResult.remaining,
+              reset: rateLimitResult.reset,
+            };
+
+            logger.debug("Rate limit check passed", {
+              keyId: apiKey.id,
+              tier: rateLimitResult.tier,
+              remaining: rateLimitResult.remaining,
+            });
+          } catch (error) {
+            if (error instanceof RateLimitError) {
+              // Store rate limit info even for exceeded limits
+              context.rateLimit = {
+                limit: error.result.limit,
+                remaining: error.result.remaining,
+                reset: error.result.reset,
+              };
+
+              logger.warn("Rate limit exceeded", {
+                keyId: apiKey.id,
+                tier: error.result.tier,
+                retryAfter: error.result.retryAfter,
+              });
+
+              throw new ApiError(
+                error.message,
+                ErrorCode.RATE_LIMIT_EXCEEDED,
+                429,
+                {
+                  retryAfter: error.result.retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset,
+                }
+              );
+            }
+            // Other errors are logged and ignored (fail open)
+            logger.error("Rate limit check failed", {
+              keyId: apiKey.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
         }
       }
     }
@@ -519,12 +578,23 @@ export class ApiWrapper {
     response.headers.set("X-Request-ID", requestId);
     response.headers.set("X-API-Version", "v1.0.0");
 
+    // Add rate limit headers for 429 responses
     if (apiError.statusCode === 429 && apiError.details) {
-      // Type-safe check for retryAfter in details
       const details = apiError.details as Record<string, unknown>;
+
+      // Set Retry-After header
       if (typeof details.retryAfter === "number") {
         response.headers.set("Retry-After", String(details.retryAfter));
       }
+
+      // Set rate limit headers
+      if (typeof details.limit === "number") {
+        response.headers.set("X-RateLimit-Limit", String(details.limit));
+      }
+      if (typeof details.reset === "number") {
+        response.headers.set("X-RateLimit-Reset", String(details.reset));
+      }
+      response.headers.set("X-RateLimit-Remaining", "0"); // Always 0 when rate limited
     }
 
     return response;
