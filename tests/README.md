@@ -26,9 +26,13 @@ tests/
 │       └── validation/         # Validation schema tests
 │           ├── metadata-validation.test.ts
 │           └── media-validation.test.ts
-├── setup.ts                    # Global test setup
+├── setup/
+│   ├── jest.config.ts          # Jest configuration
+│   └── jest.setup.ts           # Jest global test setup
 └── README.md                   # This file
 ```
+
+**Note:** All Jest configuration is centralized in the `tests/setup/` directory for a clean project structure.
 
 ## Test Types
 

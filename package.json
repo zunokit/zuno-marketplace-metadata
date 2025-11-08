@@ -14,9 +14,9 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:create-admin": "tsx scripts/create-admin.ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "jest --config tests/setup/jest.config.ts",
+    "test:watch": "jest --watch --config tests/setup/jest.config.ts",
+    "test:coverage": "jest --coverage --config tests/setup/jest.config.ts",
     "test:e2e": "npx tsx scripts/test-all.ts",
     "test:all": "pnpm test && pnpm test:e2e",
     "init-versions": "tsx scripts/init-api-versions.ts"
