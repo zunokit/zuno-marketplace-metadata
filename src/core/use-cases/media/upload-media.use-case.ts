@@ -3,8 +3,19 @@ import type { MediaEntity } from "@/core/domain/media/media.entity";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
-import { ErrorCode } from "@/shared/types";
+import { ErrorCode, type MediaType } from "@/shared/types";
 import { getCacheService } from "@/infrastructure/cache/cache.service";
+import {
+  validateFileSize,
+  
+  getMaxFileSize,
+  formatFileSize
+} from "@/shared/config/file-size.config";
+import {
+  isValidImageType,
+  isValidVideoType,
+  isValid3DModelType,
+} from "@/shared/lib/utils";
 
 interface UploadMediaInput {
   file: File;
@@ -27,7 +38,7 @@ export class UploadMediaUseCase {
   async execute(input: UploadMediaInput): Promise<MediaEntity> {
     const { file, folder, tags } = input;
 
-    // 1. Validate file
+    // 1. Validate file exists
     if (!file) {
       throw new ApiError("No file provided", ErrorCode.INVALID_INPUT, 400);
     }
@@ -36,10 +47,36 @@ export class UploadMediaUseCase {
       throw new ApiError("File is empty", ErrorCode.INVALID_INPUT, 400);
     }
 
+    // 2. Validate file type and get media type
+    const mediaType = this.getMediaType(file.type);
+    if (!mediaType) {
+      throw new ApiError(
+        `Unsupported file type: ${file.type}`,
+        ErrorCode.INVALID_INPUT,
+        400
+      );
+    }
+
+    // 3. Validate file size early (before uploading to ImageKit)
+    try {
+      validateFileSize(file.size, mediaType, file.name);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "File size validation failed";
+      logger.warn("File size validation failed", {
+        fileName: file.name,
+        fileSize: formatFileSize(file.size),
+        maxSize: formatFileSize(getMaxFileSize(mediaType)),
+        mediaType,
+      });
+      throw new ApiError(errorMessage, ErrorCode.INVALID_INPUT, 400);
+    }
+
     logger.info("Uploading file to ImageKit", {
       fileName: file.name,
-      fileSize: file.size,
+      fileSize: formatFileSize(file.size),
       fileType: file.type,
+      mediaType,
       folder,
       tags,
     });
@@ -83,5 +120,21 @@ export class UploadMediaUseCase {
     });
 
     return media;
+  }
+
+  /**
+   * Determine media type from MIME type
+   */
+  private getMediaType(mimeType: string): MediaType | null {
+    if (isValidImageType(mimeType)) {
+      return mimeType === "image/gif" ? "GIF" : "IMAGE";
+    }
+    if (isValidVideoType(mimeType)) {
+      return "VIDEO";
+    }
+    if (isValid3DModelType(mimeType)) {
+      return "MODEL_3D";
+    }
+    return null;
   }
 }
