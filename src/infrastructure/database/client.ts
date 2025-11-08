@@ -42,11 +42,6 @@ const poolConfig = {
   // - Fails fast on connection issues
   connect_timeout: 5,
 
-  // Query timeout: max time for a single query
-  // - 30 seconds prevents long-running queries from blocking
-  // - Protects against inefficient queries
-  timeout: 30,
-
   // Connection lifetime: max age before recycling
   // - 30 minutes (1800s) prevents stale connections
   // - Balances between reuse and freshness
@@ -80,7 +75,6 @@ if (isDev) {
     max: poolConfig.max,
     idle_timeout: poolConfig.idle_timeout,
     connect_timeout: poolConfig.connect_timeout,
-    timeout: poolConfig.timeout,
     max_lifetime: poolConfig.max_lifetime,
   });
 }
@@ -134,14 +128,12 @@ export function getPoolStats(): {
   max: number;
   idle_timeout: number;
   connect_timeout: number;
-  timeout: number;
   max_lifetime: number;
 } {
   return {
     max: poolConfig.max,
     idle_timeout: poolConfig.idle_timeout,
     connect_timeout: poolConfig.connect_timeout,
-    timeout: poolConfig.timeout,
     max_lifetime: poolConfig.max_lifetime,
   };
 }
