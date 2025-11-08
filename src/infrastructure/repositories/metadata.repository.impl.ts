@@ -9,6 +9,7 @@ import {
   ilike,
   inArray,
   count,
+  sql,
 } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { metadata } from "@/infrastructure/database/drizzle/schema";

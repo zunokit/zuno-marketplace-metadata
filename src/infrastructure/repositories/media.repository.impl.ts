@@ -1,4 +1,4 @@
-import { eq, desc, asc, and, ilike, inArray } from "drizzle-orm";
+import { eq, desc, asc, and, ilike, inArray, sql } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { media } from "@/infrastructure/database/drizzle/schema";
 import type { MediaRepository } from "@/core/domain/media/media.repository";
