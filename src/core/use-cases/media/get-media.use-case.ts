@@ -1,10 +1,10 @@
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import {
-  getCacheService,
   CacheKeyBuilder,
   CacheTTL,
 } from "@/infrastructure/cache/cache.service";
@@ -14,9 +14,10 @@ import {
  * Handles the business logic for retrieving a single media file with caching
  */
 export class GetMediaUseCase {
-  private readonly cache = getCacheService();
-
-  constructor(private readonly mediaRepository: MediaRepository) {}
+  constructor(
+    private readonly mediaRepository: MediaRepository,
+    private readonly cache: ICacheService
+  ) {}
 
   async execute(mediaId: string): Promise<MediaEntity> {
     logger.debug("Getting media by ID", { mediaId });

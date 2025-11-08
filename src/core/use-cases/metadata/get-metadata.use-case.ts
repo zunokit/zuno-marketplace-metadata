@@ -1,10 +1,10 @@
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type { MetadataEntity } from "@/core/domain/metadata/metadata.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import {
-  getCacheService,
   CacheKeyBuilder,
   CacheTTL,
 } from "@/infrastructure/cache/cache.service";
@@ -20,9 +20,10 @@ interface GetMetadataInput {
  * Handles the business logic for retrieving metadata with caching and ownership validation
  */
 export class GetMetadataUseCase {
-  private readonly cache = getCacheService();
-
-  constructor(private readonly metadataRepository: MetadataRepository) {}
+  constructor(
+    private readonly metadataRepository: MetadataRepository,
+    private readonly cache: ICacheService
+  ) {}
 
   async execute(input: GetMetadataInput): Promise<MetadataEntity> {
     const { metadataId, userId, isAdmin = false } = input;

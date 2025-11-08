@@ -12,8 +12,22 @@
     {
       "idx": 1,
       "version": "7",
+      "when": 1761474442729,
+      "tag": "0001_convert_api_key_jsonb_to_text",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1730973600000,
+      "tag": "0002_add_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
       "when": 1762575500000,
-      "tag": "0001_add_user_ownership",
+      "tag": "0003_add_user_ownership",
       "breakpoints": true
     }
   ]

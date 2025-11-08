@@ -9,11 +9,10 @@ import {
   type ListMetadataInput,
 } from "@/shared/lib/validation/metadata.schemas";
 import { MetadataQueryService } from "@/core/services/metadata/metadata-query.service";
-import { getMetadataRepository } from "@/infrastructure/di/container";
+import { getMetadataRepository, getCacheService } from "@/infrastructure/di/container";
 import { ErrorCode } from "@/shared/types";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
 import {
-  getCacheService,
   CacheKeyBuilder,
   CacheTTL,
 } from "@/infrastructure/cache/cache.service";

@@ -3,8 +3,9 @@ import { ErrorCode } from "@/shared/types";
 import {
   getMediaRepository,
   getImageKitService,
+  getCacheService,
 } from "@/infrastructure/di/container";
-import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.dto";
+import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.schemas";
 import { BatchUploadMediaUseCase } from "@/core/use-cases/media/batch-upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
 import { mediaQueue } from "@/infrastructure/queue/queue.config";
@@ -43,7 +44,8 @@ export const POST = ApiWrapper.create<BatchUploadMediaInput>(
     // Execute batch upload use case with userId for ownership tracking
     const batchUploadUseCase = new BatchUploadMediaUseCase(
       getMediaRepository(),
-      getImageKitService()
+      getImageKitService(),
+      getCacheService()
     );
     const result = await batchUploadUseCase.execute({
       files,

@@ -1,8 +1,8 @@
-import { auth } from "@/infrastructure/auth/better-auth.config";
-import type { BetterAuthApiKey } from "@/shared/dto/api-key.dto";
+import type { ApiKeyEntity } from "@/core/domain/api-key/api-key.entity";
+import type { ApiKeyRepository } from "@/core/domain/api-key/api-key.repository";
 import { logger } from "@/shared/lib/utils/logger";
 
-export interface UpdateApiKeyParams {
+export interface UpdateApiKeyInput {
   keyId: string;
   name?: string;
   enabled?: boolean;
@@ -21,19 +21,13 @@ export interface UpdateApiKeyParams {
  * Handles the business logic for updating an existing API key
  */
 export class UpdateApiKeyUseCase {
-  async execute(params: UpdateApiKeyParams): Promise<BetterAuthApiKey> {
+  constructor(private repository: ApiKeyRepository) {}
+
+  async execute(params: UpdateApiKeyInput): Promise<ApiKeyEntity> {
     logger.debug("Updating API key", { keyId: params.keyId });
 
-    // Use Better Auth server API to update API key
-    const result = await auth.api.updateApiKey({
-      body: {
-        keyId: params.keyId,
-        name: params.name,
-        enabled: params.enabled,
-        permissions: params.permissions,
-        metadata: params.metadata,
-      },
-    });
+    const { keyId, ...updateParams } = params;
+    const result = await this.repository.update(keyId, updateParams);
 
     if (!result) {
       throw new Error("Failed to update API key");
@@ -43,6 +37,6 @@ export class UpdateApiKeyUseCase {
       keyId: params.keyId,
     });
 
-    return result as BetterAuthApiKey;
+    return result;
   }
 }

@@ -3,6 +3,10 @@ import { PINATA_GROUPS } from "./pinata.constants";
 import { logger } from "@/shared/lib/utils/logger";
 import type { MediaType } from "@/shared/types";
 import { tryCatch, unwrapOrThrow } from "@/shared/lib/utils/server";
+import {
+  validateFileSize,
+  formatFileSize,
+} from "@/shared/config/file-size.config";
 
 /**
  * Pinata Service
@@ -116,8 +120,12 @@ export class PinataService {
   }> {
     const result = await tryCatch(
       async () => {
+        // Validate file size before uploading to IPFS
+        validateFileSize(params.file.size, params.mediaType, params.file.name);
+
         logger.info("Storing media to IPFS", {
           fileName: params.file.name,
+          fileSize: formatFileSize(params.file.size),
           mediaType: params.mediaType,
         });
 
@@ -159,7 +167,7 @@ export class PinataService {
   /**
    * Retrieve metadata from IPFS
    */
-  async getMetadata(hash: string): Promise<any> {
+  async getMetadata(hash: string): Promise<unknown> {
     const result = await tryCatch(
       () => this.client.retrieve(hash),
       {
