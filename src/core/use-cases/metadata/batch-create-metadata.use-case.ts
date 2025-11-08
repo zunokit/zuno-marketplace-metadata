@@ -1,8 +1,12 @@
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
-import type { MetadataEntity, CreateMetadataParams } from "@/core/domain/metadata/metadata.entity";
+import type {
+  MetadataEntity,
+  CreateMetadataParams,
+} from "@/core/domain/metadata/metadata.entity";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
+import { validateAttributes } from "@/shared/lib/validation/metadata.schemas";
 
 interface BatchCreateMetadataInput {
   metadata: CreateMetadataParams[];
@@ -24,7 +28,9 @@ interface BatchCreateMetadataResult {
 export class BatchCreateMetadataUseCase {
   constructor(private readonly metadataRepository: MetadataRepository) {}
 
-  async execute(input: BatchCreateMetadataInput): Promise<BatchCreateMetadataResult> {
+  async execute(
+    input: BatchCreateMetadataInput
+  ): Promise<BatchCreateMetadataResult> {
     const { metadata } = input;
 
     logger.info("Batch creating metadata", { count: metadata.length });
