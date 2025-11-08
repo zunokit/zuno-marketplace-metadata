@@ -27,12 +27,12 @@ tests/
 │           ├── metadata-validation.test.ts
 │           └── media-validation.test.ts
 ├── setup/
-│   ├── jest.config.ts          # Jest configuration
+│   ├── jest.config.js          # Jest configuration (CommonJS for cross-platform compatibility)
 │   └── jest.setup.ts           # Jest global test setup
 └── README.md                   # This file
 ```
 
-**Note:** All Jest configuration is centralized in the `tests/setup/` directory for a clean project structure.
+**Note:** All Jest configuration is centralized in the `tests/setup/` directory for a clean project structure. The config uses CommonJS (`.js`) instead of TypeScript (`.ts`) for better cross-platform compatibility and to avoid ES module issues.
 
 ## Test Types
 

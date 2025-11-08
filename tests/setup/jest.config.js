@@ -1,12 +1,8 @@
-import type { Config } from "jest";
-import nextJest from "next/jest.js";
-import path from "path";
-import { fileURLToPath } from "url";
+const nextJest = require("next/jest").default;
+const path = require("path");
 
-// Get the directory of this config file (ES module compatible)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// Get the project root directory (2 levels up from this file)
+// Get project root - when using --config flag, __dirname will be tests/setup
+// So we need to go up 2 directories to reach project root
 const projectRoot = path.resolve(__dirname, "../../");
 
 const createJestConfig = nextJest({
@@ -15,7 +11,8 @@ const createJestConfig = nextJest({
 });
 
 // Add any custom config to be passed to Jest
-const config: Config = {
+const config = {
+  // Explicitly set rootDir to project root
   rootDir: projectRoot,
   coverageProvider: "v8",
   testEnvironment: "jsdom",
@@ -44,4 +41,4 @@ const config: Config = {
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-export default createJestConfig(config);
+module.exports = createJestConfig(config);
