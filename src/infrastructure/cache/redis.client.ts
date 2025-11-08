@@ -1,6 +1,7 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
+import { logger } from "@/shared/lib/utils/logger";
 
 export const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,
@@ -147,9 +148,62 @@ export class RedisClient {
   }
 
   /**
-   * Get keys matching pattern
+   * Get keys matching pattern using SCAN (non-blocking)
+   *
+   * SCAN is production-safe and doesn't block Redis.
+   * Use this instead of KEYS for pattern matching in production.
+   *
+   * @param pattern - Redis pattern (e.g., "cache:*")
+   * @param count - Number of keys to scan per iteration (default: 100)
+   * @returns Array of matching keys
+   */
+  async scan(pattern: string, count = 100): Promise<string[]> {
+    const result = await tryCatch(
+      async () => {
+        const keys: string[] = [];
+        let cursor: string | number = 0;
+
+        do {
+          // Upstash scan returns [cursor, keys]
+          const scanResult: [string | number, string[]] = await this.client.scan(cursor, {
+            match: pattern,
+            count,
+          });
+
+          cursor = scanResult[0];
+          const batch = scanResult[1];
+
+          if (batch && batch.length > 0) {
+            keys.push(...batch);
+          }
+
+          // Continue until cursor is "0" (scan complete)
+        } while (cursor !== 0 && cursor !== "0");
+
+        return keys;
+      },
+      {
+        errorMessage: `Redis SCAN error for pattern ${pattern}`,
+        context: { pattern, count },
+        shouldLog: true,
+      }
+    );
+
+    return result.success ? result.data : [];
+  }
+
+  /**
+   * Get keys matching pattern (DEPRECATED - blocking)
+   *
+   * @deprecated Use scan() instead. KEYS blocks Redis in production.
+   * @param pattern - Redis pattern
+   * @returns Array of matching keys
    */
   async keys(pattern: string): Promise<string[]> {
+    logger.warn("KEYS command is deprecated and blocks Redis. Use scan() instead.", {
+      pattern,
+    });
+
     const result = await tryCatch(() => this.client.keys(pattern), {
       errorMessage: `Redis KEYS error for pattern ${pattern}`,
       context: { pattern },
@@ -159,23 +213,49 @@ export class RedisClient {
   }
 
   /**
-   * Delete keys matching pattern
+   * Delete keys matching pattern using SCAN (non-blocking)
+   *
+   * Uses SCAN instead of KEYS to avoid blocking Redis.
+   * Deletes keys in batches for better performance.
+   *
+   * @param pattern - Redis pattern (e.g., "cache:*")
+   * @param batchSize - Number of keys to delete per batch (default: 100)
+   * @returns Number of keys deleted
    */
-  async deletePattern(pattern: string): Promise<number> {
+  async deletePattern(pattern: string, batchSize = 100): Promise<number> {
     const result = await tryCatch(
       async () => {
-        const keys = await this.keys(pattern);
-        if (keys.length === 0) return 0;
+        let totalDeleted = 0;
+        let cursor: string | number = 0;
 
-        await this.client.del(...keys);
-        return keys.length;
+        do {
+          // Scan for matching keys
+          const scanResult: [string | number, string[]] = await this.client.scan(cursor, {
+            match: pattern,
+            count: batchSize,
+          });
+
+          cursor = scanResult[0];
+          const keys = scanResult[1];
+
+          // Delete batch if keys found
+          if (keys && keys.length > 0) {
+            await this.client.del(...keys);
+            totalDeleted += keys.length;
+          }
+
+          // Continue until cursor is "0"
+        } while (cursor !== 0 && cursor !== "0");
+
+        return totalDeleted;
       },
       {
         errorMessage: `Redis DELETE PATTERN error for pattern ${pattern}`,
-        context: { pattern },
+        context: { pattern, batchSize },
         shouldLog: true,
       }
     );
+
     return result.success ? result.data : 0;
   }
 
