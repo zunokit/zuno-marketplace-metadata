@@ -7,7 +7,7 @@ import {
   gte,
   lte,
   ilike,
-  sql,
+  inArray,
   count,
 } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
@@ -300,10 +300,14 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   ): Promise<number> {
     logger.debug("Updating multiple metadata", { ids, params });
 
+    if (ids.length === 0) {
+      return 0;
+    }
+
     const result = await this.db
       .update(metadata)
       .set(params)
-      .where(sql`${metadata.id} = ANY(${ids})`);
+      .where(inArray(metadata.id, ids));
 
     return extractRowCount(result);
   }
@@ -311,9 +315,13 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   async deleteMany(ids: string[]): Promise<number> {
     logger.debug("Deleting multiple metadata", { ids });
 
+    if (ids.length === 0) {
+      return 0;
+    }
+
     const result = await this.db
       .delete(metadata)
-      .where(sql`${metadata.id} = ANY(${ids})`);
+      .where(inArray(metadata.id, ids));
 
     return extractRowCount(result);
   }
