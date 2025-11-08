@@ -1,9 +1,10 @@
-import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
-import { auth } from "@/infrastructure/auth/better-auth.config";
-import { ErrorCode } from "@/shared/types";
+import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
+import { CreateApiKeyUseCase } from "@/core/use-cases/api-key/create-api-key.use-case";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
 import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import { logger } from "@/shared/lib/utils/logger";
+import { getApiKeyRepository } from "@/infrastructure/di/container";
 import {
   createApiKeySchema,
   listApiKeysSchema,
@@ -42,10 +43,11 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     );
 
     // Map to paginated DTO response
-    console.log(
-      "[GET /api/admin/api-keys] Better Auth keys:",
-      JSON.stringify(betterAuthKeys, null, 2)
-    );
+    logger.debug("Admin API keys list retrieved from Better Auth", {
+      count: betterAuthKeys.length,
+      page: input.query?.page || 1,
+      limit: params.limit
+    });
     return ApiKeyDtoMapper.toPaginatedResponseDto(
       betterAuthKeys,
       input.query?.page || 1,
@@ -69,21 +71,16 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
  */
 export const POST = ApiWrapper.create<CreateApiKeyInput>(
   async (input, context) => {
-    // Delegate to service layer (adminOnly ensures user is defined)
-    const result = await ApiKeyService.create(
-      {
-        userId: context.user!.id,
-        name: input.body.name,
-        permissions: input.body.permissions,
-        expiresIn: input.body.expiresIn,
-        metadata: input.body.metadata,
-      },
-      auth.api
-    );
+    // Use application use case (adminOnly ensures user is defined)
+    const useCase = new CreateApiKeyUseCase(getApiKeyRepository());
+    const apiKey = await useCase.execute({
+      userId: context.user!.id,
+      name: input.body.name,
+      permissions: input.body.permissions,
+      expiresIn: input.body.expiresIn,
+      metadata: input.body.metadata,
+    });
 
-    const apiKey = unwrapOrThrow(result);
-
-    // Map to created DTO response (type is already BetterAuthApiKey from service)
     return ApiKeyDtoMapper.toCreatedResponseDto(apiKey);
   },
   {

@@ -68,7 +68,7 @@ export class RedisClient {
           return JSON.parse(value) as T;
         }
 
-        console.warn(`Unexpected Redis value type for key ${key}:`, typeof value);
+        logger.warn("Unexpected Redis value type", { key, type: typeof value });
         return null;
       },
       {

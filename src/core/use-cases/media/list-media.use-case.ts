@@ -2,9 +2,9 @@ import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaListParams } from "@/core/domain/media/media.entity";
 import type { PaginatedResponse } from "@/shared/types";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { logger } from "@/shared/lib/utils/logger";
 import {
-  getCacheService,
   CacheKeyBuilder,
   CacheTTL,
 } from "@/infrastructure/cache/cache.service";
@@ -14,9 +14,10 @@ import {
  * Handles the business logic for listing media files with caching
  */
 export class ListMediaUseCase {
-  private readonly cache = getCacheService();
-
-  constructor(private readonly mediaRepository: MediaRepository) {}
+  constructor(
+    private readonly mediaRepository: MediaRepository,
+    private readonly cache: ICacheService
+  ) {}
 
   async execute(params: Partial<MediaListParams>): Promise<PaginatedResponse<MediaEntity>> {
     // Set defaults

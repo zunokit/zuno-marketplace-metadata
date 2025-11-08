@@ -1,7 +1,5 @@
-import type { ApiVersion } from "@/infrastructure/database/drizzle/schema";
-import { db } from "@/infrastructure/database/client";
-import { apiVersions } from "@/infrastructure/database/drizzle/schema";
-import { eq } from "drizzle-orm";
+import type { ApiVersionEntity } from "@/core/domain/api-version/api-version.entity";
+import type { ApiVersionRepository } from "@/core/domain/api-version/api-version.repository";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 
@@ -17,32 +15,26 @@ export interface UpdateApiVersionInput {
  * Update API Version Use Case
  */
 export class UpdateApiVersionUseCase {
-  async execute(input: UpdateApiVersionInput): Promise<ApiVersion> {
+  constructor(private repository: ApiVersionRepository) {}
+
+  async execute(input: UpdateApiVersionInput): Promise<ApiVersionEntity> {
     // If setting as current, unset other current versions
     if (input.isCurrent) {
-      await db
-        .update(apiVersions)
-        .set({ isCurrent: false })
-        .where(eq(apiVersions.isCurrent, true));
+      const currentVersion = await this.repository.getCurrent();
+      if (currentVersion && currentVersion.id !== input.id) {
+        await this.repository.update(currentVersion.id, { isCurrent: false });
+      }
     }
 
-    const [version] = await db
-      .update(apiVersions)
-      .set({
-        ...(input.label !== undefined && { label: input.label }),
-        ...(input.isCurrent !== undefined && { isCurrent: input.isCurrent }),
-        ...(input.deprecated !== undefined && { deprecated: input.deprecated }),
-        ...(input.sunsetAt !== undefined && { sunsetAt: input.sunsetAt }),
-      })
-      .where(eq(apiVersions.id, input.id))
-      .returning();
+    const version = await this.repository.update(input.id, {
+      ...(input.label !== undefined && { label: input.label }),
+      ...(input.isCurrent !== undefined && { isCurrent: input.isCurrent }),
+      ...(input.deprecated !== undefined && { deprecated: input.deprecated }),
+      ...(input.sunsetAt !== undefined && { sunsetAt: input.sunsetAt }),
+    });
 
     if (!version) {
-      throw new ApiError(
-        "API version not found",
-        ErrorCode.NOT_FOUND,
-        404
-      );
+      throw new ApiError("API version not found", ErrorCode.NOT_FOUND, 404);
     }
 
     return version;

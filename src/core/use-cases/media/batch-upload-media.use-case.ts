@@ -1,15 +1,25 @@
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
-import { ErrorCode } from "@/shared/types";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
+import { ErrorCode, type MediaType } from "@/shared/types";
+import {
+  validateFileSize,
+  formatFileSize
+} from "@/shared/config/file-size.config";
+import {
+  isValidImageType,
+  isValidVideoType,
+  isValid3DModelType,
+} from "@/shared/lib/utils";
 
 interface BatchUploadMediaInput {
   files: File[];
   folder?: string;
   tags?: string[];
+  userId: string; // Owner of the media (required for access control)
 }
 
 interface BatchUploadMediaResult {
@@ -26,15 +36,14 @@ interface BatchUploadMediaResult {
  * Handles the business logic for uploading multiple media files at once
  */
 export class BatchUploadMediaUseCase {
-  private readonly cache = getCacheService();
-
   constructor(
     private readonly mediaRepository: MediaRepository,
-    private readonly imageKitService: ImageKitService
+    private readonly imageKitService: ImageKitService,
+    private readonly cache: ICacheService
   ) {}
 
   async execute(input: BatchUploadMediaInput): Promise<BatchUploadMediaResult> {
-    const { files, folder, tags } = input;
+    const { files, folder, tags, userId } = input;
 
     logger.info("Batch uploading media files", { count: files.length });
 
@@ -66,16 +75,26 @@ export class BatchUploadMediaUseCase {
       const file = files[i];
 
       try {
-        // Validate file
+        // Validate file exists
         if (!file || file.size === 0) {
           throw new Error("File is empty or invalid");
         }
 
+        // Validate file type and get media type
+        const mediaType = this.getMediaType(file.type);
+        if (!mediaType) {
+          throw new Error(`Unsupported file type: ${file.type}`);
+        }
+
+        // Validate file size early
+        validateFileSize(file.size, mediaType, file.name);
+
         logger.debug("Uploading file to ImageKit", {
           index: i,
           fileName: file.name,
-          fileSize: file.size,
+          fileSize: formatFileSize(file.size),
           fileType: file.type,
+          mediaType,
         });
 
         // Upload to ImageKit
@@ -92,8 +111,9 @@ export class BatchUploadMediaUseCase {
           url: uploadResult.url,
         });
 
-        // Save to database
+        // Save to database with userId for ownership tracking
         const media = await this.mediaRepository.create({
+          userId,
           fileName: uploadResult.name,
           fileSize: uploadResult.size,
           mimeType: uploadResult.mimeType,
@@ -146,5 +166,21 @@ export class BatchUploadMediaUseCase {
       success,
       failed,
     };
+  }
+
+  /**
+   * Determine media type from MIME type
+   */
+  private getMediaType(mimeType: string): MediaType | null {
+    if (isValidImageType(mimeType)) {
+      return mimeType === "image/gif" ? "GIF" : "IMAGE";
+    }
+    if (isValidVideoType(mimeType)) {
+      return "VIDEO";
+    }
+    if (isValid3DModelType(mimeType)) {
+      return "MODEL_3D";
+    }
+    return null;
   }
 }
