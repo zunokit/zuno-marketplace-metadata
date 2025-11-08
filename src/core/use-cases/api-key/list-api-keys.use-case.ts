@@ -1,37 +1,23 @@
-import { db } from "@/infrastructure/database/client";
-import { apiKey } from "@/infrastructure/database/drizzle/schema";
-import { eq, and } from "drizzle-orm";
-import type { BetterAuthApiKey } from "@/shared/dto/api-key.dto";
+import type {
+  ApiKeyEntity,
+  ApiKeyListParams,
+} from "@/core/domain/api-key/api-key.entity";
+import type { ApiKeyRepository } from "@/core/domain/api-key/api-key.repository";
 import { logger } from "@/shared/lib/utils/logger";
-
-export interface ListApiKeysParams {
-  userId: string;
-  page?: number;
-  limit?: number;
-  enabled?: boolean;
-}
 
 /**
  * List API Keys Use Case
  * Handles the business logic for listing API keys for a user
  */
 export class ListApiKeysUseCase {
-  async execute(params: ListApiKeysParams): Promise<BetterAuthApiKey[]> {
+  constructor(private repository: ApiKeyRepository) {}
+
+  async execute(params: ApiKeyListParams): Promise<ApiKeyEntity[]> {
     logger.debug("Listing API keys", { userId: params.userId });
 
-    // Query API keys directly from database using Drizzle
-    const conditions = [eq(apiKey.userId, params.userId)];
+    const result = await this.repository.list(params);
 
-    if (params.enabled !== undefined) {
-      conditions.push(eq(apiKey.enabled, params.enabled));
-    }
-
-    const result = await db
-      .select()
-      .from(apiKey)
-      .where(and(...conditions));
-
-    if (!result || result.length === 0) {
+    if (result.length === 0) {
       logger.warn("No API keys found", { userId: params.userId });
       return [];
     }
@@ -41,6 +27,6 @@ export class ListApiKeysUseCase {
       count: result.length,
     });
 
-    return result as unknown as BetterAuthApiKey[];
+    return result;
   }
 }
