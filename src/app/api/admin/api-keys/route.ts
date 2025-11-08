@@ -3,6 +3,7 @@ import { ApiKeyService } from "@/infrastructure/services/api-key.service";
 import { CreateApiKeyUseCase } from "@/core/use-cases/api-key/create-api-key.use-case";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
 import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import { logger } from "@/shared/lib/utils/logger";
 import {
   createApiKeySchema,
   listApiKeysSchema,
@@ -41,10 +42,11 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     );
 
     // Map to paginated DTO response
-    console.log(
-      "[GET /api/admin/api-keys] Better Auth keys:",
-      JSON.stringify(betterAuthKeys, null, 2)
-    );
+    logger.debug("Admin API keys list retrieved from Better Auth", {
+      count: betterAuthKeys.length,
+      page: input.query?.page || 1,
+      limit: params.limit
+    });
     return ApiKeyDtoMapper.toPaginatedResponseDto(
       betterAuthKeys,
       input.query?.page || 1,
