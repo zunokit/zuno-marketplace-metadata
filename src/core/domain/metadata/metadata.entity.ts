@@ -3,6 +3,7 @@ import type { MediaType, MetadataAttribute, Creator } from "@/shared/types";
 // ============= METADATA ENTITY =============
 export interface MetadataEntity {
   id: string;
+  userId: string; // Owner of the metadata
   name: string;
   description?: string;
   symbol?: string;
@@ -28,6 +29,7 @@ export interface MetadataEntity {
 
 // ============= METADATA CREATION =============
 export interface CreateMetadataParams {
+  userId: string; // Owner of the metadata (required for access control)
   name: string;
   description?: string;
   symbol?: string;
@@ -71,6 +73,7 @@ export interface MetadataListParams {
   search?: string;
   isPinned?: boolean;
   isLocked?: boolean;
+  userId?: string; // Filter by owner (for access control)
 }
 
 // ============= METADATA FILTERS =============

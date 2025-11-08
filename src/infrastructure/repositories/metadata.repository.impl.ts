@@ -21,11 +21,12 @@ import type {
   MetadataListParams,
 } from "@/core/domain/metadata/metadata.entity";
 import type { PaginatedResponse } from "@/shared/types";
+import { ErrorCode } from "@/shared/types";
+import { ApiError } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
 import {
   hasRows,
   extractRowCount,
-  buildQuery,
   countSql,
 } from "@/shared/lib/utils/drizzle-helpers";
 
@@ -123,13 +124,24 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       version: hasContentChanges ? current.version + 1 : current.version,
     };
 
+    // Optimistic locking: Update only if version matches
+    // This prevents lost updates from concurrent modifications
     const [result] = await this.db
       .update(metadata)
       .set(updateData)
-      .where(eq(metadata.id, id))
+      .where(and(eq(metadata.id, id), eq(metadata.version, current.version)))
       .returning();
 
-    return result ? this.mapToEntity(result) : null;
+    // If no rows were updated, version mismatch occurred
+    if (!result) {
+      throw new ApiError(
+        "Metadata was modified by another process. Please retry with the latest version.",
+        ErrorCode.CONFLICT,
+        409
+      );
+    }
+
+    return this.mapToEntity(result);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -163,6 +175,7 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       search,
       isPinned,
       isLocked,
+      userId,
     } = params;
 
     // Build conditions
@@ -184,6 +197,11 @@ export class MetadataRepositoryImpl implements MetadataRepository {
 
     if (typeof isLocked === "boolean") {
       conditions.push(eq(metadata.isLocked, isLocked));
+    }
+
+    // Filter by userId for access control
+    if (userId) {
+      conditions.push(eq(metadata.userId, userId));
     }
 
     // Apply conditions
@@ -282,6 +300,10 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   async createMany(params: CreateMetadataParams[]): Promise<MetadataEntity[]> {
     logger.debug("Creating multiple metadata", { count: params.length });
 
+    if (params.length === 0) {
+      return [];
+    }
+
     const values = params.map((param) => ({
       ...param,
       version: 1,
@@ -289,9 +311,20 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       isPinned: false,
     }));
 
-    const results = await this.db.insert(metadata).values(values).returning();
+    // Use transaction to ensure all-or-nothing creation
+    return this.db.transaction(async (tx) => {
+      logger.debug("Executing batch create in transaction", {
+        count: values.length,
+      });
 
-    return results.map((result) => this.mapToEntity(result));
+      const results = await tx.insert(metadata).values(values).returning();
+
+      logger.debug("Batch create transaction committed", {
+        count: results.length,
+      });
+
+      return results.map((result) => this.mapToEntity(result));
+    });
   }
 
   async updateMany(
@@ -309,7 +342,45 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       .set(params)
       .where(inArray(metadata.id, ids));
 
-    return extractRowCount(result);
+    // Use transaction to ensure atomicity and check for locked items
+    return this.db.transaction(async (tx) => {
+      // First, check if any metadata is locked
+      const lockedItems = await tx
+        .select({ id: metadata.id, name: metadata.name })
+        .from(metadata)
+        .where(and(eq(metadata.id, sql`ANY(${ids})`), eq(metadata.isLocked, true)))
+        .limit(1);
+
+      if (lockedItems.length > 0) {
+        const lockedItem = lockedItems[0];
+        logger.warn("Attempted to update locked metadata in batch", {
+          lockedId: lockedItem.id,
+          lockedName: lockedItem.name,
+          totalIds: ids.length,
+        });
+        throw new Error(
+          `Cannot update locked metadata: ${lockedItem.name} (${lockedItem.id})`
+        );
+      }
+
+      logger.debug("Executing batch update in transaction", {
+        count: ids.length,
+      });
+
+      // Perform the update
+      const result = await tx
+        .update(metadata)
+        .set(params)
+        .where(sql`${metadata.id} = ANY(${ids})`);
+
+      const updatedCount = extractRowCount(result);
+
+      logger.debug("Batch update transaction committed", {
+        updatedCount,
+      });
+
+      return updatedCount;
+    });
   }
 
   async deleteMany(ids: string[]): Promise<number> {
@@ -323,7 +394,44 @@ export class MetadataRepositoryImpl implements MetadataRepository {
       .delete(metadata)
       .where(inArray(metadata.id, ids));
 
-    return extractRowCount(result);
+    // Use transaction to ensure atomicity and check for locked items
+    return this.db.transaction(async (tx) => {
+      // First, check if any metadata is locked
+      const lockedItems = await tx
+        .select({ id: metadata.id, name: metadata.name })
+        .from(metadata)
+        .where(and(eq(metadata.id, sql`ANY(${ids})`), eq(metadata.isLocked, true)))
+        .limit(1);
+
+      if (lockedItems.length > 0) {
+        const lockedItem = lockedItems[0];
+        logger.warn("Attempted to delete locked metadata in batch", {
+          lockedId: lockedItem.id,
+          lockedName: lockedItem.name,
+          totalIds: ids.length,
+        });
+        throw new Error(
+          `Cannot delete locked metadata: ${lockedItem.name} (${lockedItem.id})`
+        );
+      }
+
+      logger.debug("Executing batch delete in transaction", {
+        count: ids.length,
+      });
+
+      // Perform the delete
+      const result = await tx
+        .delete(metadata)
+        .where(sql`${metadata.id} = ANY(${ids})`);
+
+      const deletedCount = extractRowCount(result);
+
+      logger.debug("Batch delete transaction committed", {
+        deletedCount,
+      });
+
+      return deletedCount;
+    });
   }
 
   async updateIpfsInfo(
@@ -365,6 +473,7 @@ export class MetadataRepositoryImpl implements MetadataRepository {
   private mapToEntity(row: Metadata): MetadataEntity {
     return {
       id: row.id,
+      userId: row.userId,
       name: row.name,
       description: row.description ?? undefined,
       symbol: row.symbol ?? undefined,
