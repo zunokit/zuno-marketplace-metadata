@@ -2,8 +2,9 @@ import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import {
   getMediaRepository,
   getImageKitService,
+  getCacheService,
 } from "@/infrastructure/di/container";
-import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.dto";
+import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.schemas";
 import { BatchUploadMediaUseCase } from "@/core/use-cases/media/batch-upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
 import { mediaQueue } from "@/infrastructure/queue/queue.config";
@@ -32,7 +33,8 @@ export const POST = ApiWrapper.create<BatchUploadMediaInput>(
     // Execute batch upload use case
     const batchUploadUseCase = new BatchUploadMediaUseCase(
       getMediaRepository(),
-      getImageKitService()
+      getImageKitService(),
+      getCacheService()
     );
     const result = await batchUploadUseCase.execute({
       files,

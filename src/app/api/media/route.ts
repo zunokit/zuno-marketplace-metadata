@@ -2,6 +2,7 @@ import { ApiWrapper } from "@/shared/lib/api/api-handler";
 import {
   getMediaRepository,
   getImageKitService,
+  getCacheService,
 } from "@/infrastructure/di/container";
 import { MediaDtoMapper } from "@/shared/dto/media.dto";
 import {
@@ -9,7 +10,7 @@ import {
   UploadMediaSchema,
   type ListMediaInput,
   type UploadMediaInput,
-} from "@/shared/lib/validation/media.dto";
+} from "@/shared/lib/validation/media.schemas";
 import { ListMediaUseCase } from "@/core/use-cases/media/list-media.use-case";
 import { UploadMediaUseCase } from "@/core/use-cases/media/upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
@@ -28,7 +29,7 @@ export const GET = ApiWrapper.create<ListMediaInput>(
     });
 
     // Execute use case
-    const listMediaUseCase = new ListMediaUseCase(getMediaRepository());
+    const listMediaUseCase = new ListMediaUseCase(getMediaRepository(), getCacheService());
     const result = await listMediaUseCase.execute(query);
 
     return MediaDtoMapper.toPaginatedResponseDto(result);
@@ -64,7 +65,8 @@ export const POST = ApiWrapper.create<UploadMediaInput>(
     // Execute use case
     const uploadMediaUseCase = new UploadMediaUseCase(
       getMediaRepository(),
-      getImageKitService()
+      getImageKitService(),
+      getCacheService()
     );
     const media = await uploadMediaUseCase.execute({
       file,
