@@ -1,18 +1,19 @@
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type { MetadataEntity } from "@/core/domain/metadata/metadata.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Delete Metadata Use Case
  * Handles the business logic for deleting metadata with cache invalidation
  */
 export class DeleteMetadataUseCase {
-  private readonly cache = getCacheService();
-
-  constructor(private readonly metadataRepository: MetadataRepository) {}
+  constructor(
+    private readonly metadataRepository: MetadataRepository,
+    private readonly cache: ICacheService
+  ) {}
 
   async execute(metadataId: string): Promise<MetadataEntity> {
     logger.info("Deleting metadata", { metadataId });

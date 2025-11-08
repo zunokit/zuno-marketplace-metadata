@@ -1,7 +1,10 @@
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { getMediaRepository, getImageKitService } from "@/infrastructure/di/container";
+import { getMediaRepository, getImageKitService, getCacheService } from "@/infrastructure/di/container";
 import { MediaDtoMapper } from "@/shared/dto/media.dto";
-import { GetMediaByIdSchema, type GetMediaByIdInput } from "@/shared/lib/validation/media.dto";
+import {
+  GetMediaByIdSchema,
+  type GetMediaByIdInput,
+} from "@/shared/lib/validation/media.schemas";
 import { GetMediaUseCase } from "@/core/use-cases/media/get-media.use-case";
 import { DeleteMediaUseCase } from "@/core/use-cases/media/delete-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
@@ -20,7 +23,7 @@ export const GET = ApiWrapper.create<GetMediaByIdInput>(
     });
 
     // Execute use case
-    const getMediaUseCase = new GetMediaUseCase(getMediaRepository());
+    const getMediaUseCase = new GetMediaUseCase(getMediaRepository(), getCacheService());
     const media = await getMediaUseCase.execute(id);
 
     return MediaDtoMapper.toResponseDto(media);
@@ -53,7 +56,8 @@ export const DELETE = ApiWrapper.create<GetMediaByIdInput>(
     // Execute use case
     const deleteMediaUseCase = new DeleteMediaUseCase(
       getMediaRepository(),
-      getImageKitService()
+      getImageKitService(),
+      getCacheService()
     );
     const media = await deleteMediaUseCase.execute(id);
 

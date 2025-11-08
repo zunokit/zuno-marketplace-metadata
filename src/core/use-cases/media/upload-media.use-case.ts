@@ -1,13 +1,12 @@
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode, type MediaType } from "@/shared/types";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
 import {
   validateFileSize,
-  
   getMaxFileSize,
   formatFileSize
 } from "@/shared/config/file-size.config";
@@ -28,11 +27,10 @@ interface UploadMediaInput {
  * Handles the business logic for uploading media files with cache invalidation
  */
 export class UploadMediaUseCase {
-  private readonly cache = getCacheService();
-
   constructor(
     private readonly mediaRepository: MediaRepository,
-    private readonly imageKitService: ImageKitService
+    private readonly imageKitService: ImageKitService,
+    private readonly cache: ICacheService
   ) {}
 
   async execute(input: UploadMediaInput): Promise<MediaEntity> {

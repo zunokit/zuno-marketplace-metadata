@@ -1,10 +1,10 @@
 import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
 import type { MetadataEntity, UpdateMetadataParams } from "@/core/domain/metadata/metadata.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { validateAttributes, validateCreators } from "@/shared/lib/validation/metadata.schemas";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 interface UpdateMetadataInput {
   metadataId: string;
@@ -16,9 +16,10 @@ interface UpdateMetadataInput {
  * Handles the business logic for updating metadata with cache invalidation
  */
 export class UpdateMetadataUseCase {
-  private readonly cache = getCacheService();
-
-  constructor(private readonly metadataRepository: MetadataRepository) {}
+  constructor(
+    private readonly metadataRepository: MetadataRepository,
+    private readonly cache: ICacheService
+  ) {}
 
   async execute(input: UpdateMetadataInput): Promise<MetadataEntity> {
     const { metadataId, updates } = input;

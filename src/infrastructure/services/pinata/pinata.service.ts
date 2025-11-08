@@ -167,7 +167,7 @@ export class PinataService {
   /**
    * Retrieve metadata from IPFS
    */
-  async getMetadata(hash: string): Promise<any> {
+  async getMetadata(hash: string): Promise<unknown> {
     const result = await tryCatch(
       () => this.client.retrieve(hash),
       {

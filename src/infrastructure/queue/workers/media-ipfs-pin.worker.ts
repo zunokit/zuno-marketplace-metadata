@@ -4,7 +4,7 @@ import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants
 import { db, schema } from "@/infrastructure/database/client";
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
-import { MediaPinJobData, QueueName } from "../queue.config";
+import { MediaPinJobData, QueueName } from "@/infrastructure/queue/queue.config";
 import { env } from "@/shared/config/env";
 import { tryCatch } from "@/shared/lib/utils/server";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";

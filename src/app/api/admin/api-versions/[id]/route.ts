@@ -8,6 +8,7 @@ import {
 } from "@/shared/lib/validation/api-version.schemas";
 import { UpdateApiVersionUseCase } from "@/core/use-cases/api-version/update-api-version.use-case";
 import { DeleteApiVersionUseCase } from "@/core/use-cases/api-version/delete-api-version.use-case";
+import { getApiVersionRepository } from "@/infrastructure/di/container";
 
 /**
  * PATCH /api/admin/api-versions/:id - Update API version
@@ -21,7 +22,8 @@ export const PATCH = ApiWrapper.create<UpdateApiVersionInput>(
       requestId: context.requestId,
     });
 
-    const updateUseCase = new UpdateApiVersionUseCase();
+    const repository = getApiVersionRepository();
+    const updateUseCase = new UpdateApiVersionUseCase(repository);
     const version = await updateUseCase.execute({
       id: params.id,
       ...body,
@@ -57,7 +59,8 @@ export const DELETE = ApiWrapper.create<DeleteApiVersionInput>(
       requestId: context.requestId,
     });
 
-    const deleteUseCase = new DeleteApiVersionUseCase();
+    const repository = getApiVersionRepository();
+    const deleteUseCase = new DeleteApiVersionUseCase(repository);
     await deleteUseCase.execute(params.id);
 
     logger.info("API version deleted successfully", {
