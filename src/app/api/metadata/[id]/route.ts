@@ -1,5 +1,5 @@
 import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { getMetadataRepository } from "@/infrastructure/di/container";
+import { getMetadataRepository, getCacheService } from "@/infrastructure/di/container";
 import { MetadataDtoMapper } from "@/shared/dto/metadata.dto";
 import { GetMetadataUseCase } from "@/core/use-cases/metadata/get-metadata.use-case";
 import { UpdateMetadataUseCase } from "@/core/use-cases/metadata/update-metadata.use-case";
@@ -22,15 +22,23 @@ export const GET = ApiWrapper.create<GetMetadataInput>(
     const { params } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Getting metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
-    const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository());
+    // Execute use case with ownership validation
+    const getMetadataUseCase = new GetMetadataUseCase(getMetadataRepository(), getCacheService());
     const metadata = await getMetadataUseCase.execute({
       metadataId: id,
+      userId,
+      isAdmin,
     });
 
     return MetadataDtoMapper.toResponseDto(metadata);
@@ -58,19 +66,27 @@ export const PUT = ApiWrapper.create<UpdateMetadataInput>(
     const { params, body } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Updating metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
+    // Execute use case with ownership validation
     const updateMetadataUseCase = new UpdateMetadataUseCase(
-      getMetadataRepository()
+      getMetadataRepository(),
+      getCacheService()
     );
     const updatedMetadata = await updateMetadataUseCase.execute({
       metadataId: id,
       updates: body,
+      userId,
+      isAdmin,
     });
 
     return MetadataDtoMapper.toResponseDto(updatedMetadata);
@@ -99,17 +115,27 @@ export const DELETE = ApiWrapper.create<DeleteMetadataInput>(
     const { params } = input;
     const { id } = params;
 
+    // Get userId and admin status for ownership validation
+    const userId = context.user?.id || context.apiKey?.userId;
+    const isAdmin = context.user?.role === "admin";
+
     logger.info("Deleting metadata by ID", {
       metadataId: id,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
+      isAdmin,
     });
 
-    // Execute use case
+    // Execute use case with ownership validation
     const deleteMetadataUseCase = new DeleteMetadataUseCase(
-      getMetadataRepository()
+      getMetadataRepository(),
+      getCacheService()
     );
-    const metadata = await deleteMetadataUseCase.execute(id);
+    const metadata = await deleteMetadataUseCase.execute({
+      metadataId: id,
+      userId,
+      isAdmin,
+    });
 
     return MetadataDtoMapper.toDeletedResponseDto(metadata);
   },

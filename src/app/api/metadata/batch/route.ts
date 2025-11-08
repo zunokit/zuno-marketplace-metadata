@@ -1,17 +1,11 @@
 import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
-import {
-  batchCreateMetadataSchema,
-  validateAttributes,
-  validateCreators,
-} from "@/shared/lib/validation/metadata.schemas";
+import { batchCreateMetadataSchema } from "@/shared/lib/validation/metadata.schemas";
 import { getMetadataRepository } from "@/infrastructure/di/container";
-import { ErrorCode } from "@/shared/types";
 import { BatchCreateMetadataUseCase } from "@/core/use-cases/metadata/batch-create-metadata.use-case";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
-import type { z } from "zod";
-
-type BatchCreateMetadataInput = z.infer<typeof batchCreateMetadataSchema>;
+import { ErrorCode } from "@/shared/types";
+import type { BatchCreateMetadataInput } from "@/shared/lib/validation/metadata.schemas";
 
 /**
  * POST /api/metadata/batch - Create multiple metadata items
@@ -21,38 +15,34 @@ export const POST = ApiWrapper.create<BatchCreateMetadataInput>(
     const { body } = input;
     const { metadata } = body;
 
+    // Get userId from either API key or session
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new ApiError(
+        "User ID not found in authentication context",
+        ErrorCode.UNAUTHORIZED,
+        401
+      );
+    }
+
     logger.info("Batch creating metadata", {
       count: metadata.length,
       requestId: context.requestId,
-      userId: context.apiKey?.userId,
+      userId,
     });
 
-    // Validate all items before processing
-    for (let i = 0; i < metadata.length; i++) {
-      const item = metadata[i];
 
-      if (!validateAttributes(item.attributes)) {
-        throw new ApiError(
-          `Invalid attributes at index ${i}: duplicate trait types found`,
-          ErrorCode.VALIDATION_ERROR,
-          400
-        );
-      }
-
-      if (!validateCreators(item.creators)) {
-        throw new ApiError(
-          `Invalid creators at index ${i}: total share exceeds 100%`,
-          ErrorCode.VALIDATION_ERROR,
-          400
-        );
-      }
-    }
+    // Add userId to each metadata item for ownership tracking
+    const metadataWithUserId = metadata.map((item) => ({
+      ...item,
+      userId,
+    }));
 
     // Execute batch create use case
     const batchCreateUseCase = new BatchCreateMetadataUseCase(
       getMetadataRepository()
     );
-    const result = await batchCreateUseCase.execute({ metadata });
+    const result = await batchCreateUseCase.execute({ metadata: metadataWithUserId });
 
     logger.info("Batch metadata creation completed", {
       total: metadata.length,
