@@ -1,9 +1,10 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
 import { batchCreateMetadataSchema } from "@/shared/lib/validation/metadata.schemas";
 import { getMetadataRepository } from "@/infrastructure/di/container";
 import { BatchCreateMetadataUseCase } from "@/core/use-cases/metadata/batch-create-metadata.use-case";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
+import { ErrorCode } from "@/shared/types";
 import type { BatchCreateMetadataInput } from "@/shared/lib/validation/metadata.schemas";
 
 /**
