@@ -1,6 +1,7 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { auth } from "@/infrastructure/auth/better-auth.config";
+import { ErrorCode } from "@/shared/types";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
-import { CreateApiKeyUseCase } from "@/core/use-cases/api-key/create-api-key.use-case";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
 import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
 import {
@@ -68,16 +69,21 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
  */
 export const POST = ApiWrapper.create<CreateApiKeyInput>(
   async (input, context) => {
-    // Use application use case (adminOnly ensures user is defined)
-    const useCase = new CreateApiKeyUseCase();
-    const apiKey = await useCase.execute({
-      userId: context.user!.id,
-      name: input.body.name,
-      permissions: input.body.permissions,
-      expiresIn: input.body.expiresIn,
-      metadata: input.body.metadata,
-    });
+    // Delegate to service layer (adminOnly ensures user is defined)
+    const result = await ApiKeyService.create(
+      {
+        userId: context.user!.id,
+        name: input.body.name,
+        permissions: input.body.permissions,
+        expiresIn: input.body.expiresIn,
+        metadata: input.body.metadata,
+      },
+      auth.api
+    );
 
+    const apiKey = unwrapOrThrow(result);
+
+    // Map to created DTO response (type is already BetterAuthApiKey from service)
     return ApiKeyDtoMapper.toCreatedResponseDto(apiKey);
   },
   {

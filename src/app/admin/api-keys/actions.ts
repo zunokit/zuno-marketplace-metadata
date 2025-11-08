@@ -11,7 +11,7 @@ import { headers } from "next/headers";
 import { auth } from "@/infrastructure/auth/better-auth.config";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
-import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import { ApiKeyDtoMapper, BetterAuthApiKey } from "@/shared/dto/api-key.dto";
 import {
   createApiKeySchema,
   updateApiKeySchema,

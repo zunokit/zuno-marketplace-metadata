@@ -8,7 +8,7 @@
  */
 
 const API_KEY =
-  process.env.NEXT_PUBLIC_API_KEY || "zuno_WTJtWWFtFZtpYCmCHQHRQkBdutcpFYTk";
+  process.env.NEXT_PUBLIC_API_KEY || "zuno_mNaCbtAxnufEczgzblCzTKoryrAUKUEs";
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // Test results tracking

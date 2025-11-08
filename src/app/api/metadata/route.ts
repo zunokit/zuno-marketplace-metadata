@@ -1,13 +1,16 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { logger } from "@/shared/lib/utils/logger";
 import {
   createMetadataSchema,
   listMetadataSchema,
+  validateAttributes,
+  validateCreators,
   type CreateMetadataInput,
   type ListMetadataInput,
 } from "@/shared/lib/validation/metadata.schemas";
 import { MetadataQueryService } from "@/core/services/metadata/metadata-query.service";
 import { getMetadataRepository } from "@/infrastructure/di/container";
+import { ErrorCode } from "@/shared/types";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
 import {
   getCacheService,
@@ -84,6 +87,23 @@ export const POST = ApiWrapper.create<CreateMetadataInput>(
       requestId: context.requestId,
       userId: context.apiKey?.userId,
     });
+
+    // Additional validation
+    if (!validateAttributes(body.attributes)) {
+      throw new ApiError(
+        "Invalid attributes: duplicate trait types found",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
+    }
+
+    if (!validateCreators(body.creators)) {
+      throw new ApiError(
+        "Invalid creators: total share exceeds 100%",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
+    }
 
     // Create metadata using repository - body already matches CreateMetadataParams
     const metadataRepository = getMetadataRepository();

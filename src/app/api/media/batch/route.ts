@@ -3,7 +3,7 @@ import {
   getMediaRepository,
   getImageKitService,
 } from "@/infrastructure/di/container";
-import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.schemas";
+import { BatchUploadMediaSchema } from "@/shared/lib/validation/media.dto";
 import { BatchUploadMediaUseCase } from "@/core/use-cases/media/batch-upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";
 import { mediaQueue } from "@/infrastructure/queue/queue.config";

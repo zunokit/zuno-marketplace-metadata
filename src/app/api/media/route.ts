@@ -9,7 +9,7 @@ import {
   UploadMediaSchema,
   type ListMediaInput,
   type UploadMediaInput,
-} from "@/shared/lib/validation/media.schemas";
+} from "@/shared/lib/validation/media.dto";
 import { ListMediaUseCase } from "@/core/use-cases/media/list-media.use-case";
 import { UploadMediaUseCase } from "@/core/use-cases/media/upload-media.use-case";
 import { logger } from "@/shared/lib/utils/logger";

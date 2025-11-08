@@ -12,7 +12,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
       {item.name && (
         <div>
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-12 h-12 rounded bg-linear-to-br` from-green-100 to-blue-100 shrink-0 flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-gradient-to-br from-green-100 to-blue-100 flex-shrink-0 flex items-center justify-center">
               <svg
                 className="w-6 h-6 text-green-600"
                 fill="none"
@@ -55,11 +55,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-2 rounded-lg transition-colors"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                   <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                 </svg>
@@ -69,11 +65,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
               </a>
             ) : (
               <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
-                <svg
-                  className="w-4 h-4 animate-spin"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle
                     className="opacity-25"
                     cx="12"
@@ -92,9 +84,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
               </div>
             )}
             {item.id && (
-              <p className="text-xs text-gray-500 px-3 font-mono">
-                ID: {item.id}
-              </p>
+              <p className="text-xs text-gray-500 px-3 font-mono">ID: {item.id}</p>
             )}
           </div>
         </div>
@@ -107,7 +97,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative w-20 h-20 rounded overflow-hidden bg-gray-100 shrink-0 group"
+            className="relative w-20 h-20 rounded overflow-hidden bg-gray-100 flex-shrink-0 group"
           >
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform group-hover:scale-110"
@@ -125,9 +115,7 @@ export function UploadedItemCard({ item }: UploadedItemCardProps) {
             </div>
           </a>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">
-              {item.fileName}
-            </h3>
+            <h3 className="font-semibold text-gray-900 truncate">{item.fileName}</h3>
             <div className="flex gap-2 mt-2">
               {item.mediaType && (
                 <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">

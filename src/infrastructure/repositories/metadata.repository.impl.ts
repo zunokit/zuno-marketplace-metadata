@@ -4,8 +4,11 @@ import {
   asc,
   and,
   or,
+  gte,
+  lte,
   ilike,
   sql,
+  count,
 } from "drizzle-orm";
 import type { Database } from "@/infrastructure/database/client";
 import { metadata } from "@/infrastructure/database/drizzle/schema";
@@ -22,6 +25,7 @@ import { logger } from "@/shared/lib/utils/logger";
 import {
   hasRows,
   extractRowCount,
+  buildQuery,
   countSql,
 } from "@/shared/lib/utils/drizzle-helpers";
 

@@ -2,14 +2,6 @@ import type { MediaEntity } from "@/core/domain/media/media.entity";
 import type { PaginatedResponse } from "@/shared/types";
 import { toISOString, toISOStringOrNow } from "@/shared/lib/utils";
 
-function mapMediaTypeToUi(value: string): string {
-  const v = String(value).toUpperCase();
-  if (v === "IMAGE" || v === "GIF") return "image";
-  if (v === "VIDEO") return "video";
-  if (v === "MODEL_3D" || v === "3D_MODEL") return "3d_model";
-  return value.toString().toLowerCase();
-}
-
 // ============= MEDIA RESPONSE DTO =============
 export interface MediaResponseDto {
   id: string;
@@ -84,7 +76,7 @@ export class MediaDtoMapper {
       fileName: entity.fileName,
       fileSize: entity.fileSize,
       mimeType: entity.mimeType,
-      mediaType: mapMediaTypeToUi(entity.mediaType as unknown as string),
+      mediaType: entity.mediaType,
       url: entity.url,
       ipfsHash: entity.ipfsHash ?? null,
       ipfsUrl: entity.ipfsUrl ?? null,
@@ -108,7 +100,7 @@ export class MediaDtoMapper {
       fileName: entity.fileName,
       fileSize: entity.fileSize,
       mimeType: entity.mimeType,
-      mediaType: mapMediaTypeToUi(entity.mediaType as unknown as string),
+      mediaType: entity.mediaType,
       url: entity.url,
       thumbnailUrl: entity.thumbnailUrl ?? null,
       width: entity.width ?? null,

@@ -1,31 +1,38 @@
-import { ApiWrapper } from "@/shared/lib/api/api-handler";
-import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
+import { auth } from "@/infrastructure/auth/better-auth.config";
+import { ErrorCode } from "@/shared/types";
+import { ApiKeyService } from "@/infrastructure/services/api-key.service";
+import { unwrapOrThrow } from "@/shared/lib/utils/server";
+import {
+  ApiKeyDtoMapper,
+  type BetterAuthApiKey,
+} from "@/shared/dto/api-key.dto";
 import {
   updateApiKeySchema,
   deleteApiKeySchema,
   type UpdateApiKeyInput,
   type DeleteApiKeyInput,
 } from "@/shared/lib/validation/api-key.schemas";
-import { UpdateApiKeyUseCase } from "@/core/use-cases/api-key/update-api-key.use-case";
-import { DeleteApiKeyUseCase } from "@/core/use-cases/api-key/delete-api-key.use-case";
 
 /**
  * PUT /api/admin/api-keys/[id] - Update API key by ID (admin only)
  */
 export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
-  async (input) => {
+  async (input, context) => {
     const { params, body } = input;
     const { id } = params;
 
-    // Use application use case
-    const useCase = new UpdateApiKeyUseCase();
-    const betterAuthKey = await useCase.execute({
-      keyId: id,
-      name: body.name,
-      enabled: body.enabled,
-      permissions: body.permissions,
-      metadata: body.metadata,
-    });
+    // Delegate to service layer (pass request headers for Better Auth session)
+    const result = await ApiKeyService.update(
+      id,
+      body,
+      auth.api,
+      context.request.headers
+    );
+    const apiKeyData = unwrapOrThrow(result);
+
+    // Convert service result to BetterAuthApiKey format using utility
+    const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(apiKeyData);
 
     // Map to response DTO
     return ApiKeyDtoMapper.toResponseDto(betterAuthKey);
@@ -48,12 +55,28 @@ export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
  * DELETE /api/admin/api-keys/[id] - Delete API key by ID (admin only)
  */
 export const DELETE = ApiWrapper.create<DeleteApiKeyInput>(
-  async (input) => {
+  async (input, context) => {
     const { params } = input;
     const { id } = params;
 
-    const deleteUseCase = new DeleteApiKeyUseCase();
-    const betterAuthKey = await deleteUseCase.execute({ keyId: id });
+    // Get API key before deletion for response
+    const getResult = await ApiKeyService.getById(id);
+    const existingKey = unwrapOrThrow(getResult);
+
+    if (!existingKey) {
+      throw new ApiError("API key not found", ErrorCode.NOT_FOUND, 404);
+    }
+
+    // Delete through service layer (pass request headers for Better Auth session)
+    const result = await ApiKeyService.delete(
+      id,
+      auth.api,
+      context.request.headers
+    );
+    unwrapOrThrow(result);
+
+    // Convert service DTO to Better Auth format using utility
+    const betterAuthKey = ApiKeyDtoMapper.fromServiceResult(existingKey);
 
     // Map to deleted response DTO
     return ApiKeyDtoMapper.toDeletedResponseDto(betterAuthKey);

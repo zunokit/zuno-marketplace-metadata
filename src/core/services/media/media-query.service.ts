@@ -32,7 +32,8 @@ export class MediaQueryService {
    * Build list params từ query input và auth context
    */
   static buildListParams(
-    input: ListQueryInput
+    input: ListQueryInput,
+    context: AuthContext
   ): MediaListParams {
     const {
       page = 1,

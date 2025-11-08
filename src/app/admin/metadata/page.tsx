@@ -1,20 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  useMetadata,
-  useDeleteMetadata,
-  type MetadataViewModel,
-} from "@/hooks/use-metadata";
+import { useMetadata, useDeleteMetadata, type MetadataViewModel } from "@/hooks/use-metadata";
 import { DataTable } from "@/components/data-table";
 import { createMetadataColumns } from "@/components/feature/metadata/metadata-table-columns";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,8 +28,7 @@ import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
 
 export default function MetadataPage() {
-  const [selectedMetadata, setSelectedMetadata] =
-    useState<MetadataViewModel | null>(null);
+  const [selectedMetadata, setSelectedMetadata] = useState<MetadataViewModel | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
 
@@ -87,9 +76,7 @@ export default function MetadataPage() {
       <div className="flex h-96 items-center justify-center">
         <div className="text-center">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto" />
-          <p className="mt-4 text-sm text-muted-foreground">
-            Loading metadata...
-          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Loading metadata...</p>
         </div>
       </div>
     );
@@ -116,12 +103,8 @@ export default function MetadataPage() {
         <CardContent>
           {error ? (
             <div className="rounded-md border border-destructive/50 bg-destructive/10 p-8 text-center">
-              <p className="text-lg font-medium text-destructive mb-2">
-                Error loading metadata
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {error instanceof Error ? error.message : "An error occurred"}
-              </p>
+              <p className="text-lg font-medium text-destructive mb-2">Error loading metadata</p>
+              <p className="text-sm text-muted-foreground">{error instanceof Error ? error.message : "An error occurred"}</p>
             </div>
           ) : (
             <DataTable
@@ -144,15 +127,15 @@ export default function MetadataPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  window.open(`/api/metadata/${selectedMetadata?.id}`, "_blank")
-                }
+                onClick={() => window.open(`/api/metadata/${selectedMetadata?.id}`, "_blank")}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Open JSON
               </Button>
             </DialogTitle>
-            <DialogDescription>NFT Metadata Details</DialogDescription>
+            <DialogDescription>
+              NFT Metadata Details
+            </DialogDescription>
           </DialogHeader>
           {selectedMetadata && (
             <div className="space-y-6">
@@ -160,8 +143,8 @@ export default function MetadataPage() {
               {(selectedMetadata.image || selectedMetadata.animation_url) && (
                 <div className="flex items-center justify-center bg-muted rounded-lg p-4">
                   {selectedMetadata.animation_url ? (
-                    selectedMetadata.animation_url.endsWith(".mp4") ||
-                    selectedMetadata.animation_url.endsWith(".webm") ? (
+                    selectedMetadata.animation_url.endsWith('.mp4') ||
+                    selectedMetadata.animation_url.endsWith('.webm') ? (
                       <video
                         src={selectedMetadata.animation_url}
                         className="max-h-[400px] rounded"
@@ -190,37 +173,23 @@ export default function MetadataPage() {
               {/* Basic Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Name
-                  </label>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
                   <p className="mt-1 text-sm">{selectedMetadata.name}</p>
                 </div>
                 {selectedMetadata.description && (
                   <div className="col-span-2">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Description
-                    </label>
-                    <p className="mt-1 text-sm">
-                      {selectedMetadata.description}
-                    </p>
+                    <label className="text-sm font-medium text-muted-foreground">Description</label>
+                    <p className="mt-1 text-sm">{selectedMetadata.description}</p>
                   </div>
                 )}
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    ID
-                  </label>
-                  <p className="mt-1 text-sm font-mono">
-                    {selectedMetadata.id}
-                  </p>
+                  <label className="text-sm font-medium text-muted-foreground">ID</label>
+                  <p className="mt-1 text-sm font-mono text-xs">{selectedMetadata.id}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Created
-                  </label>
+                  <label className="text-sm font-medium text-muted-foreground">Created</label>
                   <p className="mt-1 text-sm">
-                    {formatDistanceToNow(new Date(selectedMetadata.createdAt), {
-                      addSuffix: true,
-                    })}
+                    {formatDistanceToNow(new Date(selectedMetadata.createdAt), { addSuffix: true })}
                   </p>
                 </div>
               </div>
@@ -228,20 +197,16 @@ export default function MetadataPage() {
               {/* Collection Info */}
               {selectedMetadata.collection && (
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">
-                    Collection
-                  </label>
+                  <label className="text-sm font-medium text-muted-foreground">Collection</label>
                   <div className="mt-1 space-y-1">
                     {selectedMetadata.collection.name && (
                       <p className="text-sm">
-                        <span className="font-medium">Name:</span>{" "}
-                        {selectedMetadata.collection.name}
+                        <span className="font-medium">Name:</span> {selectedMetadata.collection.name}
                       </p>
                     )}
                     {selectedMetadata.collection.family && (
                       <p className="text-sm">
-                        <span className="font-medium">Family:</span>{" "}
-                        {selectedMetadata.collection.family}
+                        <span className="font-medium">Family:</span> {selectedMetadata.collection.family}
                       </p>
                     )}
                   </div>
@@ -249,37 +214,32 @@ export default function MetadataPage() {
               )}
 
               {/* Attributes */}
-              {selectedMetadata.attributes &&
-                selectedMetadata.attributes.length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Attributes ({selectedMetadata.attributes.length})
-                    </label>
-                    <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
-                      {selectedMetadata.attributes.map((attr, index) => (
-                        <div key={index} className="rounded-lg border p-3">
-                          <p className="text-xs text-muted-foreground">
-                            {attr.trait_type}
+              {selectedMetadata.attributes && selectedMetadata.attributes.length > 0 && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Attributes ({selectedMetadata.attributes.length})
+                  </label>
+                  <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {selectedMetadata.attributes.map((attr, index) => (
+                      <div key={index} className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground">{attr.trait_type}</p>
+                        <p className="text-sm font-medium">{attr.value}</p>
+                        {attr.display_type && (
+                          <p className="text-xs text-muted-foreground capitalize">
+                            {attr.display_type.replace('_', ' ')}
                           </p>
-                          <p className="text-sm font-medium">{attr.value}</p>
-                          {attr.display_type && (
-                            <p className="text-xs text-muted-foreground capitalize">
-                              {attr.display_type.replace("_", " ")}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
               {/* URLs */}
               <div className="space-y-3">
                 {selectedMetadata.image && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Image URL
-                    </label>
+                    <label className="text-sm font-medium text-muted-foreground">Image URL</label>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"
@@ -290,9 +250,7 @@ export default function MetadataPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          navigator.clipboard.writeText(selectedMetadata.image!)
-                        }
+                        onClick={() => navigator.clipboard.writeText(selectedMetadata.image!)}
                       >
                         Copy
                       </Button>
@@ -301,9 +259,7 @@ export default function MetadataPage() {
                 )}
                 {selectedMetadata.animation_url && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      Animation URL
-                    </label>
+                    <label className="text-sm font-medium text-muted-foreground">Animation URL</label>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"
@@ -314,11 +270,7 @@ export default function MetadataPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          navigator.clipboard.writeText(
-                            selectedMetadata.animation_url!
-                          )
-                        }
+                        onClick={() => navigator.clipboard.writeText(selectedMetadata.animation_url!)}
                       >
                         Copy
                       </Button>
@@ -327,9 +279,7 @@ export default function MetadataPage() {
                 )}
                 {selectedMetadata.external_url && (
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">
-                      External URL
-                    </label>
+                    <label className="text-sm font-medium text-muted-foreground">External URL</label>
                     <div className="mt-1 flex items-center gap-2">
                       <input
                         type="text"
@@ -340,9 +290,7 @@ export default function MetadataPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          window.open(selectedMetadata.external_url, "_blank")
-                        }
+                        onClick={() => window.open(selectedMetadata.external_url, "_blank")}
                       >
                         Open
                       </Button>
@@ -357,7 +305,7 @@ export default function MetadataPage() {
                   View Raw JSON
                 </summary>
                 <div className="mt-2 rounded-lg bg-muted p-4">
-                  <pre className="text-xs whitespace-pre-wrap wrap-break-word">
+                  <pre className="text-xs overflow-x-auto">
                     {JSON.stringify(selectedMetadata, null, 2)}
                   </pre>
                 </div>
@@ -373,8 +321,8 @@ export default function MetadataPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Metadata?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedMetadata?.name}? This
-              action cannot be undone.
+              Are you sure you want to delete {selectedMetadata?.name}? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

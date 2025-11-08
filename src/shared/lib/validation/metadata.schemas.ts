@@ -55,32 +55,6 @@ export const metadataSchema = z.object({
     .max(10000, "Seller fee cannot exceed 100%")
     .optional(),
   feeRecipient: z.string().optional(),
-}).superRefine((val, ctx) => {
-  // Attributes: unique traitType
-  const traitSet = new Set<string>();
-  for (const attr of val.attributes ?? []) {
-    if (traitSet.has(attr.traitType)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["attributes"],
-        message: "Duplicate trait types found",
-      });
-      break;
-    }
-    traitSet.add(attr.traitType);
-  }
-
-  // Creators: shares must sum exactly 100 when provided
-  if (Array.isArray(val.creators) && val.creators.length > 0) {
-    const sum = val.creators.reduce((acc, c) => acc + (c.share ?? 0), 0);
-    if (sum !== 100) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["creators"],
-        message: "Creator shares must sum to exactly 100",
-      });
-    }
-  }
 });
 
 // Create metadata schema
@@ -220,4 +194,3 @@ export function validateCreators(creators: unknown[]): boolean {
 export type MetadataAttribute = z.infer<typeof metadataAttributeSchema>;
 export type Creator = z.infer<typeof creatorSchema>;
 export type MetadataInput = z.infer<typeof metadataSchema>;
-export type BatchCreateMetadataInput = z.infer<typeof batchCreateMetadataSchema>;
