@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import type { PaginatedResponse } from "@/shared/types";
 import { toISOString, toISOStringOrNow } from "@/shared/lib/utils";
+import { logger } from "@/shared/lib/utils/logger";
 
 // ============= API KEY RESPONSE DTO =============
 export interface ApiKeyResponseDto {
@@ -135,7 +136,7 @@ export class ApiKeyDtoMapper {
       try {
         return JSON.parse(metadata) as ApiKeyResponseDto["metadata"];
       } catch (e) {
-        console.error("[ApiKeyDtoMapper] Failed to parse metadata:", e);
+        logger.error("ApiKeyDtoMapper: Failed to parse metadata", { error: String(e) });
         return undefined;
       }
     }

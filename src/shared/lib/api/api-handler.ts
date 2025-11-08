@@ -16,6 +16,12 @@ import {
 } from "@/shared/lib/utils/api-version";
 import { getCorsOrigins } from "@/shared/config/env";
 
+/**
+ * Maximum allowed request body size (10MB)
+ * Prevents DoS attacks via large payloads
+ */
+const MAX_REQUEST_BODY_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
 export interface ApiContext {
   request: NextRequest;
   params?: Record<string, string>;
@@ -346,7 +352,18 @@ export class ApiWrapper {
       if (contentType?.includes("application/json")) {
         const jsonResult = await tryCatch(
           async () => {
+            // Security: Check request body size before parsing
             const text = await request.text();
+            const bodySize = new TextEncoder().encode(text).length;
+
+            if (bodySize > MAX_REQUEST_BODY_SIZE) {
+              throw new ApiError(
+                `Request body too large. Maximum allowed size is ${MAX_REQUEST_BODY_SIZE / 1024 / 1024}MB`,
+                ErrorCode.VALIDATION_ERROR,
+                413
+              );
+            }
+
             if (text.trim()) {
               return JSON.parse(text);
             }
