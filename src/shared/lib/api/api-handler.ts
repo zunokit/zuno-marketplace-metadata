@@ -19,6 +19,23 @@ import {
   RateLimitError,
 } from "@/infrastructure/services/rate-limit.service";
 
+/**
+ * Maximum allowed request body size (10MB)
+ * Prevents DoS attacks via large payloads
+ */
+const MAX_REQUEST_BODY_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+/**
+ * Get allowed CORS origins from environment
+ */
+function getCorsOrigins(): string[] {
+  const origins = process.env.CORS_ORIGINS;
+  if (!origins) {
+    return ["*"]; // Allow all origins in dev
+  }
+  return origins.split(",").map((o) => o.trim());
+}
+
 export interface ApiContext {
   request: NextRequest;
   params?: Record<string, string>;
