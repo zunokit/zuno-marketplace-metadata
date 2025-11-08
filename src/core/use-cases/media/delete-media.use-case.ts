@@ -1,22 +1,21 @@
 import type { MediaRepository } from "@/core/domain/media/media.repository";
 import type { MediaEntity } from "@/core/domain/media/media.entity";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 import { ImageKitService } from "@/infrastructure/services/imagekit.service";
 import { logger } from "@/shared/lib/utils/logger";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { tryCatch } from "@/shared/lib/utils/server";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
 
 /**
  * Delete Media Use Case
  * Handles the business logic for deleting media files with cache invalidation
  */
 export class DeleteMediaUseCase {
-  private readonly cache = getCacheService();
-
   constructor(
     private readonly mediaRepository: MediaRepository,
-    private readonly imageKitService: ImageKitService
+    private readonly imageKitService: ImageKitService,
+    private readonly cache: ICacheService
   ) {}
 
   async execute(mediaId: string): Promise<MediaEntity> {

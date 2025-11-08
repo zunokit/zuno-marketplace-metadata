@@ -10,6 +10,8 @@ import type { ApiVersionRepository } from "@/core/domain/api-version/api-version
 import type { ApiKeyRepository } from "@/core/domain/api-key/api-key.repository";
 import { AuditLogRepositoryImpl } from "@/infrastructure/repositories/audit-log.repository.impl";
 import type { AuditLogRepository } from "@/core/domain/audit-log/audit-log.repository";
+import { CacheService } from "@/infrastructure/cache/cache.service";
+import type { ICacheService } from "@/core/domain/cache/cache.interface";
 
 
 
@@ -20,6 +22,7 @@ let apiVersionRepositoryInstance: ApiVersionRepository | null = null;
 let apiKeyRepositoryInstance: ApiKeyRepository | null = null;
 let imageKitServiceInstance: ImageKitService | null = null;
 let auditLogRepository: AuditLogRepository | null = null;
+let cacheServiceInstance: ICacheService | null = null;
 
 
 // ============= REPOSITORY FACTORIES =============
@@ -68,6 +71,13 @@ export function getAuditLogRepository(): AuditLogRepository {
   return auditLogRepository;
 }
 
+export function getCacheService(): ICacheService {
+  if (!cacheServiceInstance) {
+    cacheServiceInstance = new CacheService();
+  }
+  return cacheServiceInstance;
+}
+
 
 // ============= CLEANUP =============
 
@@ -78,4 +88,5 @@ export function clearContainer(): void {
   apiKeyRepositoryInstance = null;
   imageKitServiceInstance = null;
   auditLogRepository = null;
+  cacheServiceInstance = null;
 }

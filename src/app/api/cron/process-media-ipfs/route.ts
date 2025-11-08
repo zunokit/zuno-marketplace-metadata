@@ -4,7 +4,7 @@ import { PinataClient } from "@/infrastructure/services/pinata/pinata.client";
 import { PINATA_GROUPS } from "@/infrastructure/services/pinata/pinata.constants";
 import { logger } from "@/shared/lib/utils/logger";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
-import { getCacheService } from "@/infrastructure/cache/cache.service";
+import { getCacheService } from "@/infrastructure/di/container";
 import { ApiWrapper, ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 
