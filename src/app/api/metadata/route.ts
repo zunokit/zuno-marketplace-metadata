@@ -8,7 +8,6 @@ import {
 } from "@/shared/lib/validation/metadata.schemas";
 import { MetadataQueryService } from "@/core/services/metadata/metadata-query.service";
 import { getMetadataRepository, getCacheService } from "@/infrastructure/di/container";
-import { ErrorCode } from "@/shared/types";
 import { metadataQueue } from "@/infrastructure/queue/queue.config";
 import {
   CacheKeyBuilder,

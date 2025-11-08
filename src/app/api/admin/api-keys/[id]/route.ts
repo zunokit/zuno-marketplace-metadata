@@ -8,6 +8,7 @@ import {
 } from "@/shared/lib/validation/api-key.schemas";
 import { UpdateApiKeyUseCase } from "@/core/use-cases/api-key/update-api-key.use-case";
 import { DeleteApiKeyUseCase } from "@/core/use-cases/api-key/delete-api-key.use-case";
+import { getApiKeyRepository } from "@/infrastructure/di/container";
 
 /**
  * PUT /api/admin/api-keys/[id] - Update API key by ID (admin only)
@@ -18,7 +19,7 @@ export const PUT = ApiWrapper.create<UpdateApiKeyInput>(
     const { id } = params;
 
     // Use application use case
-    const useCase = new UpdateApiKeyUseCase();
+    const useCase = new UpdateApiKeyUseCase(getApiKeyRepository());
     const betterAuthKey = await useCase.execute({
       keyId: id,
       name: body.name,
@@ -52,7 +53,7 @@ export const DELETE = ApiWrapper.create<DeleteApiKeyInput>(
     const { params } = input;
     const { id } = params;
 
-    const deleteUseCase = new DeleteApiKeyUseCase();
+    const deleteUseCase = new DeleteApiKeyUseCase(getApiKeyRepository());
     const betterAuthKey = await deleteUseCase.execute({ keyId: id });
 
     // Map to deleted response DTO

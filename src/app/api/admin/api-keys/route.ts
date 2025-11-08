@@ -4,6 +4,7 @@ import { CreateApiKeyUseCase } from "@/core/use-cases/api-key/create-api-key.use
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
 import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
 import { logger } from "@/shared/lib/utils/logger";
+import { getApiKeyRepository } from "@/infrastructure/di/container";
 import {
   createApiKeySchema,
   listApiKeysSchema,
@@ -71,7 +72,7 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
 export const POST = ApiWrapper.create<CreateApiKeyInput>(
   async (input, context) => {
     // Use application use case (adminOnly ensures user is defined)
-    const useCase = new CreateApiKeyUseCase();
+    const useCase = new CreateApiKeyUseCase(getApiKeyRepository());
     const apiKey = await useCase.execute({
       userId: context.user!.id,
       name: input.body.name,

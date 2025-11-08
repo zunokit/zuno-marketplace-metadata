@@ -1,7 +1,5 @@
 import type { ApiVersionEntity } from "@/core/domain/api-version/api-version.entity";
 import type { ApiVersionRepository } from "@/core/domain/api-version/api-version.repository";
-import { ApiError } from "@/shared/lib/api/api-handler";
-import { ErrorCode } from "@/shared/types";
 
 export interface CreateApiVersionInput {
   id: string;

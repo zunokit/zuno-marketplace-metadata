@@ -1,4 +1,4 @@
-import type { ApiKeyEntity, UpdateApiKeyParams } from "@/core/domain/api-key/api-key.entity";
+import type { ApiKeyEntity } from "@/core/domain/api-key/api-key.entity";
 import type { ApiKeyRepository } from "@/core/domain/api-key/api-key.repository";
 import { logger } from "@/shared/lib/utils/logger";
 

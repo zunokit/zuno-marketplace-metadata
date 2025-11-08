@@ -213,49 +213,52 @@ export class ApiKeyRepositoryImpl implements ApiKeyRepository {
   /**
    * Map Better Auth creation response to domain entity with key
    */
-  private mapToCreatedEntity(result: any): CreatedApiKeyEntity {
+  private mapToCreatedEntity(result: unknown): CreatedApiKeyEntity {
+    // Type assertion for Better Auth response
+    const data = result as Record<string, unknown>;
+
     // Parse permissions
     let permissions: Record<string, string[]> = {};
-    if (typeof result.permissions === "string") {
+    if (typeof data.permissions === "string") {
       try {
-        permissions = JSON.parse(result.permissions);
+        permissions = JSON.parse(data.permissions);
       } catch {
         permissions = {};
       }
-    } else if (result.permissions) {
-      permissions = result.permissions;
+    } else if (data.permissions) {
+      permissions = data.permissions as Record<string, string[]>;
     }
 
     // Parse metadata
     let metadata: ApiKeyEntity["metadata"] = undefined;
-    if (typeof result.metadata === "string") {
+    if (typeof data.metadata === "string") {
       try {
-        metadata = JSON.parse(result.metadata);
+        metadata = JSON.parse(data.metadata);
       } catch {
         metadata = undefined;
       }
-    } else if (result.metadata) {
-      metadata = result.metadata;
+    } else if (data.metadata) {
+      metadata = data.metadata as ApiKeyEntity["metadata"];
     }
 
     return {
-      id: result.id,
-      key: result.key, // Only available on creation!
-      name: result.name || "",
-      start: result.start ?? null,
-      userId: result.userId,
-      enabled: result.enabled ?? true,
+      id: data.id as string,
+      key: data.key as string, // Only available on creation!
+      name: (data.name as string) || "",
+      start: (data.start as string | null) ?? null,
+      userId: data.userId as string,
+      enabled: (data.enabled as boolean) ?? true,
       permissions,
       metadata,
-      expiresAt: result.expiresAt
-        ? new Date(result.expiresAt)
+      expiresAt: data.expiresAt
+        ? new Date(data.expiresAt as string | Date)
         : undefined,
-      createdAt: new Date(result.createdAt),
-      updatedAt: new Date(result.updatedAt),
-      rateLimitEnabled: result.rateLimitEnabled ?? false,
-      rateLimitMax: result.rateLimitMax ?? undefined,
-      rateLimitTimeWindow: result.rateLimitTimeWindow ?? undefined,
-      remaining: result.remaining ?? undefined,
+      createdAt: new Date(data.createdAt as string | Date),
+      updatedAt: new Date(data.updatedAt as string | Date),
+      rateLimitEnabled: (data.rateLimitEnabled as boolean) ?? false,
+      rateLimitMax: (data.rateLimitMax as number) ?? undefined,
+      rateLimitTimeWindow: (data.rateLimitTimeWindow as number) ?? undefined,
+      remaining: (data.remaining as number) ?? undefined,
     };
   }
 }
