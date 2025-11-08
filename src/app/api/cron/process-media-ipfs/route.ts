@@ -7,6 +7,7 @@ import { logger } from "@/shared/lib/utils/logger";
 import { tryCatch } from "@/shared/lib/utils/server";
 import { getCurrentApiVersion } from "@/shared/lib/utils/api-version";
 import { getCacheService } from "@/infrastructure/cache/cache.service";
+import { handleCronAuth } from "@/shared/lib/utils/cron-auth";
 
 /**
  * Cron endpoint to process unpinned media
@@ -19,15 +20,10 @@ const BATCH_SIZE = 5;
 const pinataClient = PinataClient.getInstance();
 
 export async function GET(request: NextRequest) {
-  // Security: Verify cron secret
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+  // Security: Verify cron secret with timing-attack protection
+  const authResult = handleCronAuth(request, process.env.CRON_SECRET);
+  if (!authResult.authorized) {
+    return authResult.response!;
   }
 
   logger.info("Starting media IPFS pinning cron job");
