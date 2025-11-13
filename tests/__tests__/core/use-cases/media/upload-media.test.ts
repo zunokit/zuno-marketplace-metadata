@@ -1,6 +1,7 @@
+import type { MediaRepository } from "@/core/domain/media/media.repository";
 
 // Mock repository
-const mockMediaRepository = (): IMediaRepository => ({
+const mockMediaRepository = (): MediaRepository => ({
   create: jest.fn(),
   findById: jest.fn(),
   findAll: jest.fn(),
@@ -9,7 +10,7 @@ const mockMediaRepository = (): IMediaRepository => ({
 });
 
 describe("UploadMediaUseCase", () => {
-  let mediaRepository: IMediaRepository;
+  let mediaRepository: MediaRepository;
 
   beforeEach(() => {
     mediaRepository = mockMediaRepository();

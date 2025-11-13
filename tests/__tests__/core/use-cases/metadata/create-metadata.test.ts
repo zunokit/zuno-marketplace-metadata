@@ -1,8 +1,8 @@
-import type { IMetadataRepository } from "@/core/domain/metadata/repository";
-import type { CreateMetadataDTO } from "@/shared/dto/metadata/create-metadata.dto";
+import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
+import type { CreateMetadataParams } from "@/core/domain/metadata/metadata.entity";
 
 // Mock repository
-const mockMetadataRepository = (): IMetadataRepository => ({
+const mockMetadataRepository = (): MetadataRepository => ({
   create: jest.fn(),
   findById: jest.fn(),
   findAll: jest.fn(),
@@ -12,7 +12,7 @@ const mockMetadataRepository = (): IMetadataRepository => ({
 });
 
 describe("CreateMetadataUseCase", () => {
-  let metadataRepository: IMetadataRepository;
+  let metadataRepository: MetadataRepository;
 
   beforeEach(() => {
     metadataRepository = mockMetadataRepository();
@@ -20,7 +20,7 @@ describe("CreateMetadataUseCase", () => {
 
   describe("create", () => {
     it("should create metadata with required fields", async () => {
-      const createDTO: CreateMetadataDTO = {
+      const createDTO: CreateMetadataParams = {
         name: "Test NFT",
         image: "https://example.com/image.png",
       };
@@ -67,7 +67,7 @@ describe("CreateMetadataUseCase", () => {
     });
 
     it("should create metadata with all optional fields", async () => {
-      const createDTO: CreateMetadataDTO = {
+      const createDTO: CreateMetadataParams = {
         name: "Test NFT",
         image: "https://example.com/image.png",
         description: "Test description",
@@ -132,7 +132,7 @@ describe("CreateMetadataUseCase", () => {
         },
       ];
 
-      const createDTO: CreateMetadataDTO = {
+      const createDTO: CreateMetadataParams = {
         name: "Test NFT",
         image: "https://example.com/image.png",
         attributes,
@@ -192,7 +192,7 @@ describe("CreateMetadataUseCase", () => {
         },
       ];
 
-      const createDTO: CreateMetadataDTO = {
+      const createDTO: CreateMetadataParams = {
         name: "Test NFT",
         image: "https://example.com/image.png",
         creators,
@@ -241,7 +241,7 @@ describe("CreateMetadataUseCase", () => {
       ];
 
       for (const testCase of testCases) {
-        const createDTO: CreateMetadataDTO = {
+        const createDTO: CreateMetadataParams = {
           name: "Test NFT",
           image: "https://example.com/image.png",
           sellerFeeBasisPoints: testCase.sellerFeeBasisPoints,

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom";
 // Global test setup
 beforeAll(() => {
   // Set up test environment variables
-  process.env.NODE_ENV = "test";
+  // NOTE: NODE_ENV is set automatically by Jest to "test"
   process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
   process.env.UPSTASH_REDIS_REST_URL = "https://test.upstash.io";
   process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";

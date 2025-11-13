@@ -1,8 +1,8 @@
-import type { IMetadataRepository } from "@/core/domain/metadata/repository";
-import type { ListMetadataParams } from "@/core/domain/metadata/types";
+import type { MetadataRepository } from "@/core/domain/metadata/metadata.repository";
+import type { MetadataListParams } from "@/core/domain/metadata/metadata.entity";
 
 // Mock repository
-const mockMetadataRepository = (): IMetadataRepository => ({
+const mockMetadataRepository = (): MetadataRepository => ({
   create: jest.fn(),
   findById: jest.fn(),
   findAll: jest.fn(),
@@ -12,7 +12,7 @@ const mockMetadataRepository = (): IMetadataRepository => ({
 });
 
 describe("ListMetadataUseCase", () => {
-  let metadataRepository: IMetadataRepository;
+  let metadataRepository: MetadataRepository;
 
   beforeEach(() => {
     metadataRepository = mockMetadataRepository();
@@ -20,7 +20,7 @@ describe("ListMetadataUseCase", () => {
 
   describe("list", () => {
     it("should list metadata with default pagination", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -59,7 +59,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should filter by isLocked status", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -90,7 +90,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should filter by isPinned status", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -122,7 +122,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should search by name", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -152,7 +152,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should sort by name ascending", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -194,7 +194,7 @@ describe("ListMetadataUseCase", () => {
       const oldDate = new Date("2024-01-01");
       const newDate = new Date("2024-12-01");
 
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -242,7 +242,7 @@ describe("ListMetadataUseCase", () => {
       ];
 
       for (const testCase of testCases) {
-        const params: ListMetadataParams = {
+        const params: MetadataListParams = {
           apiKeyId: "api-key-id",
           page: testCase.page,
           limit: testCase.limit,
@@ -257,7 +257,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should return empty array when no metadata found", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
@@ -274,7 +274,7 @@ describe("ListMetadataUseCase", () => {
     });
 
     it("should combine multiple filters", async () => {
-      const params: ListMetadataParams = {
+      const params: MetadataListParams = {
         apiKeyId: "api-key-id",
         page: 1,
         limit: 20,
