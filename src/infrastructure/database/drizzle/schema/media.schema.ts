@@ -8,6 +8,7 @@ import {
   real,
   pgEnum,
 } from "drizzle-orm/pg-core";
+import { user } from "./user.schema";
 
 // ============= ENUMS =============
 export const mediaTypeEnum = pgEnum("media_type", [
@@ -22,6 +23,11 @@ export const media = pgTable("media", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
+
+  // Ownership - required for access control
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
 
   // File info
   fileName: text("file_name").notNull(),
