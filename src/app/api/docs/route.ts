@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 /**
  * GET /api/docs - API Documentation
@@ -10,7 +11,7 @@ export async function GET() {
     version: "v1",
     description:
       "NFT metadata management API with OpenSea compatibility, IPFS storage, and media processing",
-    baseUrl: process.env.BETTER_AUTH_URL || "http://localhost:3000",
+    baseUrl: getCurrentUrl(),
 
     authentication: {
       methods: {

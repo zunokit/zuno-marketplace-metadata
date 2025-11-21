@@ -1,5 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 dotenv.config();
 
@@ -34,7 +35,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  CORS_ORIGINS: z.string().default("http://localhost:3000"),
+  CORS_ORIGINS: z.string().default(getCurrentUrl()),
 
   //
   CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
