@@ -1,8 +1,10 @@
 "use client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
-const API_KEY = process.env.NEXT_PUBLIC_API_KEY as string;
 const API_VERSION = process.env.NEXT_PUBLIC_API_VERSION || "v1";
+
+// Public API key will be fetched dynamically
+let cachedApiKey: string | null = null;
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -61,18 +63,66 @@ export interface BatchResult<T> {
 }
 
 class ApiClient {
-  private headers: HeadersInit = {
-    "x-api-key": API_KEY,
-    "x-api-version": API_VERSION,
-  };
+  /**
+   * Fetch public API key from server
+   */
+  private async getApiKey(): Promise<string> {
+    // Return cached key if available
+    if (cachedApiKey) {
+      return cachedApiKey;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/public-key`, {
+        headers: {
+          "x-api-version": API_VERSION,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch public API key");
+      }
+
+      const data = await response.json();
+
+      if (!data.data?.enabled || !data.data?.apiKey) {
+        throw new Error("Public API key is disabled or not available");
+      }
+
+      // Cache the key
+      cachedApiKey = data.data.apiKey;
+
+      return cachedApiKey!;
+    } catch (error) {
+      console.error("Failed to get public API key:", error);
+      throw new Error("Unable to authenticate. Please try again later.");
+    }
+  }
+
+  /**
+   * Get headers with API key
+   */
+  private async getHeaders(includeContentType = false): Promise<HeadersInit> {
+    const apiKey = await this.getApiKey();
+
+    const headers: HeadersInit = {
+      "x-api-key": apiKey,
+      "x-api-version": API_VERSION,
+    };
+
+    if (includeContentType) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    return headers;
+  }
 
   async createMetadata(metadata: MetadataItem): Promise<ApiResponse<MetadataItem>> {
+    const headers = await this.getHeaders(true);
+
     const response = await fetch(`${API_BASE_URL}/metadata`, {
       method: "POST",
-      headers: {
-        ...this.headers,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(metadata),
     });
 
@@ -87,12 +137,11 @@ class ApiClient {
   async batchCreateMetadata(
     metadata: MetadataItem[]
   ): Promise<ApiResponse<BatchResult<MetadataItem>>> {
+    const headers = await this.getHeaders(true);
+
     const response = await fetch(`${API_BASE_URL}/metadata/batch`, {
       method: "POST",
-      headers: {
-        ...this.headers,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify({ metadata }),
     });
 
@@ -105,6 +154,8 @@ class ApiClient {
   }
 
   async uploadMedia(file: File, folder?: string, tags?: string[]): Promise<ApiResponse<MediaItem>> {
+    const headers = await this.getHeaders();
+
     const formData = new FormData();
     formData.append("file", file);
     if (folder) formData.append("folder", folder);
@@ -112,7 +163,7 @@ class ApiClient {
 
     const response = await fetch(`${API_BASE_URL}/media`, {
       method: "POST",
-      headers: this.headers,
+      headers,
       body: formData,
     });
 
@@ -129,6 +180,8 @@ class ApiClient {
     folder?: string,
     tags?: string[]
   ): Promise<ApiResponse<BatchResult<MediaItem>>> {
+    const headers = await this.getHeaders();
+
     const formData = new FormData();
     files.forEach((file) => formData.append("files", file));
     if (folder) formData.append("folder", folder);
@@ -136,7 +189,7 @@ class ApiClient {
 
     const response = await fetch(`${API_BASE_URL}/media/batch`, {
       method: "POST",
-      headers: this.headers,
+      headers,
       body: formData,
     });
 
@@ -153,13 +206,15 @@ class ApiClient {
     limit?: number;
     search?: string;
   }): Promise<ApiResponse<{ data: MetadataItem[]; pagination: unknown }>> {
+    const headers = await this.getHeaders();
+
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.search) queryParams.append("search", params.search);
 
     const response = await fetch(`${API_BASE_URL}/metadata?${queryParams}`, {
-      headers: this.headers,
+      headers,
     });
 
     if (!response.ok) {
@@ -174,13 +229,15 @@ class ApiClient {
     limit?: number;
     mediaType?: string;
   }): Promise<ApiResponse<{ data: MediaItem[]; pagination: unknown }>> {
+    const headers = await this.getHeaders();
+
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.mediaType) queryParams.append("mediaType", params.mediaType);
 
     const response = await fetch(`${API_BASE_URL}/media?${queryParams}`, {
-      headers: this.headers,
+      headers,
     });
 
     if (!response.ok) {
@@ -188,6 +245,14 @@ class ApiClient {
     }
 
     return response.json();
+  }
+
+  /**
+   * Prefetch and cache the API key
+   * Call this early to avoid delays on first API call
+   */
+  async prefetchApiKey(): Promise<void> {
+    await this.getApiKey();
   }
 }
 

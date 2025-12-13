@@ -249,9 +249,10 @@ Tests are run automatically on:
 ### E2E Tests Failing
 
 1. **Start dev server**: Run `pnpm dev` in a separate terminal
-2. **Check API key**: Verify `NEXT_PUBLIC_API_KEY` in `.env`
-3. **Database migrations**: Run `pnpm db:migrate`
-4. **Create admin user**: Run `pnpm db:create-admin`
+2. **Create public API key**: Create an API key in admin panel with `metadata.type = "public"`
+3. **Check public key config**: Verify `ENABLE_PUBLIC_KEY=true` in `.env`
+4. **Database migrations**: Run `pnpm db:migrate`
+5. **Create admin user**: Run `pnpm db:create-admin`
 
 ## Contributing
 
