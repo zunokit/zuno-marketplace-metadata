@@ -4,6 +4,9 @@ import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import { User } from "@/infrastructure/database/drizzle/schema/user.schema";
+import { env } from "@/shared/config/env";
+import { constantTimeCompare } from "@/shared/lib/utils/constant-time-compare";
+import { hashApiKey } from "@/shared/lib/utils/api-key-hash";
 
 export interface AuthUser {
   id: string;
@@ -49,13 +52,84 @@ export interface AuthContext {
 
 /**
  * Verify API key from request header
- * Uses Better Auth API to properly verify hashed keys
+ * First checks hardcoded admin keys from environment, then uses Better Auth API for regular keys
  */
 export async function verifyApiKey(
   apiKeyValue: string
 ): Promise<AuthApiKey | null> {
   try {
-    // Use Better Auth API to verify the key (handles hashing automatically)
+    // First check if this is a hardcoded admin key
+    if (env.API_KEYS) {
+      const adminKeys = env.API_KEYS.split(",").map((k) => k.trim());
+      for (const adminKey of adminKeys) {
+        if (constantTimeCompare(apiKeyValue, adminKey)) {
+          // This is a hardcoded admin key - look it up in database directly
+          const hashedKey = hashApiKey(apiKeyValue);
+          const [keyRecord] = await db
+            .select()
+            .from(apiKeyTable)
+            .where(eq(apiKeyTable.key, hashedKey))
+            .limit(1);
+
+          if (keyRecord && keyRecord.enabled) {
+            logger.debug("Hardcoded admin API key verified", {
+              keyId: keyRecord.id,
+            });
+
+            // Parse permissions
+            let permissions: Record<string, string[]> = {};
+            if (keyRecord.permissions) {
+              try {
+                permissions =
+                  typeof keyRecord.permissions === "string"
+                    ? JSON.parse(keyRecord.permissions)
+                    : keyRecord.permissions;
+              } catch (error) {
+                logger.error("Failed to parse API key permissions", { error });
+              }
+            }
+
+            // Extract scopes from metadata
+            let metadata: AuthApiKey["metadata"] = {};
+            if (keyRecord.metadata) {
+              try {
+                if (typeof keyRecord.metadata === "string") {
+                  metadata = JSON.parse(keyRecord.metadata);
+                } else {
+                  metadata = keyRecord.metadata;
+                }
+              } catch (error) {
+                logger.error("Failed to parse API key metadata", { error });
+              }
+            }
+            const scopes = metadata?.scopes || [];
+
+            // Update last request timestamp
+            await db
+              .update(apiKeyTable)
+              .set({ lastRequest: new Date() })
+              .where(eq(apiKeyTable.id, keyRecord.id));
+
+            return {
+              id: keyRecord.id,
+              userId: keyRecord.userId,
+              name: keyRecord.name,
+              permissions,
+              scopes,
+              enabled: keyRecord.enabled,
+              expiresAt: keyRecord.expiresAt,
+              rateLimitEnabled: keyRecord.rateLimitEnabled || false,
+              rateLimitMax: keyRecord.rateLimitMax,
+              rateLimitTimeWindow: keyRecord.rateLimitTimeWindow,
+              remaining: keyRecord.remaining,
+              metadata,
+            };
+          }
+        }
+      }
+    }
+
+    // Not a hardcoded admin key, use Better Auth API to verify the key
     const result = await auth.api.verifyApiKey({
       body: {
         key: apiKeyValue,
@@ -109,23 +183,17 @@ export async function verifyApiKey(
       }
     }
 
-    // Parse metadata from Better Auth format
+    // Extract scopes from metadata
     let metadata: AuthApiKey["metadata"] = {};
     if (keyRecord.metadata) {
       try {
-        // Better Auth stores metadata as TEXT, need to parse
-        let parsed = typeof keyRecord.metadata === "string"
-          ? JSON.parse(keyRecord.metadata)
-          : keyRecord.metadata;
-
-        // Check if it's double-encoded (string inside string)
-        if (typeof parsed === "string") {
-          parsed = JSON.parse(parsed);
+        if (typeof keyRecord.metadata === "string") {
+          metadata = JSON.parse(keyRecord.metadata);
+        } else {
+          metadata = keyRecord.metadata;
         }
-
-        metadata = parsed;
       } catch (error) {
-        logger.error("Failed to parse API key metadata", {error});
+        logger.error("Failed to parse API key metadata", { error });
       }
     }
     const scopes = metadata?.scopes || [];

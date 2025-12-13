@@ -47,6 +47,10 @@ const envSchema = z.object({
     .transform((val) => val !== "false")
     .default(() => true),
 
+  // Hardcoded Admin API Keys (comma-separated, no rate limiting)
+  // Format: API_KEYS=zuno_xxx_admin_01,zuno_xxx_admin_02
+  API_KEYS: z.string().optional(),
+
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });

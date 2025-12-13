@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -487,6 +488,7 @@ export class ApiWrapper {
           });
 
           // Check rate limits for API key requests
+          // Note: Hardcoded admin keys are handled in auth-helpers.ts
           try {
             const rateLimitResult = await RateLimitService.checkLimit(
               { id: apiKey.id, metadata: apiKey.metadata || null },
