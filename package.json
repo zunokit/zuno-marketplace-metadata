@@ -14,6 +14,7 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:create-admin": "tsx scripts/create-admin.ts",
+    "db:create-public-key": "tsx scripts/create-public-key.ts",
     "test": "jest --config tests/setup/jest.config.js",
     "test:watch": "jest --watch --config tests/setup/jest.config.js",
     "test:coverage": "jest --coverage --config tests/setup/jest.config.js",

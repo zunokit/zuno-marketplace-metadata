@@ -40,6 +40,13 @@ const envSchema = z.object({
   //
   CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
 
+  // Public API Key (for home page guest access)
+  ENABLE_PUBLIC_KEY: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((val) => val !== "false")
+    .default(() => true),
+
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });

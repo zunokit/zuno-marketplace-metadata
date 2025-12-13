@@ -13,6 +13,7 @@ export * from "./media.schema";
 export * from "./metadata.schema";
 export * from "./api-versions.schema";
 export * from "./audit-logs.schema";
+export * from "./public-key-settings.schema";
 
 // Export enums separately for easy access
 export { mediaTypeEnum } from "./media.schema";
