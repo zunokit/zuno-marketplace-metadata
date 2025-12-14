@@ -84,12 +84,11 @@ export async function verifyApiKey(
         
         // Verify the incoming key matches one of the hardcoded admin keys
         // Note: We check all keys without early exit to prevent timing attacks
+        // Use bitwise OR to accumulate results in constant time
         let isAdminKey = false;
         for (const adminKey of adminKeys) {
-          if (constantTimeCompare(apiKeyValue, adminKey)) {
-            isAdminKey = true;
-            // Continue checking all keys to prevent timing side-channel
-          }
+          // Bitwise OR ensures constant-time accumulation (no branching)
+          isAdminKey = isAdminKey || constantTimeCompare(apiKeyValue, adminKey);
         }
 
         if (isAdminKey) {
