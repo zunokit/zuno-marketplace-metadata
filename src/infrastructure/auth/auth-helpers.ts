@@ -59,8 +59,15 @@ export async function verifyApiKey(
 ): Promise<AuthApiKey | null> {
   try {
     // First check if this is a hardcoded admin key
-    // Optimization: Hash the key first and check if it exists in DB,
-    // then only perform expensive constant-time comparisons if found
+    // Performance optimization: Hash the key first and check if it exists in DB.
+    // This reduces expensive constant-time comparisons from O(n) for every request
+    // to O(n) only when the key exists in the database.
+    //
+    // Security tradeoff: This creates a timing side-channel that reveals whether
+    // a key exists in the database. However, this is acceptable because:
+    // 1. We only reveal key existence, not the key value itself
+    // 2. Constant-time comparison still prevents learning the actual key
+    // 3. The performance improvement for invalid keys is significant
     if (env.API_KEYS) {
       const hashedKey = hashApiKey(apiKeyValue);
       
