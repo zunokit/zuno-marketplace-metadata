@@ -68,7 +68,7 @@ describe("hashApiKey", () => {
       expect(hash).toBe(expectedHash);
     });
 
-    it("should produce 256-bit hash (43-44 chars in base64url)", () => {
+    it("should produce 256-bit hash (43 chars in base64url)", () => {
       const key = "test-api-key-123";
       const hash = hashApiKey(key);
 
@@ -185,7 +185,8 @@ describe("hashApiKey", () => {
       for (let i = 0; i < hash1.length; i++) {
         if (hash1[i] !== hash2[i]) diffCount++;
       }
-      // SHA-256's avalanche effect: changing 1 bit should change ~50% of output
+      // SHA-256's avalanche effect: changing 1 bit typically changes ~50% of output
+      // We use 40% threshold to account for base64url character mapping variance
       expect(diffCount).toBeGreaterThan(hash1.length * 0.4); // At least 40% different
     });
 
