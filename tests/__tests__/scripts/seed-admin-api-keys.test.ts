@@ -66,7 +66,7 @@ describe("seed-admin-api-keys script", () => {
       const shortKeys = [
         "short", // 5 chars
         "a".repeat(10), // 10 chars
-        "twentyonecharactersxxx", // 21 chars
+        "twentyonecharactersxxx", // 22 chars
         "a".repeat(31), // 31 chars (just under limit)
       ];
 
@@ -129,8 +129,8 @@ describe("seed-admin-api-keys script", () => {
       expect(typeof hashedKey).toBe("string");
     });
 
-    it("should successfully seed a valid 64-character key", async () => {
-      const validKey = "zuno_sk_live_" + "a".repeat(51);
+    it("should successfully seed a valid long key", async () => {
+      const validKey = "zuno_sk_live_" + "a".repeat(50);
       expect(validKey.length).toBeGreaterThan(MIN_KEY_LENGTH);
 
       // Simulate the seeding logic
@@ -155,7 +155,7 @@ describe("seed-admin-api-keys script", () => {
     });
 
     it("should extract key prefix correctly for prefixed keys", () => {
-      const prefixedKey = "zuno_sk_live_" + "a".repeat(32);
+      const prefixedKey = "zuno_sk_live_" + "a".repeat(20); // 33 chars total (just over MIN_KEY_LENGTH)
       const hasPrefix = prefixedKey.includes("_");
       
       expect(hasPrefix).toBe(true);
@@ -210,8 +210,8 @@ describe("seed-admin-api-keys script", () => {
       const testKey = "a".repeat(32);
       const hash = hashApiKey(testKey);
 
-      // SHA-256 in base64url format should be 43 characters (without padding)
-      // 256 bits / 8 = 32 bytes, 32 bytes in base64url ≈ 43 chars
+      // SHA-256 in base64url format is exactly 43 characters (without padding)
+      // 256 bits / 8 = 32 bytes, 32 bytes in base64url = 43 chars
       expect(hash.length).toBe(43);
     });
 
