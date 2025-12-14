@@ -13,7 +13,6 @@
 import "dotenv/config";
 import { db } from "../src/infrastructure/database/client";
 import { sql } from "drizzle-orm";
-import { colors } from "./create-admin";
 import { execSync } from "child_process";
 
 // ANSI color codes for output
