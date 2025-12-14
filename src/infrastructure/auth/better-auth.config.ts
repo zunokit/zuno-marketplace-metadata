@@ -4,11 +4,12 @@ import { admin, apiKey, bearer, openAPI } from "better-auth/plugins";
 import { db } from "@/infrastructure/database/client";
 import * as schema from "@/infrastructure/database/drizzle/schema";
 import { IdGenerator, EntityPrefix } from "@/shared/lib/utils/id-generator";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 // Get environment variables
 const BETTER_AUTH_SECRET =
   process.env.BETTER_AUTH_SECRET || "default-secret-change-in-production";
-const BETTER_AUTH_URL = process.env.BETTER_AUTH_URL || "http://localhost:3000";
+const BETTER_AUTH_URL = getCurrentUrl();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {

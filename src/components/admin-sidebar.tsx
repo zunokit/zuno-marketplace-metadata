@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Database,
   FileJson,
   Key,
   LogOut,
@@ -67,7 +66,7 @@ export function AdminSidebar({ userEmail, userName }: AdminSidebarProps) {
       await authClient.signOut();
       toast.success("Signed out successfully");
       router.push("/auth/signin");
-    } catch (error) {
+    } catch {
       toast.error("Failed to sign out");
     }
   };

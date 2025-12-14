@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -14,6 +15,27 @@ import {
   isVersionDeprecated,
   getCurrentApiVersion,
 } from "@/shared/lib/utils/api-version";
+import {
+  RateLimitService,
+  RateLimitError,
+} from "@/infrastructure/services/rate-limit.service";
+
+/**
+ * Maximum allowed request body size (10MB)
+ * Prevents DoS attacks via large payloads
+ */
+const MAX_REQUEST_BODY_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+/**
+ * Get allowed CORS origins from environment
+ */
+function getCorsOrigins(): string[] {
+  const origins = process.env.CORS_ORIGINS;
+  if (!origins) {
+    return ["*"]; // Allow all origins in dev
+  }
+  return origins.split(",").map((o) => o.trim());
+}
 
 export interface ApiContext {
   request: NextRequest;
@@ -87,6 +109,46 @@ export type InferApiInput<TConfig extends ApiRouteConfig> = {
     : undefined;
 };
 
+/**
+ * Set CORS headers on response
+ *
+ * Validates origin against allowed origins from environment config
+ * and sets appropriate CORS headers for cross-origin requests.
+ *
+ * @param response - NextResponse to add headers to
+ * @param request - Original NextRequest to get origin from
+ * @returns Modified response with CORS headers
+ */
+function setCorsHeaders(
+  response: NextResponse,
+  request: NextRequest
+): NextResponse {
+  const origin = request.headers.get("origin");
+  const allowedOrigins = getCorsOrigins();
+
+  // Check if origin is allowed
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+  } else if (allowedOrigins.includes("*")) {
+    // Allow all origins if wildcard is configured
+    response.headers.set("Access-Control-Allow-Origin", "*");
+  }
+
+  // Set other CORS headers
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, x-api-key, x-api-version, accept-version"
+  );
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
+
+  return response;
+}
+
 export class ApiWrapper {
   static create<TInput = unknown, TOutput = unknown>(
     handler: ApiHandler<TInput, TOutput>,
@@ -98,6 +160,13 @@ export class ApiWrapper {
     ) => {
       const startTime = Date.now();
       let statusCode = 200;
+
+      // Handle CORS preflight requests
+      if (request.method === "OPTIONS") {
+        const response = new NextResponse(null, { status: 204 });
+        setCorsHeaders(response, request);
+        return response;
+      }
 
       const handlerResult = await tryCatch(
         async () => {
@@ -198,6 +267,9 @@ export class ApiWrapper {
             },
           });
 
+          // Add CORS headers
+          setCorsHeaders(response, request);
+
           return response;
         },
         {
@@ -295,7 +367,18 @@ export class ApiWrapper {
       if (contentType?.includes("application/json")) {
         const jsonResult = await tryCatch(
           async () => {
+            // Security: Check request body size before parsing
             const text = await request.text();
+            const bodySize = new TextEncoder().encode(text).length;
+
+            if (bodySize > MAX_REQUEST_BODY_SIZE) {
+              throw new ApiError(
+                `Request body too large. Maximum allowed size is ${MAX_REQUEST_BODY_SIZE / 1024 / 1024}MB`,
+                ErrorCode.VALIDATION_ERROR,
+                413
+              );
+            }
+
             if (text.trim()) {
               return JSON.parse(text);
             }
@@ -403,6 +486,67 @@ export class ApiWrapper {
             userId: context.apiKey.userId,
             scopes: context.apiKey.scopes,
           });
+
+          // Check rate limits for API key requests
+          // Note: Rate limiting can be bypassed via rateLimitEnabled field or enterprise tier metadata
+          try {
+            const rateLimitResult = await RateLimitService.checkLimit(
+              { 
+                id: apiKey.id, 
+                metadata: apiKey.metadata || null,
+                // Default to false to match database schema default
+                rateLimitEnabled: apiKey.rateLimitEnabled ?? false
+              },
+              {
+                ip: getIpAddress(request),
+                origin: request.headers.get("origin") || undefined,
+              }
+            );
+
+            // Store rate limit info in context for response headers
+            context.rateLimit = {
+              limit: rateLimitResult.limit,
+              remaining: rateLimitResult.remaining,
+              reset: rateLimitResult.reset,
+            };
+
+            logger.debug("Rate limit check passed", {
+              keyId: apiKey.id,
+              tier: rateLimitResult.tier,
+              remaining: rateLimitResult.remaining,
+            });
+          } catch (error) {
+            if (error instanceof RateLimitError) {
+              // Store rate limit info even for exceeded limits
+              context.rateLimit = {
+                limit: error.result.limit,
+                remaining: error.result.remaining,
+                reset: error.result.reset,
+              };
+
+              logger.warn("Rate limit exceeded", {
+                keyId: apiKey.id,
+                tier: error.result.tier,
+                retryAfter: error.result.retryAfter,
+              });
+
+              throw new ApiError(
+                error.message,
+                ErrorCode.RATE_LIMIT_EXCEEDED,
+                429,
+                {
+                  retryAfter: error.result.retryAfter,
+                  limit: error.result.limit,
+                  reset: error.result.reset,
+                }
+              );
+            }
+            // Other errors are logged and ignored (fail open)
+            logger.error("Rate limit check failed", {
+              keyId: apiKey.id,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
         }
       }
     }
@@ -418,10 +562,25 @@ export class ApiWrapper {
 
     // Check admin role if required
     if (authenticated && authConfig?.adminOnly) {
-      if (context.user?.role !== "admin") {
+      const isAdmin = context.user?.role === "admin" ||
+                     context.apiKey?.scopes?.includes("*") ||
+                     context.apiKey?.scopes?.includes("admin") ||
+                     context.apiKey?.scopes?.includes("admin:*");
+
+      logger.info("Admin check", {
+        isAdmin,
+        userRole: context.user?.role,
+        apiKeyScopes: context.apiKey?.scopes,
+        hasApiKey: !!context.apiKey,
+        scopesType: typeof context.apiKey?.scopes,
+        scopesArray: Array.isArray(context.apiKey?.scopes),
+      });
+
+      if (!isAdmin) {
         logger.warn("Admin access required", {
           userId: context.user?.id || context.apiKey?.userId,
           role: context.user?.role,
+          apiKeyScopes: context.apiKey?.scopes,
         });
 
         throw new ApiError("Admin access required", ErrorCode.FORBIDDEN, 403);
@@ -519,13 +678,27 @@ export class ApiWrapper {
     response.headers.set("X-Request-ID", requestId);
     response.headers.set("X-API-Version", "v1.0.0");
 
+    // Add rate limit headers for 429 responses
     if (apiError.statusCode === 429 && apiError.details) {
-      // Type-safe check for retryAfter in details
       const details = apiError.details as Record<string, unknown>;
+
+      // Set Retry-After header
       if (typeof details.retryAfter === "number") {
         response.headers.set("Retry-After", String(details.retryAfter));
       }
+
+      // Set rate limit headers
+      if (typeof details.limit === "number") {
+        response.headers.set("X-RateLimit-Limit", String(details.limit));
+      }
+      if (typeof details.reset === "number") {
+        response.headers.set("X-RateLimit-Reset", String(details.reset));
+      }
+      response.headers.set("X-RateLimit-Remaining", "0"); // Always 0 when rate limited
     }
+
+    // Add CORS headers
+    setCorsHeaders(response, request);
 
     return response;
   }
