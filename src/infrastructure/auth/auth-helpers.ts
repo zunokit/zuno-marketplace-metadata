@@ -124,6 +124,12 @@ export async function verifyApiKey(
           }
           const scopes = metadata?.scopes || [];
 
+          logger.debug("Admin API key verified", {
+            keyId: keyRecord.id,
+            scopes,
+            metadata,
+          });
+
           // Update last request timestamp
           await db
             .update(apiKeyTable)
@@ -296,6 +302,11 @@ export function hasPermission(
 
   // Check API key permissions
   if (context.apiKey) {
+    // Check for wildcard permission (admin keys)
+    if (context.apiKey.scopes.includes("*")) {
+      return true;
+    }
+
     // Check each required permission - ALL must be satisfied
     const hasAllPermissions = requiredPermissions.every((perm) => {
       // Check scopes first (format: "metadata:read", "media:write")
@@ -311,13 +322,13 @@ export function hasPermission(
 
         // Try "resource:action" format (e.g., "metadata:read")
         const resourcePermissions1 = context.apiKey!.permissions[part1];
-        if (resourcePermissions1?.includes(part2)) {
+        if (resourcePermissions1?.includes(part2) || resourcePermissions1?.includes("*")) {
           return true;
         }
 
         // Try "action:resource" format (e.g., "read:metadata")
         const resourcePermissions2 = context.apiKey!.permissions[part2];
-        if (resourcePermissions2?.includes(part1)) {
+        if (resourcePermissions2?.includes(part1) || resourcePermissions2?.includes("*")) {
           return true;
         }
       }

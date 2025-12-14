@@ -13,16 +13,15 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
-    "db:create-admin": "tsx scripts/create-admin.ts",
-    "db:create-public-key": "tsx scripts/create-public-key.ts",
-    "db:seed-api-keys": "tsx scripts/seed-admin-api-keys.ts",
-    "db:clean-and-seed": "tsx scripts/clean-and-seed.ts",
+    "db:seed": "tsx scripts/seed/index.ts",
+    "db:truncate": "tsx scripts/db-truncate.ts",
+    "db:reset": "tsx scripts/db-truncate.ts && tsx scripts/seed/index.ts",
+    "db:seed:prod": "NODE_ENV=production tsx scripts/seed/index.ts",
     "test": "jest --config tests/setup/jest.config.js",
     "test:watch": "jest --watch --config tests/setup/jest.config.js",
     "test:coverage": "jest --coverage --config tests/setup/jest.config.js",
     "test:e2e": "npx tsx scripts/test-all.ts",
-    "test:all": "pnpm test && pnpm test:e2e",
-    "init-versions": "tsx scripts/init-api-versions.ts"
+    "test:all": "pnpm test && pnpm test:e2e"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

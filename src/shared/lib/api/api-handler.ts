@@ -562,10 +562,16 @@ export class ApiWrapper {
 
     // Check admin role if required
     if (authenticated && authConfig?.adminOnly) {
-      if (context.user?.role !== "admin") {
+      const isAdmin = context.user?.role === "admin" ||
+                     context.apiKey?.scopes?.includes("*") ||
+                     context.apiKey?.scopes?.includes("admin") ||
+                     context.apiKey?.scopes?.includes("admin:*");
+
+      if (!isAdmin) {
         logger.warn("Admin access required", {
           userId: context.user?.id || context.apiKey?.userId,
           role: context.user?.role,
+          apiKeyScopes: context.apiKey?.scopes,
         });
 
         throw new ApiError("Admin access required", ErrorCode.FORBIDDEN, 403);
