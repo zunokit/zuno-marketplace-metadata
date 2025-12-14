@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
@@ -487,9 +488,15 @@ export class ApiWrapper {
           });
 
           // Check rate limits for API key requests
+          // Note: Rate limiting can be bypassed via rateLimitEnabled field or enterprise tier metadata
           try {
             const rateLimitResult = await RateLimitService.checkLimit(
-              { id: apiKey.id, metadata: apiKey.metadata || null },
+              { 
+                id: apiKey.id, 
+                metadata: apiKey.metadata || null,
+                // Default to false to match database schema default
+                rateLimitEnabled: apiKey.rateLimitEnabled ?? false
+              },
               {
                 ip: getIpAddress(request),
                 origin: request.headers.get("origin") || undefined,
@@ -555,10 +562,25 @@ export class ApiWrapper {
 
     // Check admin role if required
     if (authenticated && authConfig?.adminOnly) {
-      if (context.user?.role !== "admin") {
+      const isAdmin = context.user?.role === "admin" ||
+                     context.apiKey?.scopes?.includes("*") ||
+                     context.apiKey?.scopes?.includes("admin") ||
+                     context.apiKey?.scopes?.includes("admin:*");
+
+      logger.info("Admin check", {
+        isAdmin,
+        userRole: context.user?.role,
+        apiKeyScopes: context.apiKey?.scopes,
+        hasApiKey: !!context.apiKey,
+        scopesType: typeof context.apiKey?.scopes,
+        scopesArray: Array.isArray(context.apiKey?.scopes),
+      });
+
+      if (!isAdmin) {
         logger.warn("Admin access required", {
           userId: context.user?.id || context.apiKey?.userId,
           role: context.user?.role,
+          apiKeyScopes: context.apiKey?.scopes,
         });
 
         throw new ApiError("Admin access required", ErrorCode.FORBIDDEN, 403);

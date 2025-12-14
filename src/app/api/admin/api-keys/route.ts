@@ -17,11 +17,16 @@ import {
  */
 export const GET = ApiWrapper.create<ListApiKeysInput>(
   async (input, context) => {
-    // Build params with validation (adminOnly ensures user is defined)
+    // Build params with validation (adminOnly ensures user or apiKey is defined)
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new Error("User ID not found in context");
+    }
+
     const params = ApiKeyService.buildListParams(
       {
         ...input.query,
-        userId: context.user!.id, // List only current admin's keys
+        userId, // List only current admin's keys
       },
       context
     );
