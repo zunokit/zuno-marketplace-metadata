@@ -98,7 +98,7 @@ async function seedApiKey(
 
   // Enterprise tier metadata
   const metadata = {
-    type: "organization" as const,
+    type: "admin" as const,
     tier: "enterprise",
     scopes: ["metadata:read", "metadata:write", "metadata:delete", "media:read", "media:write", "media:delete", "admin", "admin:*"],
     notes: `Hardcoded admin API key ${index} - no rate limiting`,
