@@ -160,7 +160,7 @@ export class RateLimitService {
    * Check rate limit for an API key
    */
   static async checkLimit(
-    apiKey: Pick<ApiKey, "id" | "metadata">,
+    apiKey: Pick<ApiKey, "id" | "metadata" | "rateLimitEnabled">,
     request: {
       ip: string;
       origin?: string;
@@ -171,6 +171,17 @@ export class RateLimitService {
         // Get tier and config
         const tier = this.getKeyTier(apiKey);
         const config = this.getTierConfig(tier);
+
+        // Check if rate limiting is explicitly disabled
+        if (apiKey.rateLimitEnabled === false) {
+          return {
+            allowed: true,
+            tier,
+            limit: Infinity,
+            remaining: Infinity,
+            reset: 0,
+          };
+        }
 
         // Enterprise tier - unlimited
         if (tier === RateLimitTier.ENTERPRISE) {
