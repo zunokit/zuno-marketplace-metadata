@@ -173,12 +173,13 @@ export class ApiKeySeeder implements Seeder {
         : "zuno_";
 
       // Enterprise tier metadata (using "organization" type as schema doesn't have "enterprise")
-      // NOTE: metadata is text field, Drizzle auto-serializes objects to JSON
-      const metadata = JSON.stringify({
-        type: "organization",
+      const metadataObj = {
+        type: "organization" as const,
         scopes: ["*"], // Wildcard for admin - has all permissions
         notes: `Hardcoded admin API key ${index} - no rate limiting, enterprise tier`,
-      });
+      };
+      // Drizzle requires JSON string for text fields with .$type<>()
+      const metadata = JSON.stringify(metadataObj) as any;
 
       // Full permissions
       const permissions = JSON.stringify({
