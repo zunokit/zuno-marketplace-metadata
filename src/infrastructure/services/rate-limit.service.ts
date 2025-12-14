@@ -173,7 +173,7 @@ export class RateLimitService {
         const config = this.getTierConfig(tier);
 
         // Check if rate limiting is explicitly disabled
-        if (apiKey.rateLimitEnabled === false) {
+        if (!apiKey.rateLimitEnabled) {
           return {
             allowed: true,
             tier,

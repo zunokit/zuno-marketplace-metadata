@@ -494,7 +494,8 @@ export class ApiWrapper {
               { 
                 id: apiKey.id, 
                 metadata: apiKey.metadata || null,
-                rateLimitEnabled: apiKey.rateLimitEnabled ?? true
+                // Default to false to match database schema default
+                rateLimitEnabled: apiKey.rateLimitEnabled ?? false
               },
               {
                 ip: getIpAddress(request),
