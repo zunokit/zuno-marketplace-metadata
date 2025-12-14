@@ -567,6 +567,15 @@ export class ApiWrapper {
                      context.apiKey?.scopes?.includes("admin") ||
                      context.apiKey?.scopes?.includes("admin:*");
 
+      logger.info("Admin check", {
+        isAdmin,
+        userRole: context.user?.role,
+        apiKeyScopes: context.apiKey?.scopes,
+        hasApiKey: !!context.apiKey,
+        scopesType: typeof context.apiKey?.scopes,
+        scopesArray: Array.isArray(context.apiKey?.scopes),
+      });
+
       if (!isAdmin) {
         logger.warn("Admin access required", {
           userId: context.user?.id || context.apiKey?.userId,

@@ -171,6 +171,20 @@ export class UserSeeder implements Seeder {
       const publicUserId =
         process.env.PUBLIC_API_USER_ID || "usr_v1_public_system";
 
+      // Check if public user already exists
+      const [existing] = await (context.db as typeof db)
+        .select()
+        .from(user)
+        .where(eq(user.id, publicUserId))
+        .limit(1);
+
+      if (existing) {
+        context.logger?.info("Public user already exists, skipping...");
+        // Still set in shared context for API key seeder
+        context.shared.publicUserId = publicUserId;
+        return false;
+      }
+
       await (context.db as typeof db).insert(user).values({
         id: publicUserId,
         email: "public@zuno-marketplace.local",
