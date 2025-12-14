@@ -32,6 +32,7 @@ yarn-error.log*
 
 
 pnpm-lock.yaml
+package-lock.json
 
 
 # env files (can opt-in for committing if needed)
