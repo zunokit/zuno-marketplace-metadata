@@ -488,10 +488,15 @@ export class ApiWrapper {
           });
 
           // Check rate limits for API key requests
-          // Note: Hardcoded admin keys have enterprise tier metadata, which bypasses rate limiting in RateLimitService
+          // Note: Rate limiting can be bypassed via rateLimitEnabled field or enterprise tier metadata
           try {
             const rateLimitResult = await RateLimitService.checkLimit(
-              { id: apiKey.id, metadata: apiKey.metadata || null },
+              { 
+                id: apiKey.id, 
+                metadata: apiKey.metadata || null,
+                // Default to false to match database schema default
+                rateLimitEnabled: apiKey.rateLimitEnabled ?? false
+              },
               {
                 ip: getIpAddress(request),
                 origin: request.headers.get("origin") || undefined,
