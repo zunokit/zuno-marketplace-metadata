@@ -122,7 +122,7 @@ async function seedApiKey(
     enabled: true,
     rateLimitEnabled: false, // No rate limiting for admin keys
     permissions,
-    metadata: JSON.stringify(metadata), // ✅ Store as JSON string
+    metadata, // Pass object directly - Drizzle handles serialization
     createdAt: new Date(),
     updatedAt: new Date(),
   });
