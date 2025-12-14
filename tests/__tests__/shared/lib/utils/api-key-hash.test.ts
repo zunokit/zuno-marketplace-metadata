@@ -185,7 +185,8 @@ describe("hashApiKey", () => {
       for (let i = 0; i < hash1.length; i++) {
         if (hash1[i] !== hash2[i]) diffCount++;
       }
-      expect(diffCount).toBeGreaterThan(20); // Significant difference
+      // SHA-256's avalanche effect: changing 1 bit should change ~50% of output
+      expect(diffCount).toBeGreaterThan(hash1.length * 0.4); // At least 40% different
     });
 
     it("should not be reversible (one-way hash)", () => {
