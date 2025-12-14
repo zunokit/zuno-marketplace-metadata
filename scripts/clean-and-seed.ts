@@ -13,7 +13,6 @@
 import "dotenv/config";
 import { db } from "../src/infrastructure/database/client";
 import { sql } from "drizzle-orm";
-import { colors } from "./create-admin";
 import { execSync } from "child_process";
 
 // ANSI color codes for output
@@ -139,7 +138,7 @@ async function showSummary(): Promise<void> {
   console.log("");
 
   log("🚀 Usage Example:", color.cyan);
-  console.log("  curl -H 'Authorization: Bearer zuno_xxxxxxxxxxxxxxxxxxxx_admin_xxxxxxxxxxxxxxxxxxxx_01' \\");
+  console.log("  curl -H 'Authorization: Bearer YOUR_ADMIN_KEY_HERE' \\");
   console.log("       -H 'x-api-version: v1' \\");
   console.log("       http://localhost:3000/api/metadata");
   console.log("");
