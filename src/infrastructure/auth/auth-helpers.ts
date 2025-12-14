@@ -76,11 +76,12 @@ export async function verifyApiKey(
         const adminKeys = env.API_KEYS.split(",").map((k) => k.trim());
         
         // Verify the incoming key matches one of the hardcoded admin keys
+        // Note: We check all keys without early exit to prevent timing attacks
         let isAdminKey = false;
         for (const adminKey of adminKeys) {
           if (constantTimeCompare(apiKeyValue, adminKey)) {
             isAdminKey = true;
-            break;
+            // Continue checking all keys to prevent timing side-channel
           }
         }
 
