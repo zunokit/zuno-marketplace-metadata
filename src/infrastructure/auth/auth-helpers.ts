@@ -59,72 +59,84 @@ export async function verifyApiKey(
 ): Promise<AuthApiKey | null> {
   try {
     // First check if this is a hardcoded admin key
+    // Optimization: Hash the key first and check if it exists in DB,
+    // then only perform expensive constant-time comparisons if found
     if (env.API_KEYS) {
-      const adminKeys = env.API_KEYS.split(",").map((k) => k.trim());
-      for (const adminKey of adminKeys) {
-        if (constantTimeCompare(apiKeyValue, adminKey)) {
-          // This is a hardcoded admin key - look it up in database directly
-          const hashedKey = hashApiKey(apiKeyValue);
-          const [keyRecord] = await db
-            .select()
-            .from(apiKeyTable)
-            .where(eq(apiKeyTable.key, hashedKey))
-            .limit(1);
+      const hashedKey = hashApiKey(apiKeyValue);
+      
+      // Single database query to check if this hash exists
+      const [keyRecord] = await db
+        .select()
+        .from(apiKeyTable)
+        .where(eq(apiKeyTable.key, hashedKey))
+        .limit(1);
 
-          if (keyRecord && keyRecord.enabled) {
-            logger.debug("Hardcoded admin API key verified", {
-              keyId: keyRecord.id,
-            });
-
-            // Parse permissions
-            let permissions: Record<string, string[]> = {};
-            if (keyRecord.permissions) {
-              try {
-                permissions =
-                  typeof keyRecord.permissions === "string"
-                    ? JSON.parse(keyRecord.permissions)
-                    : keyRecord.permissions;
-              } catch (error) {
-                logger.error("Failed to parse API key permissions", { error });
-              }
-            }
-
-            // Extract scopes from metadata
-            let metadata: AuthApiKey["metadata"] = {};
-            if (keyRecord.metadata) {
-              try {
-                if (typeof keyRecord.metadata === "string") {
-                  metadata = JSON.parse(keyRecord.metadata);
-                } else {
-                  metadata = keyRecord.metadata;
-                }
-              } catch (error) {
-                logger.error("Failed to parse API key metadata", { error });
-              }
-            }
-            const scopes = metadata?.scopes || [];
-
-            // Update last request timestamp
-            await db
-              .update(apiKeyTable)
-              .set({ lastRequest: new Date() })
-              .where(eq(apiKeyTable.id, keyRecord.id));
-
-            return {
-              id: keyRecord.id,
-              userId: keyRecord.userId,
-              name: keyRecord.name,
-              permissions,
-              scopes,
-              enabled: keyRecord.enabled,
-              expiresAt: keyRecord.expiresAt,
-              rateLimitEnabled: keyRecord.rateLimitEnabled || false,
-              rateLimitMax: keyRecord.rateLimitMax,
-              rateLimitTimeWindow: keyRecord.rateLimitTimeWindow,
-              remaining: keyRecord.remaining,
-              metadata,
-            };
+      // Only if the key exists in DB, verify it's a hardcoded admin key
+      if (keyRecord && keyRecord.enabled) {
+        const adminKeys = env.API_KEYS.split(",").map((k) => k.trim());
+        
+        // Verify the incoming key matches one of the hardcoded admin keys
+        let isAdminKey = false;
+        for (const adminKey of adminKeys) {
+          if (constantTimeCompare(apiKeyValue, adminKey)) {
+            isAdminKey = true;
+            break;
           }
+        }
+
+        if (isAdminKey) {
+          logger.debug("Hardcoded admin API key verified", {
+            keyId: keyRecord.id,
+          });
+
+          // Parse permissions
+          let permissions: Record<string, string[]> = {};
+          if (keyRecord.permissions) {
+            try {
+              permissions =
+                typeof keyRecord.permissions === "string"
+                  ? JSON.parse(keyRecord.permissions)
+                  : keyRecord.permissions;
+            } catch (error) {
+              logger.error("Failed to parse API key permissions", { error });
+            }
+          }
+
+          // Extract scopes from metadata
+          let metadata: AuthApiKey["metadata"] = {};
+          if (keyRecord.metadata) {
+            try {
+              if (typeof keyRecord.metadata === "string") {
+                metadata = JSON.parse(keyRecord.metadata);
+              } else {
+                metadata = keyRecord.metadata;
+              }
+            } catch (error) {
+              logger.error("Failed to parse API key metadata", { error });
+            }
+          }
+          const scopes = metadata?.scopes || [];
+
+          // Update last request timestamp
+          await db
+            .update(apiKeyTable)
+            .set({ lastRequest: new Date() })
+            .where(eq(apiKeyTable.id, keyRecord.id));
+
+          return {
+            id: keyRecord.id,
+            userId: keyRecord.userId,
+            name: keyRecord.name,
+            permissions,
+            scopes,
+            enabled: keyRecord.enabled,
+            expiresAt: keyRecord.expiresAt,
+            rateLimitEnabled: keyRecord.rateLimitEnabled || false,
+            rateLimitMax: keyRecord.rateLimitMax,
+            rateLimitTimeWindow: keyRecord.rateLimitTimeWindow,
+            remaining: keyRecord.remaining,
+            metadata,
+          };
         }
       }
     }
