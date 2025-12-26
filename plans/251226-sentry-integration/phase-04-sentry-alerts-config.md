@@ -1,10 +1,19 @@
 # Phase 04: Sentry Alerts Configuration
 
-**Status**: Pending | **Effort**: 0.5h | **Priority**: P1
+**Status**: In Progress | **Effort**: 0.5h | **Priority**: P1
+
+**Code Review**: [code-reviewer-251227-0347-sentry-phase04-alerts-config.md](../reports/code-reviewer-251227-0347-sentry-phase04-alerts-config.md) | **Status**: APPROVED
 
 ## Overview
 
 Configure Sentry alerts to trigger webhook for all new production errors.
+
+### Implementation Summary
+
+**New Files Added**:
+- `src/app/api/test/sentry-error/route.ts` - Test endpoint for validating Sentry alert flow
+
+**Code Changes**: None (Phase 04 is primarily manual configuration)
 
 ## Related Files
 
@@ -136,6 +145,10 @@ export async function GET() {
 
 ## Todo List
 
+### Code Implementation (COMPLETED)
+- [x] Create test error capture endpoint (`src/app/api/test/sentry-error/route.ts`)
+
+### Manual Configuration (PENDING)
 - [ ] Create Sentry account
 - [ ] Create Sentry project
 - [ ] Get DSN and auth token
@@ -143,7 +156,7 @@ export async function GET() {
 - [ ] Configure alert rule
 - [ ] Configure webhook integration
 - [ ] Update `.env.local` with production values
-- [ ] Test error capture
+- [ ] Test error capture via `/api/test/sentry-error`
 - [ ] Test webhook delivery
 - [ ] Verify GitHub issue creation
 - [ ] Remove test endpoint

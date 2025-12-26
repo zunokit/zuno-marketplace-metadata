@@ -88,7 +88,9 @@ Response (JSON with status code)
 - **Admin**: `GET/POST/DELETE /api/admin/api-keys/[id]`, `GET/POST/DELETE /api/admin/api-versions/[id]`
 - **System**: `GET /api/health`, `GET /api/docs`, `POST /api/auth/[...all]`
 - **Cron Jobs**: `POST /api/cron/process-media-ipfs`, `POST /api/cron/process-metadata-ipfs`
-- **Sentry**: `POST /api/sentry/webhook` - Receives Sentry alert webhooks
+- **Sentry**:
+  - `POST /api/sentry/webhook` - Receives Sentry alert webhooks
+  - `GET /api/test/sentry-error` - Test endpoint for error capture (development only)
 
 #### Admin Dashboard Pages
 - **Login**: `/auth/signin`
@@ -509,6 +511,28 @@ Value: {
 | `GITHUB_TOKEN` | Yes | - | GitHub personal access token |
 | `GITHUB_REPO` | No | zunokit/zuno-marketplace-metadata | Target repository |
 | `GITHUB_ISSUE_LABEL` | No | sentry,error,production | Issue labels |
+
+**Test Endpoint** (`GET /api/test/sentry-error`)
+- **Purpose**: Test endpoint for validating Sentry alert flow
+- **Environment**: Development only (returns 403 in production)
+- **Response**: JSON with test confirmation and instructions
+- **Usage**: Trigger a test error to verify:
+  1. Sentry receives the error
+  2. Alert fires
+  3. Webhook is called
+  4. GitHub issue is created
+- **Important**: Remove this endpoint after testing is complete
+
+```
+GET /api/test/sentry-error (development only)
+  ↓
+[Sentry.captureException()]
+  ├─ Creates test error with tags
+  └─ Sends to Sentry
+  ↓
+[Response]
+  └─ 200 + confirmation message
+```
 
 #### 4.7 Job Queue (`src/infrastructure/queue/`)
 
@@ -1245,4 +1269,4 @@ POST /api/metadata
 
 ---
 
-**Document Version**: 1.1 | **Last Updated**: 2025-12-26 | **Architecture Version**: Clean Architecture v1
+**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Architecture Version**: Clean Architecture v1

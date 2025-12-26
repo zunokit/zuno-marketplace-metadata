@@ -5,7 +5,7 @@
 The Zuno Marketplace Metadata codebase is a production-ready Next.js 16 application built with TypeScript and Clean Architecture principles. It contains 203 TypeScript/TSX files organized across 5 major layers: application, domain logic, infrastructure, components, and utilities.
 
 **Repository**: `E:\zuno-marketplace-metadata`
-**Total Files**: 237 | **TypeScript Files**: 203 | **Total Tokens**: 233,000 | **Size**: ~1.0MB
+**Total Files**: 238 | **TypeScript Files**: 204 | **Total Tokens**: 233,500 | **Size**: ~1.0MB
 
 ---
 
@@ -68,7 +68,7 @@ E:\zuno-marketplace-metadata/
 - `src/app/admin/audit-logs/actions.ts` - Audit log server actions
 - `src/app/auth/signin/page.tsx` - Sign-in page
 
-**API Routes (20 endpoints)**
+**API Routes (21 endpoints)**
 
 *Metadata Management*
 - `src/app/api/metadata/route.ts` - GET/POST metadata with pagination
@@ -95,6 +95,7 @@ E:\zuno-marketplace-metadata/
 
 *Sentry Integration*
 - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint for Sentry alerts
+- `src/app/api/test/sentry-error/route.ts` - Test endpoint for Sentry error capture (development only)
 
 **Main Pages**
 - `src/app/layout.tsx` - Root layout wrapper
@@ -559,11 +560,12 @@ media ──→ audit_logs (via user)
 
 ### 6. Sentry (Error Monitoring)
 - **Files**:
-  - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint
-  - `src/shared/lib/utils/sentry-helpers.ts` - Helper utilities
-  - `src/core/services/sentry-issue/sentry-issue.service.ts` - Service layer
-  - `src/infrastructure/github/github-client.ts` - GitHub API client
-  - `src/infrastructure/cache/sentry-dedup.service.ts` - Redis deduplication
+  - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint for Sentry alerts
+  - `src/app/api/test/sentry-error/route.ts` - Test endpoint for error capture (dev only)
+  - `src/shared/lib/utils/sentry-helpers.ts` - Helper utilities for webhook processing
+  - `src/core/services/sentry-issue/sentry-issue.service.ts` - Service layer for webhook handling
+  - `src/infrastructure/github/github-client.ts` - GitHub API client (Octokit wrapper)
+  - `src/infrastructure/cache/sentry-dedup.service.ts` - Redis deduplication service
 - **Purpose**: Error tracking, alert webhooks, and GitHub issue automation
 - **Features**:
   - HMAC-SHA256 signature verification
@@ -572,6 +574,7 @@ media ──→ audit_logs (via user)
   - Redis-based deduplication (30-day TTL)
   - Production-only error filtering
   - Markdown-formatted issue bodies
+  - Test endpoint for validating Sentry alert flow
 
 ---
 
@@ -688,4 +691,4 @@ None documented at time of repository scan. Check issues in `.claude/status.txt`
 
 ---
 
-**Document Version**: 1.1 | **Last Updated**: 2025-12-26 | **Codebase Version**: 0.1.0
+**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Codebase Version**: 0.1.0

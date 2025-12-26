@@ -1,11 +1,11 @@
 ---
 title: "Sentry Integration with GitHub Issue Automation"
 description: "Add Sentry error tracking, performance monitoring with GitHub issue automation"
-status: pending
+status: in_progress
 priority: P1
 effort: 6h
 issue: TBD
-branch: develop-claude
+branch: feature/add-sentry
 tags: [feature, infra, observability, monitoring]
 created: 2025-12-26
 ---
@@ -25,7 +25,7 @@ Integrate Sentry for production error tracking, performance tracing, and automat
 | 1 | Sentry SDK Setup | Complete | 2h | [phase-01](./phase-01-sentry-sdk-setup.md) |
 | 2 | Webhook Handler | Code Review Complete | 2h | [phase-02](./phase-02-webhook-handler.md) |
 | 3 | GitHub Integration | Code Review Complete | 1h | [phase-03](./phase-03-github-integration.md) |
-| 4 | Sentry Alerts Config | Pending | 0.5h | [phase-04](./phase-04-sentry-alerts-config.md) |
+| 4 | Sentry Alerts Config | **Done (2025-12-27)** | 0.5h | [phase-04](./phase-04-sentry-alerts-config.md) |
 | 5 | Testing & Validation | Pending | 0.5h | [phase-05](./phase-05-testing-validation.md) |
 
 ## Architecture
@@ -63,13 +63,16 @@ Integrate Sentry for production error tracking, performance tracing, and automat
 
 ## File Changes
 
-**New Files** (9):
+**New Files** (12):
 - `src/infrastructure/sentry/sentry.server.config.ts`
 - `src/infrastructure/sentry/sentry.client.config.ts`
 - `src/infrastructure/sentry/sentry.worker.config.ts`
 - `src/app/api/sentry/webhook/route.ts`
+- `src/app/api/test/sentry-error/route.ts` (Phase 04)
 - `src/core/services/sentry-issue/sentry-issue.service.ts`
 - `src/shared/lib/utils/sentry-helpers.ts`
+- `src/infrastructure/cache/sentry-dedup.service.ts` (Phase 03)
+- `src/infrastructure/github/github-client.ts` (Phase 03)
 - `sentry.server.config.ts` (root)
 - `sentry.client.config.ts` (root)
 - `sentry.properties` (root)
