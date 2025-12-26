@@ -15,6 +15,7 @@ beforeAll(() => {
   process.env.BETTER_AUTH_SECRET = "test-secret";
   process.env.BETTER_AUTH_URL = "http://localhost:3000";
   process.env.CRON_SECRET = "test-cron-secret";
+  process.env.SENTRY_WEBHOOK_SECRET = "test-sentry-webhook-secret";
 });
 
 afterEach(() => {

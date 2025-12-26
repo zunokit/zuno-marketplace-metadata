@@ -2,10 +2,10 @@
 
 ## Overview
 
-The Zuno Marketplace Metadata codebase is a production-ready Next.js 16 application built with TypeScript and Clean Architecture principles. It contains 199 TypeScript/TSX files organized across 5 major layers: application, domain logic, infrastructure, components, and utilities.
+The Zuno Marketplace Metadata codebase is a production-ready Next.js 16 application built with TypeScript and Clean Architecture principles. It contains 203 TypeScript/TSX files organized across 5 major layers: application, domain logic, infrastructure, components, and utilities.
 
 **Repository**: `E:\zuno-marketplace-metadata`
-**Total Files**: 229 | **TypeScript Files**: 199 | **Total Tokens**: 228,972 | **Size**: ~983KB
+**Total Files**: 237 | **TypeScript Files**: 203 | **Total Tokens**: 233,000 | **Size**: ~1.0MB
 
 ---
 
@@ -68,7 +68,7 @@ E:\zuno-marketplace-metadata/
 - `src/app/admin/audit-logs/actions.ts` - Audit log server actions
 - `src/app/auth/signin/page.tsx` - Sign-in page
 
-**API Routes (19 endpoints)**
+**API Routes (20 endpoints)**
 
 *Metadata Management*
 - `src/app/api/metadata/route.ts` - GET/POST metadata with pagination
@@ -92,6 +92,9 @@ E:\zuno-marketplace-metadata/
 - `src/app/api/docs/route.ts` - API documentation endpoint
 - `src/app/api/cron/process-media-ipfs/route.ts` - Cron: Pin media
 - `src/app/api/cron/process-metadata-ipfs/route.ts` - Cron: Pin metadata
+
+*Sentry Integration*
+- `src/app/api/sentry/webhook/route.ts` - Webhook endpoint for Sentry alerts
 
 **Main Pages**
 - `src/app/layout.tsx` - Root layout wrapper
@@ -122,7 +125,10 @@ src/core/domain/
 src/core/services/
 ├── audit-log/audit-log.service.ts         # Audit log operations
 ├── media/media-query.service.ts            # Media query building
-└── metadata/metadata-query.service.ts      # Metadata query building
+├── metadata/metadata-query.service.ts      # Metadata query building
+└── sentry-issue/                           # Sentry error tracking
+    ├── sentry-issue.entity.ts              # Sentry issue entities
+    └── sentry-issue.service.ts             # Webhook processing service
 ```
 
 **Use Cases** (Application layer logic)
@@ -308,7 +314,8 @@ src/shared/lib/utils/
 ├── url.ts                      # URL utilities
 ├── server.ts                   # Server-side utilities
 ├── try-catch-wrapper.ts        # Error handling wrapper
-└── client.ts                   # Client-side utilities
+├── client.ts                   # Client-side utilities
+└── sentry-helpers.ts           # Sentry webhook utilities
 ```
 
 **Configuration**
@@ -336,10 +343,12 @@ React custom hooks for API operations:
 
 **Jest Configuration**
 - `tests/setup/jest.config.js` - Jest configuration
-- `tests/setup/jest.setup.js` - Test environment setup
+- `tests/setup/jest.setup.js` - Test environment setup (includes `SENTRY_WEBHOOK_SECRET`)
 
 **Unit Tests**
 - Test files for use cases, utilities, validation
+- `tests/__tests__/shared/lib/utils/sentry-helpers.test.ts` - Sentry helper tests
+- `tests/__tests__/core/services/sentry-issue/sentry-issue.service.test.ts` - Sentry service tests
 
 **E2E Tests** (200+ integration tests)
 - 18 test suites covering API endpoints
@@ -400,6 +409,7 @@ React custom hooks for API operations:
 | imagekit | 6.0.0 | Media processing |
 | @imagekit/next | 2.1.3 | ImageKit Next.js integration |
 | pinata | 2.5.1 | IPFS pinning |
+| @sentry/nextjs | 9.0.0 | Error monitoring and tracking |
 
 ### Development Tools
 | Package | Version | Purpose |
@@ -542,26 +552,34 @@ media ──→ audit_logs (via user)
 - **Purpose**: Session-based auth for admin dashboard
 - **Features**: Email/password, OAuth, API key plugin
 
+### 6. Sentry (Error Monitoring)
+- **Files**:
+  - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint
+  - `src/shared/lib/utils/sentry-helpers.ts` - Helper utilities
+  - `src/core/services/sentry-issue/sentry-issue.service.ts` - Service layer
+- **Purpose**: Error tracking and alert webhooks
+- **Features**: Signature verification, async processing, GitHub issue creation (stub)
+
 ---
 
 ## Code Statistics
 
 ### File Counts
-- **Total Files**: 229
-- **TypeScript/TSX**: 199
-- **API Routes**: 19
+- **Total Files**: 237
+- **TypeScript/TSX**: 203
+- **API Routes**: 20
 - **Components**: 80+ (50+ UI, 20+ feature)
 - **Use Cases**: 15+
 - **Repositories**: 5
-- **Test Files**: 7+
+- **Test Files**: 9+
 
 ### Code Metrics
-- **Total Tokens**: 228,972
+- **Total Tokens**: 233,000
 - **Largest File**: `scripts/test-all.ts` (19,069 tokens)
 - **Largest Module**: `src/app/api/docs/route.ts` (8,025 tokens)
 
 ### Test Coverage
-- **Unit Tests**: 7+ files
+- **Unit Tests**: 9+ files (including Sentry tests)
 - **E2E Tests**: 18 suites with 200+ tests
 - **Coverage Target**: >80%
 
@@ -657,4 +675,4 @@ None documented at time of repository scan. Check issues in `.claude/status.txt`
 
 ---
 
-**Document Version**: 1.0 | **Last Updated**: 2025-12-10 | **Codebase Version**: 0.1.0
+**Document Version**: 1.1 | **Last Updated**: 2025-12-26 | **Codebase Version**: 0.1.0

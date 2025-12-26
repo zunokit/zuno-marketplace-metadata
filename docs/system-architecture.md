@@ -47,6 +47,7 @@ Zuno Marketplace Metadata follows a **Clean Architecture** pattern with clear se
 │    │  - Pinata IPFS                          │    │
 │    │  - Better Auth                          │    │
 │    │  - BullMQ Job Queue                     │    │
+│    │  - Sentry (Error Monitoring)            │    │
 │    └─────────────────────────────────────────┘    │
 │                                                    │
 └────────────────────────────────────────────────────┘
@@ -87,6 +88,7 @@ Response (JSON with status code)
 - **Admin**: `GET/POST/DELETE /api/admin/api-keys/[id]`, `GET/POST/DELETE /api/admin/api-versions/[id]`
 - **System**: `GET /api/health`, `GET /api/docs`, `POST /api/auth/[...all]`
 - **Cron Jobs**: `POST /api/cron/process-media-ipfs`, `POST /api/cron/process-metadata-ipfs`
+- **Sentry**: `POST /api/sentry/webhook` - Receives Sentry alert webhooks
 
 #### Admin Dashboard Pages
 - **Login**: `/auth/signin`
@@ -421,7 +423,54 @@ Metadata/Media Created
 - Decentralized - redundant across network
 - Verifiable - can validate content against CID
 
-#### 4.6 Job Queue (`src/infrastructure/queue/`)
+#### 4.6 Sentry Integration (Error Monitoring)
+
+**Service**: Sentry Webhook Alerts
+
+**Webhook Handler Flow**
+```
+Sentry Alert Triggered
+  ↓
+[Sentry] → POST /api/sentry/webhook
+  ├─ Headers: sentry-hook-signature
+  └─ Body: {event_id, fingerprint, exception, ...}
+  ↓
+[Signature Verification]
+  ├─ Extract signature from header
+  ├─ Compute HMAC-SHA256 of payload
+  ├─ timingSafeEqual comparison
+  └─ 401 if invalid
+  ↓
+[Parse Payload]
+  ├─ Extract error details
+  ├─ Get fingerprint (deduplication key)
+  ├─ Get stack trace
+  └─ Get request context
+  ↓
+[Async Processing] (non-blocking)
+  ├─ Return 200 OK immediately
+  └─ Process in background
+  ↓
+[SentryIssueService.processWebhook()]
+  ├─ checkExistingIssue(fingerprint)
+  ├─ createGitHubIssue(issue)
+  └─ storeFingerprint(fingerprint, issue)
+```
+
+**Security**
+- HMAC-SHA256 signature verification
+- Timing-safe comparison prevents timing attacks
+- Webhook secret: `SENTRY_WEBHOOK_SECRET` env var
+- Returns 401 for invalid signatures
+- Returns 500 if secret not configured
+
+**Data Extraction**
+- `getFingerprint()` - Deduplication key
+- `getErrorTitle()` - Type:Value format
+- `getStackTrace()` - Module:Function:Line format
+- `getRequestContext()` - URL, method, user-agent, API key ID
+
+#### 4.7 Job Queue (`src/infrastructure/queue/`)
 
 **Technology**: BullMQ (Redis-backed)
 
@@ -452,7 +501,7 @@ Worker Process
 - Must be deployed independently of API server
 - Recommended: Docker container or separate cloud instance
 
-#### 4.7 Rate Limiting (`src/infrastructure/services/rate-limit.service.ts`)
+#### 4.8 Rate Limiting (`src/infrastructure/services/rate-limit.service.ts`)
 
 **Algorithm**: Token bucket (Redis-backed)
 
@@ -485,7 +534,7 @@ X-RateLimit-Remaining: 999
 X-RateLimit-Reset: 1702184400
 ```
 
-#### 4.8 Repositories (`src/infrastructure/repositories/`)
+#### 4.9 Repositories (`src/infrastructure/repositories/`)
 
 **Implements**: Domain repository interfaces
 
@@ -508,7 +557,7 @@ Database operations
 - No direct database access elsewhere
 - Cache-aware operations
 
-#### 4.9 Monitoring (`src/infrastructure/monitoring/`)
+#### 4.10 Monitoring (`src/infrastructure/monitoring/`)
 
 **Audit Logger**
 - Logs all API requests to database
@@ -832,6 +881,48 @@ GET /api/health
      └─ services: { database, redis, imagekit, pinata, queue }
 ```
 
+### Sentry Webhook Flow
+```
+POST /api/sentry/webhook
+  │
+  ├─ [Extract Signature]
+  │  └─ sentry-hook-signature header
+  │
+  ├─ [Read Raw Payload]
+  │  └─ await request.text()
+  │
+  ├─ [Verify Signature]
+  │  ├─ Compute HMAC-SHA256(payload, SENTRY_WEBHOOK_SECRET)
+  │  ├─ timingSafeEqual(signature, computed)
+  │  └─ 401 if invalid
+  │
+  ├─ [Parse Payload]
+  │  ├─ Extract: event_id, fingerprint, exception, request
+  │  └─ SentryWebhookPayload type
+  │
+  ├─ [Async Processing]
+  │  ├─ Return 200 OK immediately
+  │  └─ SentryIssueService.processWebhook(payload, requestId)
+  │     │
+  │     ├─ [Extract Data]
+  │     │  ├─ getFingerprint(event)
+  │     │  ├─ getErrorTitle(event)
+  │     │  ├─ getStackTrace(event)
+  │     │  └─ getRequestContext(event)
+  │     │
+  │     ├─ [Deduplication Check]
+  │     │  └─ checkExistingIssue(fingerprint)
+  │     │
+  │     ├─ [Create GitHub Issue] (Phase 03 - Stub)
+  │     │  └─ createGitHubIssue(issue)
+  │     │
+  │     └─ [Store Fingerprint] (Phase 03 - Stub)
+  │        └─ storeFingerprint(fingerprint, issue)
+  │
+  └─ [Response]
+     └─ 200 OK (immediate, async processing)
+```
+
 ---
 
 ## API Versioning Strategy
@@ -1100,4 +1191,4 @@ POST /api/metadata
 
 ---
 
-**Document Version**: 1.0 | **Last Updated**: 2025-12-10 | **Architecture Version**: Clean Architecture v1
+**Document Version**: 1.1 | **Last Updated**: 2025-12-26 | **Architecture Version**: Clean Architecture v1

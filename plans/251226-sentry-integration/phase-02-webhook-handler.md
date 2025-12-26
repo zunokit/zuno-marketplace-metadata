@@ -1,6 +1,10 @@
 # Phase 02: Webhook Handler
 
-**Status**: Pending | **Effort**: 2h | **Priority**: P1
+**Status**: DONE | **Effort**: 2h | **Priority**: P1
+**Review Date**: 2025-12-26
+**Review Report**: `plans/reports/code-reviewer-251226-2310-sentry-phase02-webhook-handler.md`
+**Completed**: 2025-12-26T23:18:00Z
+**Tests**: 29/29 passed | Code reviewed | User approved
 
 ## Overview
 
@@ -437,12 +441,12 @@ type SentryWebhookPayload = import("@/shared/lib/utils/sentry-helpers").SentryEv
 
 ## Todo List
 
-- [ ] Create `src/shared/lib/utils/sentry-helpers.ts`
-- [ ] Create `src/core/services/sentry-issue/sentry-issue.entity.ts`
-- [ ] Create `src/app/api/sentry/webhook/route.ts`
-- [ ] Create `src/core/services/sentry-issue/sentry-issue.service.ts`
-- [ ] Update `src/shared/config/env.ts` with webhook secret
-- [ ] Test webhook signature verification
+- [x] Create `src/shared/lib/utils/sentry-helpers.ts`
+- [x] Create `src/core/services/sentry-issue/sentry-issue.entity.ts`
+- [x] Create `src/app/api/sentry/webhook/route.ts`
+- [x] Create `src/core/services/sentry-issue/sentry-issue.service.ts`
+- [x] Update `src/shared/config/env.ts` with webhook secret
+- [x] Test webhook signature verification
 
 ## Success Criteria
 
