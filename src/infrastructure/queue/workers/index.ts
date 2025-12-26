@@ -6,8 +6,12 @@
  */
 
 import { logger } from "@/shared/lib/utils/logger";
+import { initSentryWorker } from "@/infrastructure/sentry/sentry.worker.config";
 import { metadataWorker } from "./metadata-ipfs-pin.worker";
 import { mediaWorker } from "./media-ipfs-pin.worker";
+
+// Initialize Sentry for workers
+initSentryWorker();
 
 // Export workers for graceful shutdown
 export const workers = {
