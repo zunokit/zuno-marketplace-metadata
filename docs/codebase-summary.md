@@ -167,6 +167,9 @@ src/core/use-cases/
 - `src/infrastructure/auth/auth.client.ts` - Auth client
 - `src/infrastructure/auth/auth-helpers.ts` - Helper functions
 
+**GitHub Integration**
+- `src/infrastructure/github/github-client.ts` - GitHub API client (Octokit wrapper)
+
 **Database (PostgreSQL + Drizzle)**
 ```
 src/infrastructure/database/
@@ -194,6 +197,7 @@ src/infrastructure/database/
 **Cache (Redis)**
 - `src/infrastructure/cache/redis.client.ts` - Redis client (Upstash)
 - `src/infrastructure/cache/cache.service.ts` - Cache operations
+- `src/infrastructure/cache/sentry-dedup.service.ts` - Sentry issue deduplication
 
 **External Services**
 ```
@@ -410,6 +414,7 @@ React custom hooks for API operations:
 | @imagekit/next | 2.1.3 | ImageKit Next.js integration |
 | pinata | 2.5.1 | IPFS pinning |
 | @sentry/nextjs | 9.0.0 | Error monitoring and tracking |
+| octokit | Latest | GitHub API client |
 
 ### Development Tools
 | Package | Version | Purpose |
@@ -557,8 +562,16 @@ media ──→ audit_logs (via user)
   - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint
   - `src/shared/lib/utils/sentry-helpers.ts` - Helper utilities
   - `src/core/services/sentry-issue/sentry-issue.service.ts` - Service layer
-- **Purpose**: Error tracking and alert webhooks
-- **Features**: Signature verification, async processing, GitHub issue creation (stub)
+  - `src/infrastructure/github/github-client.ts` - GitHub API client
+  - `src/infrastructure/cache/sentry-dedup.service.ts` - Redis deduplication
+- **Purpose**: Error tracking, alert webhooks, and GitHub issue automation
+- **Features**:
+  - HMAC-SHA256 signature verification
+  - Async webhook processing
+  - GitHub issue creation via Octokit
+  - Redis-based deduplication (30-day TTL)
+  - Production-only error filtering
+  - Markdown-formatted issue bodies
 
 ---
 

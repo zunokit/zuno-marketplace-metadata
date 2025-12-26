@@ -66,8 +66,8 @@ const envSchema = z.object({
 
   // GitHub Integration (for Sentry issue automation)
   GITHUB_TOKEN: z.string().optional(),
-  GITHUB_REPO: z.string().optional(),
-  GITHUB_ISSUE_LABEL: z.string().optional(),
+  GITHUB_REPO: z.string().default("zunokit/zuno-marketplace-metadata"),
+  GITHUB_ISSUE_LABEL: z.string().default("sentry,error,production"),
 });
 
 export type Env = z.infer<typeof envSchema>;

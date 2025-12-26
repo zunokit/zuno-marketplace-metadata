@@ -425,7 +425,7 @@ Metadata/Media Created
 
 #### 4.6 Sentry Integration (Error Monitoring)
 
-**Service**: Sentry Webhook Alerts
+**Service**: Sentry Webhook Alerts + GitHub Issue Automation
 
 **Webhook Handler Flow**
 ```
@@ -452,9 +452,21 @@ Sentry Alert Triggered
   └─ Process in background
   ↓
 [SentryIssueService.processWebhook()]
-  ├─ checkExistingIssue(fingerprint)
-  ├─ createGitHubIssue(issue)
-  └─ storeFingerprint(fingerprint, issue)
+  ├─ [Environment Check]
+  │  └─ Skip non-production errors
+  ├─ [Deduplication Check]
+  │  └─ SentryDedupService.getIssue(fingerprint)
+  │     ├─ If exists → Return existing issue
+  │     └─ If not found → Continue
+  ├─ [Create GitHub Issue]
+  │  └─ GitHubClient.createIssue({
+  │       title, body (markdown), labels
+  │     })
+  ├─ [Store Fingerprint]
+  │  └─ SentryDedupService.storeFingerprint(
+  │       fingerprint, issueRef, TTL=30days
+  │     )
+  └─ [Log Success]
 ```
 
 **Security**
@@ -463,12 +475,40 @@ Sentry Alert Triggered
 - Webhook secret: `SENTRY_WEBHOOK_SECRET` env var
 - Returns 401 for invalid signatures
 - Returns 500 if secret not configured
+- Production-only error filtering
+
+**GitHub Integration**
+- **Octokit Client**: Wrapper for GitHub REST API
+- **Issue Creation**: Automatic GitHub issue creation for production errors
+- **Deduplication**: Redis-based with 30-day TTL to prevent duplicate issues
+- **Labels**: Configurable via `GITHUB_ISSUE_LABEL` (default: "sentry,error,production")
+- **Rate Limits**: GitHub API: 5000 requests/hour
+- **Markdown Formatting**: Structured issue bodies with error details, stack traces, and context
+
+**Deduplication Service**
+```
+Redis Key Pattern: sentry:fingerprint:{fingerprint}
+TTL: 30 days
+Value: {
+  issueNumber: number,
+  issueUrl: string,
+  createdAt: ISO datetime
+}
+```
 
 **Data Extraction**
 - `getFingerprint()` - Deduplication key
 - `getErrorTitle()` - Type:Value format
 - `getStackTrace()` - Module:Function:Line format
 - `getRequestContext()` - URL, method, user-agent, API key ID
+
+**Environment Variables**
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `SENTRY_WEBHOOK_SECRET` | Yes | - | Webhook signature verification |
+| `GITHUB_TOKEN` | Yes | - | GitHub personal access token |
+| `GITHUB_REPO` | No | zunokit/zuno-marketplace-metadata | Target repository |
+| `GITHUB_ISSUE_LABEL` | No | sentry,error,production | Issue labels |
 
 #### 4.7 Job Queue (`src/infrastructure/queue/`)
 
@@ -904,6 +944,9 @@ POST /api/sentry/webhook
   │  ├─ Return 200 OK immediately
   │  └─ SentryIssueService.processWebhook(payload, requestId)
   │     │
+  │     ├─ [Environment Check]
+  │     │  └─ Skip if environment !== "production"
+  │     │
   │     ├─ [Extract Data]
   │     │  ├─ getFingerprint(event)
   │     │  ├─ getErrorTitle(event)
@@ -911,13 +954,24 @@ POST /api/sentry/webhook
   │     │  └─ getRequestContext(event)
   │     │
   │     ├─ [Deduplication Check]
-  │     │  └─ checkExistingIssue(fingerprint)
+  │     │  └─ SentryDedupService.getIssue(fingerprint)
+  │     │     ├─ If exists → Log and return existing issue
+  │     │     └─ If not found → Continue
   │     │
-  │     ├─ [Create GitHub Issue] (Phase 03 - Stub)
-  │     │  └─ createGitHubIssue(issue)
+  │     ├─ [Create GitHub Issue]
+  │     │  └─ GitHubClient.createIssue({
+  │     │       title: "🚨 Error:Type",
+  │     │       body: markdown (error, stack, context),
+  │     │       labels: ["sentry", "error", "production"]
+  │     │     })
   │     │
-  │     └─ [Store Fingerprint] (Phase 03 - Stub)
-  │        └─ storeFingerprint(fingerprint, issue)
+  │     ├─ [Store Fingerprint]
+  │     │  └─ SentryDedupService.storeFingerprint(
+  │     │       fingerprint, issueRef, TTL=30days
+  │     │     )
+  │     │
+  │     └─ [Log Success]
+  │        └─ logger.info("Created GitHub issue")
   │
   └─ [Response]
      └─ 200 OK (immediate, async processing)

@@ -111,7 +111,10 @@ media:write     - Upload and delete media
 - **Webhook Handler** - POST /api/sentry/webhook for alert processing
 - **Signature Verification** - HMAC-SHA256 with timing-safe comparison
 - **Async Processing** - Non-blocking webhook response
-- **GitHub Integration** - Automatic issue creation (Phase 03 - planned)
+- **GitHub Integration** - Automatic issue creation via Octokit
+- **Deduplication** - Redis-based fingerprint tracking (30-day TTL)
+- **Production Filtering** - Only create issues for production errors
+- **Markdown Formatting** - Structured GitHub issue bodies with error details
 
 ---
 
@@ -134,6 +137,7 @@ media:write     - Upload and delete media
 | **Pinata** | IPFS pinning service | Usage-based |
 | **Upstash** (optional) | Serverless Redis | Pay-per-request |
 | **Sentry** | Error monitoring & tracking | Free tier available |
+| **GitHub** | Issue automation | Free tier available |
 
 ### Technology Stack
 
@@ -165,6 +169,7 @@ Infrastructure:
   - Pinata (IPFS)
   - Better Auth
   - Sentry (error monitoring)
+  - Octokit (GitHub API client)
 
 DevOps:
   - Docker (containerization)

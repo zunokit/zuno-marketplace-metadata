@@ -22,11 +22,11 @@ Integrate Sentry for production error tracking, performance tracing, and automat
 
 | # | Phase | Status | Effort | Link |
 |---|-------|--------|--------|------|
-| 1 | Sentry SDK Setup | Pending | 2h | [phase-01](./phase-01-sentry-sdk-setup.md) |
-| 2 | Webhook Handler | Pending | 2h | [phase-02-webhook-handler.md) |
-| 3 | GitHub Integration | Pending | 1h | [phase-03-github-integration.md) |
-| 4 | Sentry Alerts Config | Pending | 0.5h | [phase-04-sentry-alerts-config.md) |
-| 5 | Testing & Validation | Pending | 0.5h | [phase-05-testing-validation.md) |
+| 1 | Sentry SDK Setup | Complete | 2h | [phase-01](./phase-01-sentry-sdk-setup.md) |
+| 2 | Webhook Handler | Code Review Complete | 2h | [phase-02](./phase-02-webhook-handler.md) |
+| 3 | GitHub Integration | Code Review Complete | 1h | [phase-03](./phase-03-github-integration.md) |
+| 4 | Sentry Alerts Config | Pending | 0.5h | [phase-04](./phase-04-sentry-alerts-config.md) |
+| 5 | Testing & Validation | Pending | 0.5h | [phase-05](./phase-05-testing-validation.md) |
 
 ## Architecture
 

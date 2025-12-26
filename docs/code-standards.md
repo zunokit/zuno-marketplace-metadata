@@ -663,6 +663,298 @@ export type CreateMetadataInput = z.infer<typeof CreateMetadataSchema>;
 
 ---
 
+## External Service Integration Standards
+
+### GitHub API Integration Pattern
+
+**Location**: `src/infrastructure/github/github-client.ts`
+
+**Purpose**: Wrapper around Octokit for GitHub API operations
+
+#### Client Structure
+
+```typescript
+import { Octokit } from "octokit";
+import { env } from "@/shared/config/env";
+import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils/server";
+
+export class GitHubClient {
+  private static octokit: Octokit | null = null;
+
+  private static getClient(): Octokit {
+    if (!this.octokit) {
+      if (!env.GITHUB_TOKEN) {
+        throw new Error("GITHUB_TOKEN not configured");
+      }
+      this.octokit = new Octokit({ auth: env.GITHUB_TOKEN });
+    }
+    return this.octokit;
+  }
+
+  static async createIssue(params: {
+    title: string;
+    body: string;
+    labels: string[];
+  }): Promise<{ number: number; html_url: string }> {
+    // Implementation
+  }
+
+  static async searchIssues(query: string): Promise<number | null> {
+    // Implementation
+  }
+
+  private static parseRepo(repo: string): [string, string] {
+    // Implementation
+  }
+}
+```
+
+#### Integration Principles
+
+1. **Singleton Client**: Reuse Octokit instance across requests
+2. **Static Methods**: All operations are static for simplicity
+3. **Error Handling**: Wrap all API calls with `tryCatch` utility
+4. **Structured Logging**: Log all operations with context
+5. **Type Safety**: Explicit return types for all methods
+6. **Environment Validation**: Check required env vars before operations
+
+#### Deduplication Pattern
+
+**Location**: `src/infrastructure/cache/sentry-dedup.service.ts`
+
+```typescript
+import { RedisClient } from "./redis.client";
+import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils/server";
+
+const FINGERPRINT_PREFIX = "sentry:fingerprint:";
+const FINGERPRINT_TTL = 30 * 24 * 60 * 60; // 30 days
+
+export interface IssueReference {
+  issueNumber: number;
+  issueUrl: string;
+  createdAt: string;
+}
+
+export class SentryDedupService {
+  private static get redis(): RedisClient {
+    return RedisClient.getInstance();
+  }
+
+  static async getIssue(
+    fingerprint: string
+  ): Promise<IssueReference | null> {
+    return await this.redis.get<IssueReference>(
+      `${FINGERPRINT_PREFIX}${fingerprint}`
+    );
+  }
+
+  static async storeFingerprint(
+    fingerprint: string,
+    issueRef: IssueReference
+  ): Promise<void> {
+    const success = await this.redis.set(
+      `${FINGERPRINT_PREFIX}${fingerprint}`,
+      issueRef,
+      FINGERPRINT_TTL
+    );
+
+    if (!success) {
+      throw new Error("Failed to store fingerprint in Redis");
+    }
+
+    logger.debug("Stored fingerprint for deduplication", {
+      fingerprint,
+      issueNumber: issueRef.issueNumber,
+    });
+  }
+}
+```
+
+#### Best Practices
+
+1. **Key Prefixing**: Use consistent prefixes for Redis keys (`sentry:fingerprint:`)
+2. **TTL Configuration**: Define TTL as constants at module level
+3. **Type Safety**: Define interfaces for stored data structures
+4. **Error Handling**: Throw on Redis failures (dedup is critical)
+5. **Logging**: Debug-level logs for dedup operations
+6. **Singleton Access**: Access Redis client via static getter
+
+#### Service Layer Integration
+
+**Location**: `src/core/services/sentry-issue/sentry-issue.service.ts`
+
+```typescript
+import { GitHubClient } from "@/infrastructure/github/github-client";
+import { SentryDedupService } from "@/infrastructure/cache/sentry-dedup.service";
+import { logger } from "@/shared/lib/utils/logger";
+import { tryCatch } from "@/shared/lib/utils/server";
+
+export class SentryIssueService {
+  static async processWebhook(
+    payload: SentryWebhookPayload,
+    requestId: string
+  ): Promise<CreatedIssue | null> {
+    const result = await tryCatch(
+      async () => {
+        // 1. Environment check
+        if (payload.environment !== "production") {
+          return null;
+        }
+
+        // 2. Extract error data
+        const issue: SentryIssue = { /* ... */ };
+
+        // 3. Check deduplication
+        const existingIssue = await this.checkExistingIssue(issue.fingerprint);
+        if (existingIssue) {
+          return existingIssue;
+        }
+
+        // 4. Create GitHub issue
+        const createdIssue = await this.createGitHubIssue(issue);
+
+        // 5. Store fingerprint
+        await this.storeFingerprint(issue.fingerprint, createdIssue);
+
+        return createdIssue;
+      },
+      { errorMessage: "Failed to process Sentry webhook", shouldLog: true }
+    );
+
+    return result.success ? result.data : null;
+  }
+
+  private static async checkExistingIssue(
+    fingerprint: string
+  ): Promise<CreatedIssue | null> {
+    const issueRef = await SentryDedupService.getIssue(fingerprint);
+    if (!issueRef) return null;
+
+    return {
+      issueNumber: issueRef.issueNumber,
+      issueUrl: issueRef.issueUrl,
+      fingerprint,
+    };
+  }
+
+  private static async createGitHubIssue(
+    issue: SentryIssue
+  ): Promise<CreatedIssue> {
+    const labels = env.GITHUB_ISSUE_LABEL?.split(",") || ["sentry", "error"];
+    const result = await GitHubClient.createIssue({
+      title: this.formatTitle(issue),
+      body: this.formatBody(issue),
+      labels,
+    });
+
+    return {
+      issueNumber: result.number,
+      issueUrl: result.html_url,
+      fingerprint: issue.fingerprint,
+    };
+  }
+
+  private static formatTitle(issue: SentryIssue): string {
+    const maxLength = 60;
+    let title = `🚨 ${issue.title}`;
+    if (title.length > maxLength) {
+      title = title.substring(0, maxLength - 3) + "...";
+    }
+    return title;
+  }
+
+  private static formatBody(issue: SentryIssue): string {
+    return `
+## 🚨 Production Error from Sentry
+
+**Fingerprint**: \`${issue.fingerprint}\`
+**Environment**: ${issue.environment}
+**Event ID**: ${issue.eventId}
+
+### Error
+\`\`\`
+${this.escapeMarkdown(issue.message)}
+\`\`\`
+
+### Stack Trace
+\`\`\`
+${this.escapeMarkdown(issue.stackTrace)}
+\`\`\`
+
+### Request Context
+- **URL**: ${issue.requestContext.url}
+- **Method**: ${issue.requestContext.method}
+- **User Agent**: ${issue.requestContext.userAgent}
+
+### Sentry Link
+${issue.sentryUrl}
+
+---
+*Auto-generated by Sentry integration*
+`.trim();
+  }
+
+  private static escapeMarkdown(text: string): string {
+    return text.replace(/[\\`*_{}[\]()#+\-.!|]/g, "\\$&");
+  }
+}
+```
+
+#### Service Layer Principles
+
+1. **Production-Only Filtering**: Only create issues for production errors
+2. **Deduplication First**: Always check before creating
+3. **Markdown Formatting**: Escape special characters
+4. **Structured Logging**: Log successful operations with context
+5. **Error Recovery**: Return null on soft failures, throw on critical
+6. **Title Truncation**: Limit GitHub issue titles to 60 characters
+
+#### Environment Variables
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| `GITHUB_TOKEN` | Yes | - | GitHub personal access token |
+| `GITHUB_REPO` | No | zunokit/zuno-marketplace-metadata | Target repository |
+| `GITHUB_ISSUE_LABEL` | No | sentry,error,production | Comma-separated labels |
+| `SENTRY_WEBHOOK_SECRET` | Yes | - | Webhook signature verification |
+
+#### Testing Guidelines
+
+For external service integrations:
+- Mock external API clients in Jest setup
+- Use consistent mock responses
+- Test error handling paths
+- Test rate limiting behavior
+- Test deduplication logic
+- Test markdown escaping
+
+Example Jest mock:
+```typescript
+// tests/setup/jest.setup.ts
+jest.mock("octokit", () => ({
+  Octokit: class {
+    constructor() {
+      this.rest = {
+        issues: {
+          create: jest.fn().mockResolvedValue({
+            data: { number: 1, html_url: "https://github.com/test/repo/issues/1" }
+          }),
+        },
+        search: {
+          issuesAndPullRequests: jest.fn().mockResolvedValue({
+            data: { items: [] }
+          }),
+        },
+      };
+    }
+  },
+}));
+```
+
+---
+
 ## Testing Standards
 
 ### Test File Location
