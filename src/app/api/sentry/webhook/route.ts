@@ -34,7 +34,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 3. Verify signature
     if (!env.SENTRY_WEBHOOK_SECRET) {
       logger.error("SENTRY_WEBHOOK_SECRET not configured");
-      return new NextResponse("Webhook not configured", { status: 500 });
+      return new NextResponse("Service unavailable - webhook not configured", {
+        status: 503,
+      });
     }
 
     const isValid = verifySentrySignature(
