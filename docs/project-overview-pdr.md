@@ -108,17 +108,10 @@ media:write     - Upload and delete media
 
 ### 9. Error Monitoring (Sentry Integration)
 - **Sentry SDK** - @sentry/nextjs for error tracking
-- **Webhook Handler** - POST /api/sentry/webhook for alert processing
-- **Signature Verification** - HMAC-SHA256 with timing-safe comparison
-- **Async Processing** - Non-blocking webhook response
-- **GitHub Integration** - Automatic issue creation via Octokit
-- **Deduplication** - Redis-based fingerprint tracking (30-day TTL)
-- **Production Filtering** - Only create issues for production errors
-- **Markdown Formatting** - Structured GitHub issue bodies with error details
-- **Testing & Validation** - Comprehensive test script for E2E validation
-  - Error capture, message capture, performance tracing
-  - Context enrichment (tags, extra, user)
-  - Severity level testing (info, warning, error)
+- **Native Integration** - Sentry GitHub integration for automatic issue creation
+- **Error Capture** - Automatic error and exception tracking
+- **Performance Monitoring** - Transaction traces and performance metrics
+- **Release Tracking** - Deployment and release monitoring
 
 ---
 
@@ -141,7 +134,6 @@ media:write     - Upload and delete media
 | **Pinata** | IPFS pinning service | Usage-based |
 | **Upstash** (optional) | Serverless Redis | Pay-per-request |
 | **Sentry** | Error monitoring & tracking | Free tier available |
-| **GitHub** | Issue automation | Free tier available |
 
 ### Technology Stack
 
@@ -173,7 +165,6 @@ Infrastructure:
   - Pinata (IPFS)
   - Better Auth
   - Sentry (error monitoring)
-  - Octokit (GitHub API client)
 
 DevOps:
   - Docker (containerization)

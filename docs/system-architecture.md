@@ -88,9 +88,6 @@ Response (JSON with status code)
 - **Admin**: `GET/POST/DELETE /api/admin/api-keys/[id]`, `GET/POST/DELETE /api/admin/api-versions/[id]`
 - **System**: `GET /api/health`, `GET /api/docs`, `POST /api/auth/[...all]`
 - **Cron Jobs**: `POST /api/cron/process-media-ipfs`, `POST /api/cron/process-metadata-ipfs`
-- **Sentry**:
-  - `POST /api/sentry/webhook` - Receives Sentry alert webhooks
-  - `GET /api/test/sentry-error` - Test endpoint for error capture (development only)
 
 #### Admin Dashboard Pages
 - **Login**: `/auth/signin`
@@ -425,147 +422,34 @@ Metadata/Media Created
 - Decentralized - redundant across network
 - Verifiable - can validate content against CID
 
-#### 4.6 Sentry Integration (Error Monitoring)
+#### 4.6 Sentry Integration (Native)
 
-**Service**: Sentry Webhook Alerts + GitHub Issue Automation
+**Service**: Sentry native GitHub integration for error tracking
 
-**Webhook Handler Flow**
-```
-Sentry Alert Triggered
-  ↓
-[Sentry] → POST /api/sentry/webhook
-  ├─ Headers: sentry-hook-signature
-  └─ Body: {event_id, fingerprint, exception, ...}
-  ↓
-[Signature Verification]
-  ├─ Extract signature from header
-  ├─ Compute HMAC-SHA256 of payload
-  ├─ timingSafeEqual comparison
-  └─ 401 if invalid
-  ↓
-[Parse Payload]
-  ├─ Extract error details
-  ├─ Get fingerprint (deduplication key)
-  ├─ Get stack trace
-  └─ Get request context
-  ↓
-[Async Processing] (non-blocking)
-  ├─ Return 200 OK immediately
-  └─ Process in background
-  ↓
-[SentryIssueService.processWebhook()]
-  ├─ [Environment Check]
-  │  └─ Skip non-production errors
-  ├─ [Deduplication Check]
-  │  └─ SentryDedupService.getIssue(fingerprint)
-  │     ├─ If exists → Return existing issue
-  │     └─ If not found → Continue
-  ├─ [Create GitHub Issue]
-  │  └─ GitHubClient.createIssue({
-  │       title, body (markdown), labels
-  │     })
-  ├─ [Store Fingerprint]
-  │  └─ SentryDedupService.storeFingerprint(
-  │       fingerprint, issueRef, TTL=30days
-  │     )
-  └─ [Log Success]
-```
+**Integration Overview**
+- **Platform**: Sentry native integration with GitHub
+- **Documentation**: https://docs.sentry.io/organization/integrations/source-code-mgmt/github/
+- **Features**:
+  - Automatic error capture and tracking
+  - Native GitHub issue creation (no custom webhook needed)
+  - Stack trace and context retention
+  - Release tracking and deployment monitoring
+  - Performance monitoring with transaction traces
 
-**Security**
-- HMAC-SHA256 signature verification
-- Timing-safe comparison prevents timing attacks
-- Webhook secret: `SENTRY_WEBHOOK_SECRET` env var
-- Returns 401 for invalid signatures
-- Returns 500 if secret not configured
-- Production-only error filtering
+**Configuration**
+- **SDK**: `@sentry/nextjs` for Next.js applications
+- **Environment Variable**: `NEXT_PUBLIC_SENTRY_DSN`
+- **Sentry Integrations**: Configure via Sentry dashboard
+  - Navigate to Settings > Integrations > GitHub
+  - Link repository and configure issue creation rules
+  - Set up alert rules for production errors
 
-**GitHub Integration**
-- **Octokit Client**: Wrapper for GitHub REST API
-- **Issue Creation**: Automatic GitHub issue creation for production errors
-- **Deduplication**: Redis-based with 30-day TTL to prevent duplicate issues
-- **Labels**: Configurable via `GITHUB_ISSUE_LABEL` (default: "sentry,error,production")
-- **Rate Limits**: GitHub API: 5000 requests/hour
-- **Markdown Formatting**: Structured issue bodies with error details, stack traces, and context
-
-**Deduplication Service**
-```
-Redis Key Pattern: sentry:fingerprint:{fingerprint}
-TTL: 30 days
-Value: {
-  issueNumber: number,
-  issueUrl: string,
-  createdAt: ISO datetime
-}
-```
-
-**Data Extraction**
-- `getFingerprint()` - Deduplication key
-- `getErrorTitle()` - Type:Value format
-- `getStackTrace()` - Module:Function:Line format
-- `getRequestContext()` - URL, method, user-agent, API key ID
-
-**Environment Variables**
-| Variable | Required | Default | Purpose |
-|----------|----------|---------|---------|
-| `SENTRY_WEBHOOK_SECRET` | Yes | - | Webhook signature verification |
-| `GITHUB_TOKEN` | Yes | - | GitHub personal access token |
-| `GITHUB_REPO` | No | zunokit/zuno-marketplace-metadata | Target repository |
-| `GITHUB_ISSUE_LABEL` | No | sentry,error,production | Issue labels |
-
-**Test Endpoint** (`GET /api/test/sentry-error`)
-- **Purpose**: Test endpoint for validating Sentry alert flow
-- **Environment**: Development only (returns 403 in production)
-- **Response**: JSON with test confirmation and instructions
-- **Usage**: Trigger a test error to verify:
-  1. Sentry receives the error
-  2. Alert fires
-  3. Webhook is called
-  4. GitHub issue is created
-- **Important**: Remove this endpoint after testing is complete
-
-**Test Script** (`scripts/test-sentry-integration.ts`)
-- **Purpose**: Comprehensive E2E testing of Sentry integration
-- **Command**: `npx tsx scripts/test-sentry-integration.ts`
-- **Tests**:
-  1. Error capture (`Sentry.captureException`)
-  2. Message capture (`Sentry.captureMessage` with severity)
-  3. Performance tracing (`Sentry.startSpan`)
-  4. Error with context (tags, extra, user)
-  5. Different severity levels (info, warning, error)
-- **Environment Variables Required**:
-  - `NEXT_PUBLIC_SENTRY_DSN` - Sentry project DSN
-  - `SENTRY_PROJECT` - Project name (optional)
-  - `NODE_ENV` - Environment (development/production)
-- **Post-Test Verification**:
-  1. Check Sentry dashboard for all 5 test events
-  2. Verify events have correct tags and context
-  3. Check transaction traces in Performance tab
-  4. Confirm GitHub issues created (for production errors)
-
-```
-GET /api/test/sentry-error (development only)
-  ↓
-[Sentry.captureException()]
-  ├─ Creates test error with tags
-  └─ Sends to Sentry
-  ↓
-[Response]
-  └─ 200 + confirmation message
-```
-
-```
-npx tsx scripts/test-sentry-integration.ts
-  ↓
-[Run 5 Tests]
-  ├─ 1. Error capture
-  ├─ 2. Message capture (info)
-  ├─ 3. Performance tracing (startSpan)
-  ├─ 4. Error with context (tags, extra, user)
-  └─ 5. Severity levels (info, warning, error)
-  ↓
-[Verify in Sentry Dashboard]
-  └─ Check events, traces, and GitHub issues
-```
+**Benefits of Native Integration**
+- No custom webhook handler or signature verification needed
+- Automatic deduplication via Sentry platform
+- Configurable issue creation rules in Sentry dashboard
+- Native support for issue linking and status sync
+- Simplified setup and maintenance
 
 #### 4.7 Job Queue (`src/infrastructure/queue/`)
 
@@ -978,61 +862,6 @@ GET /api/health
      └─ services: { database, redis, imagekit, pinata, queue }
 ```
 
-### Sentry Webhook Flow
-```
-POST /api/sentry/webhook
-  │
-  ├─ [Extract Signature]
-  │  └─ sentry-hook-signature header
-  │
-  ├─ [Read Raw Payload]
-  │  └─ await request.text()
-  │
-  ├─ [Verify Signature]
-  │  ├─ Compute HMAC-SHA256(payload, SENTRY_WEBHOOK_SECRET)
-  │  ├─ timingSafeEqual(signature, computed)
-  │  └─ 401 if invalid
-  │
-  ├─ [Parse Payload]
-  │  ├─ Extract: event_id, fingerprint, exception, request
-  │  └─ SentryWebhookPayload type
-  │
-  ├─ [Async Processing]
-  │  ├─ Return 200 OK immediately
-  │  └─ SentryIssueService.processWebhook(payload, requestId)
-  │     │
-  │     ├─ [Environment Check]
-  │     │  └─ Skip if environment !== "production"
-  │     │
-  │     ├─ [Extract Data]
-  │     │  ├─ getFingerprint(event)
-  │     │  ├─ getErrorTitle(event)
-  │     │  ├─ getStackTrace(event)
-  │     │  └─ getRequestContext(event)
-  │     │
-  │     ├─ [Deduplication Check]
-  │     │  └─ SentryDedupService.getIssue(fingerprint)
-  │     │     ├─ If exists → Log and return existing issue
-  │     │     └─ If not found → Continue
-  │     │
-  │     ├─ [Create GitHub Issue]
-  │     │  └─ GitHubClient.createIssue({
-  │     │       title: "🚨 Error:Type",
-  │     │       body: markdown (error, stack, context),
-  │     │       labels: ["sentry", "error", "production"]
-  │     │     })
-  │     │
-  │     ├─ [Store Fingerprint]
-  │     │  └─ SentryDedupService.storeFingerprint(
-  │     │       fingerprint, issueRef, TTL=30days
-  │     │     )
-  │     │
-  │     └─ [Log Success]
-  │        └─ logger.info("Created GitHub issue")
-  │
-  └─ [Response]
-     └─ 200 OK (immediate, async processing)
-```
 
 ---
 

@@ -62,12 +62,6 @@ const envSchema = z.object({
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.string().default("0.1"),
-  SENTRY_WEBHOOK_SECRET: z.string().optional(),
-
-  // GitHub Integration (for Sentry issue automation)
-  GITHUB_TOKEN: z.string().optional(),
-  GITHUB_REPO: z.string().default("zunokit/zuno-marketplace-metadata"),
-  GITHUB_ISSUE_LABEL: z.string().default("sentry,error,production"),
 });
 
 export type Env = z.infer<typeof envSchema>;
