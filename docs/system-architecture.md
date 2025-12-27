@@ -523,6 +523,25 @@ Value: {
   4. GitHub issue is created
 - **Important**: Remove this endpoint after testing is complete
 
+**Test Script** (`scripts/test-sentry-integration.ts`)
+- **Purpose**: Comprehensive E2E testing of Sentry integration
+- **Command**: `npx tsx scripts/test-sentry-integration.ts`
+- **Tests**:
+  1. Error capture (`Sentry.captureException`)
+  2. Message capture (`Sentry.captureMessage` with severity)
+  3. Performance tracing (`Sentry.startSpan`)
+  4. Error with context (tags, extra, user)
+  5. Different severity levels (info, warning, error)
+- **Environment Variables Required**:
+  - `NEXT_PUBLIC_SENTRY_DSN` - Sentry project DSN
+  - `SENTRY_PROJECT` - Project name (optional)
+  - `NODE_ENV` - Environment (development/production)
+- **Post-Test Verification**:
+  1. Check Sentry dashboard for all 5 test events
+  2. Verify events have correct tags and context
+  3. Check transaction traces in Performance tab
+  4. Confirm GitHub issues created (for production errors)
+
 ```
 GET /api/test/sentry-error (development only)
   ↓
@@ -532,6 +551,20 @@ GET /api/test/sentry-error (development only)
   ↓
 [Response]
   └─ 200 + confirmation message
+```
+
+```
+npx tsx scripts/test-sentry-integration.ts
+  ↓
+[Run 5 Tests]
+  ├─ 1. Error capture
+  ├─ 2. Message capture (info)
+  ├─ 3. Performance tracing (startSpan)
+  ├─ 4. Error with context (tags, extra, user)
+  └─ 5. Severity levels (info, warning, error)
+  ↓
+[Verify in Sentry Dashboard]
+  └─ Check events, traces, and GitHub issues
 ```
 
 #### 4.7 Job Queue (`src/infrastructure/queue/`)
@@ -1269,4 +1302,4 @@ POST /api/metadata
 
 ---
 
-**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Architecture Version**: Clean Architecture v1
+**Document Version**: 1.3 | **Last Updated**: 2025-12-27 | **Architecture Version**: Clean Architecture v1

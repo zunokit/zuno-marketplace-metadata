@@ -115,6 +115,10 @@ media:write     - Upload and delete media
 - **Deduplication** - Redis-based fingerprint tracking (30-day TTL)
 - **Production Filtering** - Only create issues for production errors
 - **Markdown Formatting** - Structured GitHub issue bodies with error details
+- **Testing & Validation** - Comprehensive test script for E2E validation
+  - Error capture, message capture, performance tracing
+  - Context enrichment (tags, extra, user)
+  - Severity level testing (info, warning, error)
 
 ---
 
@@ -395,4 +399,4 @@ A successful Zuno Marketplace Metadata platform will:
 
 ---
 
-**Document Version**: 1.1 | **Last Updated**: 2025-12-26 | **Next Review**: 2026-03-10
+**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Next Review**: 2026-03-10
