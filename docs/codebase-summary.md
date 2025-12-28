@@ -93,10 +93,6 @@ E:\zuno-marketplace-metadata/
 - `src/app/api/cron/process-media-ipfs/route.ts` - Cron: Pin media
 - `src/app/api/cron/process-metadata-ipfs/route.ts` - Cron: Pin metadata
 
-*Sentry Integration*
-- `src/app/api/sentry/webhook/route.ts` - Webhook endpoint for Sentry alerts
-- `src/app/api/test/sentry-error/route.ts` - Test endpoint for Sentry error capture (development only)
-
 **Main Pages**
 - `src/app/layout.tsx` - Root layout wrapper
 - `src/app/page.tsx` - Landing page
@@ -126,10 +122,7 @@ src/core/domain/
 src/core/services/
 ├── audit-log/audit-log.service.ts         # Audit log operations
 ├── media/media-query.service.ts            # Media query building
-├── metadata/metadata-query.service.ts      # Metadata query building
-└── sentry-issue/                           # Sentry error tracking
-    ├── sentry-issue.entity.ts              # Sentry issue entities
-    └── sentry-issue.service.ts             # Webhook processing service
+└── metadata/metadata-query.service.ts      # Metadata query building
 ```
 
 **Use Cases** (Application layer logic)
@@ -168,8 +161,6 @@ src/core/use-cases/
 - `src/infrastructure/auth/auth.client.ts` - Auth client
 - `src/infrastructure/auth/auth-helpers.ts` - Helper functions
 
-**GitHub Integration**
-- `src/infrastructure/github/github-client.ts` - GitHub API client (Octokit wrapper)
 
 **Database (PostgreSQL + Drizzle)**
 ```
@@ -198,7 +189,6 @@ src/infrastructure/database/
 **Cache (Redis)**
 - `src/infrastructure/cache/redis.client.ts` - Redis client (Upstash)
 - `src/infrastructure/cache/cache.service.ts` - Cache operations
-- `src/infrastructure/cache/sentry-dedup.service.ts` - Sentry issue deduplication
 
 **External Services**
 ```
@@ -348,12 +338,10 @@ React custom hooks for API operations:
 
 **Jest Configuration**
 - `tests/setup/jest.config.js` - Jest configuration
-- `tests/setup/jest.setup.js` - Test environment setup (includes `SENTRY_WEBHOOK_SECRET`)
+- `tests/setup/jest.setup.js` - Test environment setup
 
 **Unit Tests**
 - Test files for use cases, utilities, validation
-- `tests/__tests__/shared/lib/utils/sentry-helpers.test.ts` - Sentry helper tests
-- `tests/__tests__/core/services/sentry-issue/sentry-issue.service.test.ts` - Sentry service tests
 
 **E2E Tests** (200+ integration tests)
 - 18 test suites covering API endpoints
@@ -415,7 +403,6 @@ React custom hooks for API operations:
 | @imagekit/next | 2.1.3 | ImageKit Next.js integration |
 | pinata | 2.5.1 | IPFS pinning |
 | @sentry/nextjs | 9.0.0 | Error monitoring and tracking |
-| octokit | Latest | GitHub API client |
 
 ### Development Tools
 | Package | Version | Purpose |
@@ -559,22 +546,15 @@ media ──→ audit_logs (via user)
 - **Features**: Email/password, OAuth, API key plugin
 
 ### 6. Sentry (Error Monitoring)
-- **Files**:
-  - `src/app/api/sentry/webhook/route.ts` - Webhook endpoint for Sentry alerts
-  - `src/app/api/test/sentry-error/route.ts` - Test endpoint for error capture (dev only)
-  - `src/shared/lib/utils/sentry-helpers.ts` - Helper utilities for webhook processing
-  - `src/core/services/sentry-issue/sentry-issue.service.ts` - Service layer for webhook handling
-  - `src/infrastructure/github/github-client.ts` - GitHub API client (Octokit wrapper)
-  - `src/infrastructure/cache/sentry-dedup.service.ts` - Redis deduplication service
-- **Purpose**: Error tracking, alert webhooks, and GitHub issue automation
+- **Integration**: Native Sentry GitHub integration
+- **Documentation**: https://docs.sentry.io/organization/integrations/source-code-mgmt/github/
+- **Purpose**: Error tracking with automatic GitHub issue creation
 - **Features**:
-  - HMAC-SHA256 signature verification
-  - Async webhook processing
-  - GitHub issue creation via Octokit
-  - Redis-based deduplication (30-day TTL)
-  - Production-only error filtering
-  - Markdown-formatted issue bodies
-  - Test endpoint for validating Sentry alert flow
+  - `@sentry/nextjs` SDK for Next.js applications
+  - Native GitHub integration via Sentry dashboard
+  - Automatic error capture and tracking
+  - Release tracking and deployment monitoring
+  - Performance monitoring with transaction traces
 
 ---
 
@@ -587,7 +567,7 @@ media ──→ audit_logs (via user)
 - **Components**: 80+ (50+ UI, 20+ feature)
 - **Use Cases**: 15+
 - **Repositories**: 5
-- **Test Files**: 9+
+- **Test Files**: 7+
 
 ### Code Metrics
 - **Total Tokens**: 233,000

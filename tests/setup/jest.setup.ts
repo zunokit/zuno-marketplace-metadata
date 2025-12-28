@@ -1,25 +1,5 @@
 import "@testing-library/jest-dom";
 
-// Mock octokit package (ESM module not compatible with Jest)
-jest.mock("octokit", () => ({
-  Octokit: class {
-    constructor() {
-      this.rest = {
-        issues: {
-          create: jest.fn().mockResolvedValue({
-            data: { number: 1, html_url: "https://github.com/test/repo/issues/1" },
-          }),
-        },
-        search: {
-          issuesAndPullRequests: jest.fn().mockResolvedValue({
-            data: { items: [] },
-          }),
-        },
-      };
-    }
-  },
-}));
-
 // Mock @upstash/redis package (ESM module not compatible with Jest)
 const mockRedis = {
   get: jest.fn(),
@@ -57,9 +37,6 @@ beforeAll(() => {
   process.env.BETTER_AUTH_SECRET = "test-secret";
   process.env.BETTER_AUTH_URL = "http://localhost:3000";
   process.env.CRON_SECRET = "test-cron-secret";
-  process.env.SENTRY_WEBHOOK_SECRET = "test-sentry-webhook-secret";
-  process.env.GITHUB_TOKEN = "test-github-token";
-  process.env.GITHUB_REPO = "test/repo";
 });
 
 afterEach(() => {
