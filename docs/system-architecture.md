@@ -47,6 +47,7 @@ Zuno Marketplace Metadata follows a **Clean Architecture** pattern with clear se
 │    │  - Pinata IPFS                          │    │
 │    │  - Better Auth                          │    │
 │    │  - BullMQ Job Queue                     │    │
+│    │  - Sentry (Error Monitoring)            │    │
 │    └─────────────────────────────────────────┘    │
 │                                                    │
 └────────────────────────────────────────────────────┘
@@ -421,7 +422,36 @@ Metadata/Media Created
 - Decentralized - redundant across network
 - Verifiable - can validate content against CID
 
-#### 4.6 Job Queue (`src/infrastructure/queue/`)
+#### 4.6 Sentry Integration (Native)
+
+**Service**: Sentry native GitHub integration for error tracking
+
+**Integration Overview**
+- **Platform**: Sentry native integration with GitHub
+- **Documentation**: https://docs.sentry.io/organization/integrations/source-code-mgmt/github/
+- **Features**:
+  - Automatic error capture and tracking
+  - Native GitHub issue creation (no custom webhook needed)
+  - Stack trace and context retention
+  - Release tracking and deployment monitoring
+  - Performance monitoring with transaction traces
+
+**Configuration**
+- **SDK**: `@sentry/nextjs` for Next.js applications
+- **Environment Variable**: `NEXT_PUBLIC_SENTRY_DSN`
+- **Sentry Integrations**: Configure via Sentry dashboard
+  - Navigate to Settings > Integrations > GitHub
+  - Link repository and configure issue creation rules
+  - Set up alert rules for production errors
+
+**Benefits of Native Integration**
+- No custom webhook handler or signature verification needed
+- Automatic deduplication via Sentry platform
+- Configurable issue creation rules in Sentry dashboard
+- Native support for issue linking and status sync
+- Simplified setup and maintenance
+
+#### 4.7 Job Queue (`src/infrastructure/queue/`)
 
 **Technology**: BullMQ (Redis-backed)
 
@@ -452,7 +482,7 @@ Worker Process
 - Must be deployed independently of API server
 - Recommended: Docker container or separate cloud instance
 
-#### 4.7 Rate Limiting (`src/infrastructure/services/rate-limit.service.ts`)
+#### 4.8 Rate Limiting (`src/infrastructure/services/rate-limit.service.ts`)
 
 **Algorithm**: Token bucket (Redis-backed)
 
@@ -485,7 +515,7 @@ X-RateLimit-Remaining: 999
 X-RateLimit-Reset: 1702184400
 ```
 
-#### 4.8 Repositories (`src/infrastructure/repositories/`)
+#### 4.9 Repositories (`src/infrastructure/repositories/`)
 
 **Implements**: Domain repository interfaces
 
@@ -508,7 +538,7 @@ Database operations
 - No direct database access elsewhere
 - Cache-aware operations
 
-#### 4.9 Monitoring (`src/infrastructure/monitoring/`)
+#### 4.10 Monitoring (`src/infrastructure/monitoring/`)
 
 **Audit Logger**
 - Logs all API requests to database
@@ -832,6 +862,7 @@ GET /api/health
      └─ services: { database, redis, imagekit, pinata, queue }
 ```
 
+
 ---
 
 ## API Versioning Strategy
@@ -1100,4 +1131,4 @@ POST /api/metadata
 
 ---
 
-**Document Version**: 1.0 | **Last Updated**: 2025-12-10 | **Architecture Version**: Clean Architecture v1
+**Document Version**: 1.3 | **Last Updated**: 2025-12-27 | **Architecture Version**: Clean Architecture v1

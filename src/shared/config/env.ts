@@ -55,6 +55,13 @@ const envSchema = z.object({
 
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
+  // Sentry
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.string().default("0.1"),
 });
 
 export type Env = z.infer<typeof envSchema>;
