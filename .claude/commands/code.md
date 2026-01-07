@@ -9,11 +9,13 @@ argument-hint: [plan]
 ---
 
 ## Role Responsibilities
+
 - You are a senior software engineer who must study the provided implementation plan end-to-end before writing code.
 - Validate the plan's assumptions, surface blockers, and confirm priorities with the user prior to execution.
 - Drive the implementation from start to finish, reporting progress and adjusting the plan responsibly while honoring **YAGNI**, **KISS**, and **DRY** principles.
 
 **IMPORTANT:** Remind these rules with subagents communication:
+
 - Sacrifice grammar for the sake of concision when writing reports.
 - In reports, list any unresolved questions at the end, if any.
 - Ensure token efficiency while maintaining high quality.
@@ -23,6 +25,7 @@ argument-hint: [plan]
 ## Step 0: Plan Detection & Phase Selection
 
 **If `$ARGUMENTS` is empty:**
+
 1. Find latest `plan.md` in `./plans` | `find ./plans -name "plan.md" -type f -exec stat -f "%m %N" {} \; 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-`
 2. Parse plan for phases and status, auto-select next incomplete (prefer IN_PROGRESS or earliest Planned)
 
@@ -31,6 +34,7 @@ argument-hint: [plan]
 **Output:** `✓ Step 0: [Plan Name] - [Phase Name]`
 
 **Subagent Pattern (use throughout):**
+
 ```
 Task(subagent_type="[type]", prompt="[task description]", description="[brief]")
 ```
@@ -48,6 +52,7 @@ Task(subagent_type="[type]", prompt="[task description]", description="[brief]")
 Read plan file completely. Map dependencies between tasks. List ambiguities or blockers. Identify required skills/tools and activate from catalog. Parse phase file and extract actionable tasks.
 
 **TodoWrite Initialization & Task Extraction:**
+
 - Initialize TodoWrite with `Step 0: [Plan Name] - [Phase Name]` and all command steps (Step 1 through Step 6)
 - Read phase file (e.g., phase-01-preparation.md)
 - Look for tasks/steps/phases/sections/numbered/bulleted lists
@@ -88,55 +93,88 @@ Mark Step 3 complete in TodoWrite, mark Step 4 in_progress.
 
 ---
 
-## Step 4: Code Review
+## Step 4: Code Review & Auto-Approval
 
-Call `code-reviewer` subagent: "Review changes for plan phase [phase-name]. Check security, performance, architecture, YAGNI/KISS/DRY". If critical issues found: STOP, fix all, re-run `tester` to verify, re-run `code-reviewer`. Repeat until no critical issues.
+Call `code-reviewer` subagent: "Review changes for plan phase [phase-name]. Check security, performance, architecture, YAGNI/KISS/DRY. Return score (X/10), critical issues list, warnings list, suggestions list."
+
+**Auto-Review-Fix Cycle (max 3 cycles):**
+
+```
+cycle = 0
+LOOP:
+  1. Run code-reviewer → get score, critical_count, warnings, suggestions
+
+  2. DISPLAY FULL FINDINGS + SUMMARY:
+     ┌─────────────────────────────────────────┐
+     │ Code Review Results: [score]/10         │
+     ├─────────────────────────────────────────┤
+     │ Summary: [what implemented], tests      │
+     │ [X/X passed]                            │
+     ├─────────────────────────────────────────┤
+     │ Critical Issues ([N]): MUST FIX         │
+     │  - [issue] at [file:line]               │
+     │ Warnings ([N]): SHOULD FIX              │
+     │  - [issue] at [file:line]               │
+     │ Suggestions ([N]): NICE TO HAVE         │
+     │  - [suggestion]                         │
+     └─────────────────────────────────────────┘
+
+  3. AUTO-DECISION LOGIC:
+     IF critical_count > 0:
+       - Auto-fix critical issues → implement fixes, re-run tester, cycle++, GOTO LOOP
+     ELSE IF warnings > 0 AND cycle < 2:
+       - Auto-fix warnings → implement fixes, re-run tester, cycle++, GOTO LOOP
+     ELSE:
+       - AUTO-APPROVE → PROCEED to Step 5
+
+  4. IF cycle >= 3:
+     → Output: "⚠ 3 review cycles completed. Auto-approving and proceeding."
+     → AUTO-APPROVE → PROCEED to Step 5
+```
 
 **Critical issues:** Security vulnerabilities (XSS, SQL injection, OWASP), performance bottlenecks, architectural violations, principle violations.
 
-**Output:** `✓ Step 4: Code reviewed - [0] critical issues`
+**Output formats:**
 
-**Validation:** If critical issues > 0, Step 4 INCOMPLETE - do not proceed.
+- After fix: `✓ Step 4: [old]/10 → Fixed [N] issues → [new]/10 - Auto-approved`
+- Approved: `✓ Step 4: Code reviewed - [score]/10 - Auto-approved`
+
+**Validation:** Step 4 automatically approves after review cycle completes.
 
 Mark Step 4 complete in TodoWrite, mark Step 5 in_progress.
 
 ---
 
-## Step 5: User Approval ⏸ BLOCKING GATE
+## Step 5: Finalize & Auto-Continue
 
-Present summary (3-5 bullets): what implemented, tests [X/X passed], code review outcome.
-
-**Ask user explicitly:** "Phase implementation complete. All tests pass, code reviewed. Approve changes?"
-
-**Stop and wait** - do not output Step 6 content until user responds.
-
-**Output (while waiting):** `⏸ Step 5: WAITING for user approval`
-
-**Output (after approval):** `✓ Step 5: User approved - Ready to complete`
-
-Mark Step 5 complete in TodoWrite, mark Step 6 in_progress.
-
----
-
-## Step 6: Finalize
-
-**Prerequisites:** User approved in Step 5 (verified above).
+**Prerequisites:** Step 4 auto-approved (verified above).
 
 1. **STATUS UPDATE - BOTH MANDATORY - PARALLEL EXECUTION:**
+
 - **Call** `project-manager` sub-agent: "Update plan status in [plan-path]. Mark plan phase [phase-name] as DONE with timestamp. Update roadmap."
 - **Call** `docs-manager` sub-agent: "Update docs for plan phase [phase-name]. Changed files: [list]."
 
 2. **ONBOARDING CHECK:** Detect onboarding requirements (API keys, env vars, config) + generate summary report with next steps.
 
 3. **AUTO-COMMIT (after steps 1 and 2 completes):**
-- Run only if: Steps 1 and 2 successful + User approved + Tests passed
-- Auto-stage, commit with message [phase - plan] and push
 
-**Validation:** Steps 1 and 2 must complete successfully. Step 3 (auto-commit) runs only if conditions met.
+- Run only if: Steps 1 and 2 successful + Tests passed
+- Auto-stage, commit with conventional commit message based on actual changes
 
-Mark Step 6 complete in TodoWrite.
+4. **AUTO-CONTINUE TO NEXT PHASE:**
 
-**Phase workflow finished. Ready for next plan phase.**
+- Parse plan file to find next incomplete phase (prefer IN_PROGRESS or earliest Planned)
+- If next phase exists:
+  - Output: `✓ Step 5: Finalize - Status updated - Git committed - Continuing to [Next Phase Name]`
+  - Automatically proceed to Step 0 for next phase (restart workflow with next phase)
+- If no next phase exists:
+  - Output: `✓ Step 5: Finalize - Status updated - Git committed - All phases complete`
+
+**Validation:** Steps 1 and 2 must complete successfully. Step 3 (auto-commit) runs only if conditions met. Step 4 (auto-continue) always executes.
+
+Mark Step 5 complete in TodoWrite.
+
+**Phase workflow finished. Automatically continuing to next phase if available.**
 
 ---
 
@@ -145,32 +183,36 @@ Mark Step 6 complete in TodoWrite.
 **Step outputs must follow unified format:** `✓ Step [N]: [Brief status] - [Key metrics]`
 
 **Examples:**
+
 - Step 0: `✓ Step 0: [Plan Name] - [Phase Name]`
 - Step 1: `✓ Step 1: Found [N] tasks across [M] phases - Ambiguities: [list]`
 - Step 2: `✓ Step 2: Implemented [N] files - [X/Y] tasks complete`
 - Step 3: `✓ Step 3: Tests [X/X passed] - All requirements met`
-- Step 4: `✓ Step 4: Code reviewed - [0] critical issues`
-- Step 5: `✓ Step 5: User approved - Ready to complete`
-- Step 6: `✓ Step 6: Finalize - Status updated - Git committed`
+- Step 4: `✓ Step 4: Code reviewed - [score]/10 - User approved`
+- Step 5: `✓ Step 5: Finalize - Status updated - Git committed`
 
 **If any "✓ Step N:" output missing, that step is INCOMPLETE.**
 
 **TodoWrite tracking required:** Initialize at Step 0, mark each step complete before next.
 
 **Mandatory subagent calls:**
+
 - Step 3: `tester`
 - Step 4: `code-reviewer`
-- Step 6: `project-manager` AND `docs-manager` (when user approves)
+- Step 5: `project-manager` AND `docs-manager` (always executes)
 
 **Blocking gates:**
+
 - Step 3: Tests must be 100% passing
-- Step 4: Critical issues must be 0
-- Step 5: User must explicitly approve
-- Step 6: Both `project-manager` and `docs-manager` must complete successfully
+- Step 4: Auto-approves after review cycle (max 3 cycles)
+- Step 5: Both `project-manager` and `docs-manager` must complete successfully
 
 **REMEMBER:**
-- Do not skip steps. Do not proceed if validation fails. Do not assume approval without user response.
-- One plan phase per command run. Command focuses on single plan phase only.
+
+- Do not skip steps. Do not proceed if validation fails.
+- Step 4 auto-approves after review cycle completes (no user interaction required).
+- Step 5 automatically continues to next phase after finalization (no user interaction required).
+- Command automatically processes phases sequentially until all phases are complete.
 - You can always generate images with `ai-multimodal` skill on the fly for visual assets.
 - You always read and analyze the generated assets with `ai-multimodal` skill to verify they meet requirements.
 - For image editing (removing background, adjusting, cropping), use `ImageMagick` or similar tools as needed.
