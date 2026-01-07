@@ -1,0 +1,53 @@
+name: Keep Supabase Database Active
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at 00:00 UTC
+  workflow_dispatch:      # Allow manual triggering from GitHub UI
+
+jobs:
+  keep-alive:
+    name: Ping Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Ping Health Check Endpoint
+        id: health-check
+        run: |
+          echo "🔍 Pinging health check endpoint..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.APP_URLL }}/api/health")
+
+          echo "📊 Response Status Code: $response"
+
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Success: Database kept alive"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failure: Health check returned HTTP $response"
+            echo "status=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Report Success
+        if: success()
+        run: |
+          echo "### ✅ Supabase Keep-Alive Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Database is active" >> $GITHUB_STEP_SUMMARY
+          echo "- **Endpoint**: ${{ secrets.APP_URLL }}/api/health" >> $GITHUB_STEP_SUMMARY
+
+      - name: Report Failure
+        if: failure()
+        run: |
+          echo "### ❌ Supabase Keep-Alive Failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: Health check failed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Endpoint**: ${{ secrets.APP_URLL }}/api/health" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Action Required**: Database may be paused. Check Vercel deployment."
