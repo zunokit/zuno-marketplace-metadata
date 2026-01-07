@@ -94,6 +94,7 @@ async function monitorNetwork() {
     if (args.close !== 'false') {
       await closeBrowser();
     }
+    process.exit(0);
   } catch (error) {
     outputError(error);
   }

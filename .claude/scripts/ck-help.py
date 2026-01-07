@@ -21,6 +21,29 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
+# Output type markers for LLM presentation guidance
+# Format: @CK_OUTPUT_TYPE:<type>
+# Types:
+#   - comprehensive-docs: Full documentation, show verbatim + add context
+#   - category-guide: Workflow guide, show full + explain workflow
+#   - command-details: Single command, show + offer to run
+#   - search-results: Search matches, show + offer alternatives
+#   - task-recommendations: Task-based suggestions, explain reasoning
+OUTPUT_TYPES = {
+    "comprehensive-docs": "Show FULL output verbatim, then ADD helpful context, examples, and real-world tips",
+    "category-guide": "Show complete workflow, then ENHANCE with practical usage scenarios",
+    "command-details": "Show command info, then ADD usage examples and related commands",
+    "search-results": "Show all matches, then HELP user narrow down or explore",
+    "task-recommendations": "Show recommendations, then EXPLAIN why these fit and offer to start",
+}
+
+
+def emit_output_type(output_type: str) -> None:
+    """Emit output type marker for LLM presentation guidance."""
+    print(f"@CK_OUTPUT_TYPE:{output_type}")
+    print()
+
+
 # Task keyword mappings for intent detection
 TASK_MAPPINGS = {
     "fix": ["fix", "bug", "error", "broken", "issue", "debug", "crash", "fail", "wrong", "not working"],
@@ -36,6 +59,16 @@ TASK_MAPPINGS = {
     "integrate": ["integrate", "payment", "api", "connect", "webhook", "third-party"],
     "skill": ["skill", "agent", "automate", "workflow"],
     "scout": ["find", "search", "locate", "explore", "scan", "where"],
+    "config": ["config", "configure", "settings", "ck.json", ".ck.json", "setup", "locale", "language", "paths"],
+    "coding-level": ["coding", "level", "eli5", "junior", "senior", "lead", "god", "beginner", "expert", "teach", "learn", "explain"],
+    # New categories
+    "worktree": ["worktree", "parallel", "isolate", "isolation", "concurrent", "multiple branches"],
+    "kanban": ["kanban", "board", "dashboard", "progress", "track", "orchestration", "visualize"],
+    "preview": ["preview", "view", "render", "markdown", "reader", "novel"],
+    "journal": ["journal", "diary", "log", "entry", "reflect", "failure", "lesson"],
+    "brainstorm": ["brainstorm", "idea", "ideate", "creative", "explore ideas", "think through"],
+    "watzup": ["watzup", "status", "summary", "wrap up", "what's up", "recent", "changes"],
+    "notifications": ["notification", "notify", "discord", "telegram", "slack", "alert", "webhook", "stop hook", "session end"],
 }
 
 # Category workflows and tips
@@ -54,9 +87,10 @@ CATEGORY_GUIDES = {
         "workflow": [
             ("Quick plan", "`/plan:fast` \"your task\""),
             ("Deep research", "`/plan:hard` \"complex task\""),
+            ("Validate", "`/plan:validate` (interview to confirm decisions)"),
             ("Execute plan", "`/code` (runs the plan)"),
         ],
-        "tip": "After /plan, use /code to execute - NOT /cook",
+        "tip": "Use /plan:validate to confirm assumptions before coding",
     },
     "cook": {
         "title": "Implementation",
@@ -148,6 +182,99 @@ CATEGORY_GUIDES = {
             ("External tools", "`/scout:ext` \"query\""),
         ],
         "tip": "Be specific about what you're looking for",
+    },
+    "coding-level": {
+        "title": "Coding Level (Adaptive Communication)",
+        "workflow": [
+            ("Disabled", "`codingLevel: -1` (default, no injection)"),
+            ("ELI5", "`codingLevel: 0` (analogies, baby steps)"),
+            ("Junior", "`codingLevel: 1` (WHY before HOW)"),
+            ("Mid-Level", "`codingLevel: 2` (patterns, trade-offs)"),
+            ("Senior", "`codingLevel: 3` (production code, ops)"),
+            ("Tech Lead", "`codingLevel: 4` (risk matrix, strategy)"),
+            ("God Mode", "`codingLevel: 5` (code first, no fluff)"),
+        ],
+        "tip": "Set in .ck.json. Guidelines auto-inject on session start",
+    },
+    "config": {
+        "title": "ClaudeKit Configuration (.ck.json)",
+        "workflow": [
+            ("Global", "Set user prefs in `~/.claude/.ck.json`"),
+            ("Local", "Override per-project in `./.claude/.ck.json`"),
+            ("Resolution", "DEFAULT → global → local (deep merge)"),
+        ],
+        "tip": "Global config works in fresh dirs; local overrides for projects",
+    },
+    # New category guides (workflow-first approach)
+    "worktree": {
+        "title": "Git Worktrees (Parallel Development)",
+        "workflow": [
+            ("Create worktree", "`/worktree` \"feature description\""),
+            ("Work in isolation", "cd to worktree, implement, test"),
+            ("Review & merge", "`/git:pr` from worktree → merge → cleanup"),
+            ("List worktrees", "`/worktree list`"),
+            ("Remove worktree", "`/worktree remove <name>`"),
+        ],
+        "tip": "Use worktrees for parallel features without stashing. Each worktree = isolated branch + clean working directory",
+    },
+    "kanban": {
+        "title": "AI Orchestration Board",
+        "workflow": [
+            ("View dashboard", "`/kanban` (opens browser)"),
+            ("Specific plans", "`/kanban plans/my-feature/`"),
+            ("Track progress", "View phase completion, timeline, activity"),
+            ("Stop server", "`/kanban --stop`"),
+        ],
+        "tip": "Dashboard shows plan phases, progress bars, and agent activity. Future: worktree + agent orchestration",
+    },
+    "preview": {
+        "title": "Content Preview (Novel Reader UI)",
+        "workflow": [
+            ("View markdown", "`/preview plans/plan.md`"),
+            ("Browse directory", "`/preview docs/`"),
+            ("Stop server", "`/preview --stop`"),
+        ],
+        "tip": "Beautiful novel-reader UI for markdown. Great for reviewing plans before execution",
+    },
+    "journal": {
+        "title": "Technical Journaling",
+        "workflow": [
+            ("Write entry", "`/journal`"),
+            ("Document failures", "Capture what went wrong with emotional honesty"),
+            ("Lessons learned", "Turn setbacks into future guidance"),
+        ],
+        "tip": "Use after repeated test failures, critical bugs, or architectural pivots. Raw honesty = future wisdom",
+    },
+    "brainstorm": {
+        "title": "Brainstorming & Ideation",
+        "workflow": [
+            ("Quick brainstorm", "`/brainstorm \"your question\"`"),
+            ("Explore approaches", "Get 2-3 viable solutions with trade-offs"),
+            ("Challenge assumptions", "Receive brutally honest feedback"),
+        ],
+        "tip": "Respects codingLevel. Set `codingLevel: 0` for ELI5 explanations or `5` for expert-only mode",
+    },
+    "watzup": {
+        "title": "Session Review & Wrap-up",
+        "workflow": [
+            ("Review changes", "`/watzup`"),
+            ("Get summary", "See what was done, what files changed"),
+            ("Next steps", "Receive suggestions for what to do next"),
+        ],
+        "tip": "Run before ending session to capture progress and plan next steps",
+    },
+    "notifications": {
+        "title": "Session Notifications (Discord/Telegram/Slack)",
+        "workflow": [
+            ("1. Set env vars", "Add `DISCORD_WEBHOOK_URL` or `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` to `~/.claude/.env`"),
+            ("2. Add hook", "Add Stop hook to `.claude/settings.json` (see below)"),
+            ("3. Test", "`echo '{\"hook_event_name\":\"Stop\"}' | node .claude/hooks/notifications/notify.cjs`"),
+        ],
+        "tip": """Add to settings.json:
+```json
+"Stop": [{"matcher": "*", "hooks": [{"type": "command", "command": "node .claude/hooks/notifications/notify.cjs"}]}]
+```
+Docs: `.claude/hooks/notifications/docs/`""",
     },
 }
 
@@ -251,24 +378,35 @@ def detect_intent(input_str: str, categories: list) -> str:
         return "overview"
 
     input_lower = input_str.lower()
+    words = input_str.split()
 
-    # Check if it's a known category
+    # Multiple words = likely task description (even if first word is a category)
+    # e.g., "test my login" should be task, not category "test"
+    if len(words) >= 2:
+        # Exception: if it looks like a command (has colon), treat as command
+        if ':' in input_str:
+            return "command"
+        return "task"
+
+    # Single word: check if it's a known category from discovered commands
     if input_lower in [c.lower() for c in categories]:
+        return "category"
+
+    # Check if it's a known category from CATEGORY_GUIDES (includes non-command categories)
+    if input_lower in [c.lower() for c in CATEGORY_GUIDES.keys()]:
         return "category"
 
     # Check if it looks like a command (has colon)
     if ':' in input_str:
         return "command"
 
-    # Multiple words = task description
-    if len(input_str.split()) >= 2:
-        return "task"
-
     return "search"
 
 
 def show_overview(data: dict, prefix: str) -> None:
     """Display overview with quick start guide."""
+    emit_output_type("category-guide")
+
     commands = data["commands"]
     categories = data["categories"]
     total = sum(len(cmds) for cmds in commands.values())
@@ -284,6 +422,11 @@ def show_overview(data: dict, prefix: str) -> None:
     print(f"- `/{prefix}fix` - Fix bugs intelligently")
     print(f"- `/{prefix}test` - Run and analyze tests")
     print()
+    print("**Common Workflows:**")
+    print(f"- New feature: `/{prefix}plan` → `/{prefix}code` → `/{prefix}test` → `/{prefix}git:pr`")
+    print(f"- Bug fix: `/{prefix}debug` → `/{prefix}fix` → `/{prefix}test` → `/{prefix}git:cm`")
+    print(f"- Review: `/{prefix}scout` → `/{prefix}review` → `/{prefix}watzup`")
+    print()
     print("**Categories:**")
     for cat_key in sorted(categories.keys()):
         count = len(commands.get(cat_key, []))
@@ -293,24 +436,40 @@ def show_overview(data: dict, prefix: str) -> None:
     print(f"- `{help_cmd} <category>` - Category guide with workflow")
     print(f"- `{help_cmd} <command>` - Command details")
     print(f"- `{help_cmd} <task description>` - Recommendations")
+    print()
+    print("**Tips:**")
+    print(f"- Unclear about approach? → `/{prefix}brainstorm` first")
+    print(f"- Agent generated report? → `/{prefix}preview` to view")
+    print("- Add `ultrathink` for deep analysis (more tokens)")
+    print("- `:parallel` variants (e.g., `/code:parallel`) = faster but more tokens, check quota")
 
 
 def show_category_guide(data: dict, category: str, prefix: str) -> None:
     """Display category guide with workflow and tips."""
+    emit_output_type("category-guide")
+
     categories = data["categories"]
     commands = data["commands"]
 
-    # Find matching category (case-insensitive)
+    # Find matching category (case-insensitive) - check both discovered and CATEGORY_GUIDES
     cat_key = None
     for key in categories:
         if key.lower() == category.lower():
             cat_key = key
             break
 
+    # Also check CATEGORY_GUIDES for categories without discovered commands (worktree, kanban, etc.)
     if not cat_key:
+        for key in CATEGORY_GUIDES.keys():
+            if key.lower() == category.lower():
+                cat_key = key
+                break
+
+    if not cat_key:
+        all_cats = set(categories.keys()) | set(CATEGORY_GUIDES.keys())
         print(f"Category '{category}' not found.")
         print()
-        print("Available: " + ", ".join(f"`{c}`" for c in sorted(categories.keys())))
+        print("Available: " + ", ".join(f"`{c}`" for c in sorted(all_cats)))
         return
 
     cmds = commands.get(cat_key, [])
@@ -326,10 +485,11 @@ def show_category_guide(data: dict, category: str, prefix: str) -> None:
             print(f"- {step}: {cmd}")
         print()
 
-    # Commands list
-    print("**Commands:**")
-    for cmd in cmds:
-        print(f"- `{cmd['name']}` - {cmd['description']}")
+    # Commands list (only if we have discovered commands for this category)
+    if cmds:
+        print("**Commands:**")
+        for cmd in cmds:
+            print(f"- `{cmd['name']}` - {cmd['description']}")
 
     # Tip at the end
     if "tip" in guide:
@@ -339,6 +499,8 @@ def show_category_guide(data: dict, category: str, prefix: str) -> None:
 
 def show_command(data: dict, command: str, prefix: str) -> None:
     """Display command details."""
+    emit_output_type("command-details")
+
     commands = data["commands"]
 
     # Normalize search term
@@ -381,6 +543,8 @@ def show_command(data: dict, command: str, prefix: str) -> None:
 
 def do_search(data: dict, term: str, prefix: str) -> None:
     """Search commands by keyword."""
+    emit_output_type("search-results")
+
     commands = data["commands"]
     term_lower = term.lower()
     matches = []
@@ -405,13 +569,25 @@ def do_search(data: dict, term: str, prefix: str) -> None:
 
 def recommend_task(data: dict, task: str, prefix: str) -> None:
     """Recommend commands for a task description."""
+    emit_output_type("task-recommendations")
+
     commands = data["commands"]
     task_lower = task.lower()
 
-    # Score categories by keyword matches
+    # Score categories by keyword matches (use word boundary to avoid substring false positives)
+    # e.g., "git" should not match "digital", "fail" should not match "available"
     scores = {}
     for cat, keywords in TASK_MAPPINGS.items():
-        score = sum(1 for kw in keywords if kw in task_lower)
+        score = 0
+        for kw in keywords:
+            # Multi-word keywords: exact substring match is fine
+            if ' ' in kw:
+                if kw in task_lower:
+                    score += 1
+            # Single-word keywords: require word boundary match
+            else:
+                if re.search(r'\b' + re.escape(kw) + r'\b', task_lower):
+                    score += 1
         if score > 0:
             scores[cat] = score
 
@@ -453,6 +629,298 @@ def recommend_task(data: dict, task: str, prefix: str) -> None:
         print(f"*Tip: {guide['tip']}*")
 
 
+def show_config_guide() -> None:
+    """Display comprehensive .ck.json configuration guide."""
+    emit_output_type("comprehensive-docs")
+
+    print("# ClaudeKit Configuration (.ck.json)")
+    print()
+    print("**Locations (cascading resolution):**")
+    print("- Global: `~/.claude/.ck.json` (user preferences)")
+    print("- Local: `./.claude/.ck.json` (project overrides)")
+    print()
+    print("**Resolution Order:** `DEFAULT → global → local`")
+    print("- Global config sets user defaults")
+    print("- Local config overrides for specific projects")
+    print("- Deep merge: nested objects merge recursively")
+    print()
+    print("**Purpose:** Customize plan naming, paths, locale, and hook behavior.")
+    print()
+    print("---")
+    print()
+    print("## Quick Start")
+    print()
+    print("**Global config** (`~/.claude/.ck.json`) - your preferences:")
+    print("```json")
+    print('{')
+    print('  "locale": {')
+    print('    "thinkingLanguage": "en",')
+    print('    "responseLanguage": "vi"')
+    print('  },')
+    print('  "plan": { "issuePrefix": "GH-" }')
+    print('}')
+    print("```")
+    print()
+    print("**Local override** (`./.claude/.ck.json`) - project-specific:")
+    print("```json")
+    print('{')
+    print('  "plan": { "issuePrefix": "JIRA-" },')
+    print('  "paths": { "docs": "documentation" }')
+    print('}')
+    print("```")
+    print()
+    print("---")
+    print()
+    print("## Full Schema")
+    print()
+    print("```json")
+    print('{')
+    print('  "plan": {')
+    print('    "namingFormat": "{date}-{issue}-{slug}",  // Plan folder naming')
+    print('    "dateFormat": "YYMMDD-HHmm",              // Date format in names')
+    print('    "issuePrefix": "GH-",                     // Issue ID prefix (null = #)')
+    print('    "reportsDir": "reports",                  // Reports subfolder')
+    print('    "resolution": {')
+    print('      "order": ["session", "branch"],  // Resolution chain')
+    print('      "branchPattern": "(?:feat|fix|...)/.+"  // Branch slug regex')
+    print('    },')
+    print('    "validation": {')
+    print('      "mode": "prompt",       // "auto" | "prompt" | "off"')
+    print('      "minQuestions": 3,      // Min questions to ask')
+    print('      "maxQuestions": 8,      // Max questions to ask')
+    print('      "focusAreas": ["assumptions", "risks", "tradeoffs", "architecture"]')
+    print('    }')
+    print('  },')
+    print('  "paths": {')
+    print('    "docs": "docs",     // Documentation directory')
+    print('    "plans": "plans"    // Plans directory')
+    print('  },')
+    print('  "locale": {')
+    print('    "thinkingLanguage": null, // Language for reasoning ("en" recommended)')
+    print('    "responseLanguage": null  // Language for output ("vi", "fr", etc.)')
+    print('  },')
+    print('  "trust": {')
+    print('    "passphrase": null,   // Secret for testing context injection')
+    print('    "enabled": false      // Enable trust verification')
+    print('  },')
+    print('  "project": {')
+    print('    "type": "auto",           // "monorepo", "single-repo", "auto"')
+    print('    "packageManager": "auto", // "npm", "pnpm", "yarn", "auto"')
+    print('    "framework": "auto"       // "next", "react", "vue", "auto"')
+    print('  },')
+    print('  "codingLevel": -1  // Adaptive communication (-1 to 5)')
+    print('}')
+    print("```")
+    print()
+    print("---")
+    print()
+    print("## Key Concepts")
+    print()
+    print("**Plan Resolution Chain:**")
+    print("1. `session` - Check session temp file for active plan")
+    print("2. `branch` - Match git branch slug to plan folder")
+    print()
+    print("**Naming Format Variables:**")
+    print("- `{date}` - Formatted date (per dateFormat)")
+    print("- `{issue}` - Issue ID with prefix")
+    print("- `{slug}` - Descriptive slug from branch or input")
+    print()
+    print("**Language Settings:**")
+    print("- `thinkingLanguage` - Language for internal reasoning (\"en\" recommended)")
+    print("- `responseLanguage` - Language for user-facing output (\"vi\", \"fr\", etc.)")
+    print()
+    print("When both are set, Claude thinks in one language but responds in another.")
+    print("This improves precision (English) while maintaining natural output (your language).")
+    print()
+    print("**Plan Validation:**")
+    print("- `mode: \"prompt\"` - Ask user after plan creation (default)")
+    print("- `mode: \"auto\"` - Always run validation interview")
+    print("- `mode: \"off\"` - Skip; user runs `/plan:validate` manually")
+    print()
+    print("Validation interviews the user with critical questions to confirm")
+    print("assumptions, risks, and architectural decisions before implementation.")
+    print()
+    print("**Coding Level (Adaptive Communication):**")
+    print("- `-1` = Disabled (default) - no injection, saves tokens")
+    print("- `0` = ELI5 - analogies, baby steps, check-ins")
+    print("- `1` = Junior - WHY before HOW, pitfalls, takeaways")
+    print("- `2` = Mid-Level - patterns, trade-offs, scalability")
+    print("- `3` = Senior - trade-offs table, production code, ops")
+    print("- `4` = Tech Lead - executive summary, risk matrix, business impact")
+    print("- `5` = God Mode - code first, minimal prose, no hand-holding")
+    print()
+    print("Guidelines auto-inject on session start. Commands like `/brainstorm` respect them.")
+    print()
+    print("---")
+    print()
+    print("## Edge Cases & Validation")
+    print()
+    print("**Path Handling:**")
+    print("- Trailing slashes normalized (`plans/` → `plans`)")
+    print("- Empty/whitespace-only paths fall back to defaults")
+    print("- Absolute paths supported (e.g., `/home/user/all-plans`)")
+    print("- Path traversal (`../`) blocked for relative paths")
+    print("- Null bytes and control chars rejected")
+    print()
+    print("**Slug Sanitization:**")
+    print("- Invalid filename chars removed: `< > : \" / \\ | ? *`")
+    print("- Non-alphanumeric replaced with hyphen")
+    print("- Multiple hyphens collapsed: `foo---bar` → `foo-bar`")
+    print("- Leading/trailing hyphens removed")
+    print("- Max 100 chars to prevent filesystem issues")
+    print()
+    print("**Naming Pattern Validation:**")
+    print("- Pattern must contain `{slug}` placeholder")
+    print("- Result must be non-empty after variable substitution")
+    print("- Unresolved placeholders (except `{slug}`) trigger error")
+    print("- Malformed JSON config falls back to defaults")
+    print()
+    print("**Consolidated Plans (advanced):**")
+    print("```json")
+    print('{')
+    print('  "paths": {')
+    print('    "plans": "/home/user/all-my-plans"')
+    print('  }')
+    print('}')
+    print("```")
+    print("Absolute paths allow storing all plans in one location across projects.")
+    print()
+    print("---")
+    print()
+    print("## Examples")
+    print()
+    print("**Global install user (fresh directories work):**")
+    print("```bash")
+    print("# ~/.claude/.ck.json - applies everywhere")
+    print("cd /tmp/new-project && claude  # Uses global config")
+    print("```")
+    print()
+    print("**Project with local override:**")
+    print("```bash")
+    print("# Global: issuePrefix = \"GH-\"")
+    print("# Local (.claude/.ck.json): issuePrefix = \"JIRA-\"")
+    print("# Result: issuePrefix = \"JIRA-\" (local wins)")
+    print("```")
+    print()
+    print("**Deep merge behavior:**")
+    print("```")
+    print("Global: { plan: { issuePrefix: \"GH-\", dateFormat: \"YYMMDD\" } }")
+    print("Local:  { plan: { issuePrefix: \"JIRA-\" } }")
+    print("Result: { plan: { issuePrefix: \"JIRA-\", dateFormat: \"YYMMDD\" } }")
+    print("```")
+    print()
+    print("*Tip: Config is optional - all fields have sensible defaults.*")
+
+
+def show_coding_level_guide() -> None:
+    """Display comprehensive codingLevel configuration guide."""
+    emit_output_type("comprehensive-docs")
+
+    print("# Coding Level (Adaptive Communication)")
+    print()
+    print("Adjusts Claude's communication style based on user's experience level.")
+    print("Guidelines auto-inject on SessionStart. Commands respect them.")
+    print()
+    print("---")
+    print()
+    print("## Levels")
+    print()
+    print("| Level | Name | Description |")
+    print("|-------|------|-------------|")
+    print("| **-1** | **Disabled** | Default - no injection, saves tokens |")
+    print("| 0 | ELI5 | Zero experience - analogies, baby steps, check-ins |")
+    print("| 1 | Junior | 0-2 years - WHY before HOW, pitfalls, takeaways |")
+    print("| 2 | Mid-Level | 3-5 years - patterns, trade-offs, scalability |")
+    print("| 3 | Senior | 5-8 years - trade-offs table, production code, ops |")
+    print("| 4 | Tech Lead | 8-15 years - executive summary, risk matrix, strategy |")
+    print("| 5 | God Mode | 15+ years - code first, minimal prose, no fluff |")
+    print()
+    print("---")
+    print()
+    print("## Configuration")
+    print()
+    print("**Set in `.ck.json`:**")
+    print("```json")
+    print('{')
+    print('  "codingLevel": 0')
+    print('}')
+    print("```")
+    print()
+    print("**Location (cascading):**")
+    print("- Global: `~/.claude/.ck.json` - personal preference")
+    print("- Local: `./.claude/.ck.json` - project override")
+    print()
+    print("---")
+    print()
+    print("## How It Works")
+    print()
+    print("1. SessionStart hook reads `codingLevel` from `.ck.json`")
+    print("2. If 0-5, injects guidelines from `.claude/output-styles/coding-level-*.md`")
+    print("3. Commands like `/brainstorm` follow the injected guidelines")
+    print()
+    print("**Token Efficiency:**")
+    print("- `-1` (default): Zero injection, zero overhead")
+    print("- `0-5`: Only selected level's guidelines injected (not all)")
+    print()
+    print("---")
+    print()
+    print("## Level Details")
+    print()
+    print("### Level 0 (ELI5)")
+    print("- **MUST** use real-world analogies (labeled boxes, recipes)")
+    print("- **MUST** define every technical term")
+    print("- **MUST** use \"we\" language")
+    print("- **MUST** end with check-in: \"Does this make sense?\"")
+    print("- **MUST** comment every line of code")
+    print("- Structure: Big Picture → Analogy → Baby Steps → Try It → Check-In")
+    print()
+    print("### Level 1 (Junior)")
+    print("- Explain WHY before HOW")
+    print("- Define technical terms on first use")
+    print("- Include common pitfalls section")
+    print("- Add Key Takeaways and Learn More links")
+    print("- Structure: Context → Approach → Implementation → Pitfalls → Takeaways")
+    print()
+    print("### Level 2 (Mid-Level)")
+    print("- Discuss design patterns and when to use them")
+    print("- Highlight trade-offs explicitly")
+    print("- Consider scalability implications")
+    print("- Reference patterns by name")
+    print("- Structure: Approach → Design → Implementation → Edge Cases")
+    print()
+    print("### Level 3 (Senior)")
+    print("- Lead with trade-offs table")
+    print("- Show production-ready code")
+    print("- Discuss operational concerns (monitoring, logging)")
+    print("- Flag security implications")
+    print("- **NEVER** explain basic concepts")
+    print("- Structure: Trade-offs → Implementation → Ops → Security")
+    print()
+    print("### Level 4 (Tech Lead)")
+    print("- Executive summary first (3-4 sentences)")
+    print("- Risk assessment matrix (Likelihood × Impact)")
+    print("- Strategic options comparison")
+    print("- Business impact analysis")
+    print("- Identify decisions needing stakeholder alignment")
+    print("- Structure: Summary → Risks → Options → Approach → Business Impact")
+    print()
+    print("### Level 5 (God Mode)")
+    print("- Answer exactly what was asked, nothing more")
+    print("- Code first, minimal prose")
+    print("- No explanations unless asked")
+    print("- **NEVER** use filler phrases")
+    print("- Trust their judgment completely")
+    print()
+    print("---")
+    print()
+    print("## Customization")
+    print()
+    print("Guidelines live in `.claude/output-styles/coding-level-*.md`")
+    print("Edit these files directly to customize behavior per level.")
+    print()
+    print("*Tip: Use `-1` (disabled) unless you're teaching or want guided explanations.*")
+
+
 def main():
     # Find .claude/commands directory
     script_path = Path(__file__).resolve()
@@ -474,6 +942,16 @@ def main():
     # Parse input
     args = sys.argv[1:]
     input_str = " ".join(args).strip()
+
+    # Special case: config documentation (not a command category)
+    if input_str.lower() in ["config", "configuration", ".ck.json", "ck.json"]:
+        show_config_guide()
+        return
+
+    # Special case: coding level documentation
+    if input_str.lower() in ["coding-level", "codinglevel", "coding level", "level", "eli5", "god mode"]:
+        show_coding_level_guide()
+        return
 
     # Detect intent and route
     intent = detect_intent(input_str, list(data["categories"].keys()))
