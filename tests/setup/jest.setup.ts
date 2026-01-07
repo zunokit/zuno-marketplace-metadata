@@ -1,5 +1,27 @@
 import "@testing-library/jest-dom";
 
+// Mock @upstash/redis package (ESM module not compatible with Jest)
+const mockRedis = {
+  get: jest.fn(),
+  set: jest.fn(),
+  setex: jest.fn(),
+  del: jest.fn(),
+  incr: jest.fn(),
+  expire: jest.fn(),
+  exists: jest.fn(),
+  ttl: jest.fn(),
+  scan: jest.fn(),
+  keys: jest.fn(),
+  flushall: jest.fn(),
+  ping: jest.fn().mockResolvedValue("PONG"),
+};
+
+jest.mock("@upstash/redis", () => ({
+  Redis: jest.fn(() => mockRedis),
+}));
+
+export { mockRedis };
+
 // Global test setup
 beforeAll(() => {
   // Set up test environment variables

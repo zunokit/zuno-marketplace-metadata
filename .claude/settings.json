@@ -23,6 +23,54 @@
           {
             "type": "command",
             "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/scout-block.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/privacy-block.cjs"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/session-init.cjs"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/subagent-init.cjs"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/write-compact-marker.cjs"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"%CLAUDE_PROJECT_DIR%\"/.claude/hooks/session-end.cjs"
           }
         ]
       }

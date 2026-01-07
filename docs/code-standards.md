@@ -663,6 +663,47 @@ export type CreateMetadataInput = z.infer<typeof CreateMetadataSchema>;
 
 ---
 
+## External Service Integration Standards
+
+### Service Integration Best Practices
+
+When integrating external services, follow these guidelines:
+
+1. **Singleton Clients**: Reuse client instances across requests
+2. **Static Methods**: Use static methods for simplicity
+3. **Error Handling**: Wrap all API calls with error handling utilities
+4. **Structured Logging**: Log all operations with context
+5. **Type Safety**: Explicit return types for all methods
+6. **Environment Validation**: Check required env vars before operations
+
+### Environment Variables
+
+Document all required environment variables in service integration files:
+
+| Variable | Required | Default | Purpose |
+|----------|----------|---------|---------|
+| Example | Yes | - | Example description |
+
+### Testing Guidelines
+
+For external service integrations:
+- Mock external API clients in Jest setup
+- Use consistent mock responses
+- Test error handling paths
+- Test rate limiting behavior
+- Test retry logic
+
+Example Jest mock:
+```typescript
+jest.mock("external-service", () => ({
+  Client: class {
+    method = jest.fn().mockResolvedValue({ data: "test" });
+  }
+}));
+```
+
+---
+
 ## Testing Standards
 
 ### Test File Location

@@ -106,6 +106,13 @@ media:write     - Upload and delete media
 - **Job Retries** - Automatic retry with exponential backoff
 - **Monitoring** - Queue health visible in health checks
 
+### 9. Error Monitoring (Sentry Integration)
+- **Sentry SDK** - @sentry/nextjs for error tracking
+- **Native Integration** - Sentry GitHub integration for automatic issue creation
+- **Error Capture** - Automatic error and exception tracking
+- **Performance Monitoring** - Transaction traces and performance metrics
+- **Release Tracking** - Deployment and release monitoring
+
 ---
 
 ## Technical Requirements
@@ -126,6 +133,7 @@ media:write     - Upload and delete media
 | **ImageKit** | Media CDN & processing | Pay-as-you-go |
 | **Pinata** | IPFS pinning service | Usage-based |
 | **Upstash** (optional) | Serverless Redis | Pay-per-request |
+| **Sentry** | Error monitoring & tracking | Free tier available |
 
 ### Technology Stack
 
@@ -156,6 +164,7 @@ Infrastructure:
   - ImageKit (media CDN)
   - Pinata (IPFS)
   - Better Auth
+  - Sentry (error monitoring)
 
 DevOps:
   - Docker (containerization)
@@ -381,4 +390,4 @@ A successful Zuno Marketplace Metadata platform will:
 
 ---
 
-**Document Version**: 1.0 | **Last Updated**: 2025-12-10 | **Next Review**: 2026-03-10
+**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Next Review**: 2026-03-10

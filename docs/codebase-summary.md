@@ -2,10 +2,10 @@
 
 ## Overview
 
-The Zuno Marketplace Metadata codebase is a production-ready Next.js 16 application built with TypeScript and Clean Architecture principles. It contains 199 TypeScript/TSX files organized across 5 major layers: application, domain logic, infrastructure, components, and utilities.
+The Zuno Marketplace Metadata codebase is a production-ready Next.js 16 application built with TypeScript and Clean Architecture principles. It contains 203 TypeScript/TSX files organized across 5 major layers: application, domain logic, infrastructure, components, and utilities.
 
 **Repository**: `E:\zuno-marketplace-metadata`
-**Total Files**: 229 | **TypeScript Files**: 199 | **Total Tokens**: 228,972 | **Size**: ~983KB
+**Total Files**: 238 | **TypeScript Files**: 204 | **Total Tokens**: 233,500 | **Size**: ~1.0MB
 
 ---
 
@@ -68,7 +68,7 @@ E:\zuno-marketplace-metadata/
 - `src/app/admin/audit-logs/actions.ts` - Audit log server actions
 - `src/app/auth/signin/page.tsx` - Sign-in page
 
-**API Routes (19 endpoints)**
+**API Routes (21 endpoints)**
 
 *Metadata Management*
 - `src/app/api/metadata/route.ts` - GET/POST metadata with pagination
@@ -160,6 +160,7 @@ src/core/use-cases/
 - `src/infrastructure/auth/better-auth.config.ts` - Better Auth setup
 - `src/infrastructure/auth/auth.client.ts` - Auth client
 - `src/infrastructure/auth/auth-helpers.ts` - Helper functions
+
 
 **Database (PostgreSQL + Drizzle)**
 ```
@@ -308,7 +309,8 @@ src/shared/lib/utils/
 ├── url.ts                      # URL utilities
 ├── server.ts                   # Server-side utilities
 ├── try-catch-wrapper.ts        # Error handling wrapper
-└── client.ts                   # Client-side utilities
+├── client.ts                   # Client-side utilities
+└── sentry-helpers.ts           # Sentry webhook utilities
 ```
 
 **Configuration**
@@ -400,6 +402,7 @@ React custom hooks for API operations:
 | imagekit | 6.0.0 | Media processing |
 | @imagekit/next | 2.1.3 | ImageKit Next.js integration |
 | pinata | 2.5.1 | IPFS pinning |
+| @sentry/nextjs | 9.0.0 | Error monitoring and tracking |
 
 ### Development Tools
 | Package | Version | Purpose |
@@ -542,26 +545,37 @@ media ──→ audit_logs (via user)
 - **Purpose**: Session-based auth for admin dashboard
 - **Features**: Email/password, OAuth, API key plugin
 
+### 6. Sentry (Error Monitoring)
+- **Integration**: Native Sentry GitHub integration
+- **Documentation**: https://docs.sentry.io/organization/integrations/source-code-mgmt/github/
+- **Purpose**: Error tracking with automatic GitHub issue creation
+- **Features**:
+  - `@sentry/nextjs` SDK for Next.js applications
+  - Native GitHub integration via Sentry dashboard
+  - Automatic error capture and tracking
+  - Release tracking and deployment monitoring
+  - Performance monitoring with transaction traces
+
 ---
 
 ## Code Statistics
 
 ### File Counts
-- **Total Files**: 229
-- **TypeScript/TSX**: 199
-- **API Routes**: 19
+- **Total Files**: 237
+- **TypeScript/TSX**: 203
+- **API Routes**: 20
 - **Components**: 80+ (50+ UI, 20+ feature)
 - **Use Cases**: 15+
 - **Repositories**: 5
 - **Test Files**: 7+
 
 ### Code Metrics
-- **Total Tokens**: 228,972
+- **Total Tokens**: 233,000
 - **Largest File**: `scripts/test-all.ts` (19,069 tokens)
 - **Largest Module**: `src/app/api/docs/route.ts` (8,025 tokens)
 
 ### Test Coverage
-- **Unit Tests**: 7+ files
+- **Unit Tests**: 9+ files (including Sentry tests)
 - **E2E Tests**: 18 suites with 200+ tests
 - **Coverage Target**: >80%
 
@@ -657,4 +671,4 @@ None documented at time of repository scan. Check issues in `.claude/status.txt`
 
 ---
 
-**Document Version**: 1.0 | **Last Updated**: 2025-12-10 | **Codebase Version**: 0.1.0
+**Document Version**: 1.2 | **Last Updated**: 2025-12-27 | **Codebase Version**: 0.1.0
