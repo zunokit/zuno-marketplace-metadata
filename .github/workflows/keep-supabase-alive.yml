@@ -1,53 +1,53 @@
-name: Keep Supabase Database Active
+name: Keepalive Services
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at 00:00 UTC
-  workflow_dispatch:      # Allow manual triggering from GitHub UI
+    # Run every 12 hours at 6 AM and 6 PM UTC
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: # Manual trigger for testing
 
 jobs:
-  keep-alive:
-    name: Ping Health Check
+  keepalive:
+    name: Ping Health Endpoint
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Ping Health Check Endpoint
-        id: health-check
+      - name: Health Check
         run: |
-          echo "🔍 Pinging health check endpoint..."
-          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.APP_URLL }}/api/health")
+          max_retries=3
+          retry_delay=30
 
-          echo "📊 Response Status Code: $response"
+          for attempt in $(seq 1 $max_retries); do
+            echo "Attempt $attempt of $max_retries..."
 
-          if [ "$response" -eq 200 ]; then
-            echo "✅ Success: Database kept alive"
-            echo "status=success" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Failure: Health check returned HTTP $response"
-            echo "status=failure" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+            response=$(curl -sf --max-time 30 -A "GitHub-Actions-Keepalive" \
+              -w "\n%{http_code}" "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/health" 2>&1) || true
 
-      - name: Report Success
-        if: success()
-        run: |
-          echo "### ✅ Supabase Keep-Alive Successful" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: Database is active" >> $GITHUB_STEP_SUMMARY
-          echo "- **Endpoint**: ${{ secrets.APP_URLL }}/api/health" >> $GITHUB_STEP_SUMMARY
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
 
-      - name: Report Failure
+            echo "HTTP Code: $http_code"
+
+            # Only log status field, not full response
+            status=$(echo "$body" | jq -r '.status // "unknown"' 2>/dev/null)
+            echo "Status: $status"
+
+            if [ "$http_code" = "200" ] && [ "$status" != "unhealthy" ]; then
+              echo "✅ All services responding"
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$max_retries" ]; then
+              echo "Retrying in ${retry_delay}s..."
+              sleep $retry_delay
+            fi
+          done
+
+          echo "::error::Health check failed after $max_retries attempts (HTTP: $http_code, Status: $status)"
+          exit 1
+
+      - name: Notify on Failure
         if: failure()
         run: |
-          echo "### ❌ Supabase Keep-Alive Failed" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Time**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: Health check failed" >> $GITHUB_STEP_SUMMARY
-          echo "- **Endpoint**: ${{ secrets.APP_URLL }}/api/health" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **Action Required**: Database may be paused. Check Vercel deployment."
+          echo "::warning::Keepalive health check failed. Check service status."
