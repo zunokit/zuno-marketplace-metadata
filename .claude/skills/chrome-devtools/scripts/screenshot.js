@@ -165,6 +165,7 @@ async function screenshot() {
     if (args.close !== 'false') {
       await closeBrowser();
     }
+    process.exit(0);
   } catch (error) {
     // Enhance error message if selector-related
     if (args.selector) {

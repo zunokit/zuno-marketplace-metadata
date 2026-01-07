@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * Test script for scout-block.sh hook
+ * Test script for scout-block.cjs hook
  * Tests various tool inputs to verify blocking logic
+ *
+ * Updated to use Node.js dispatcher directly (not bash wrapper)
  */
 
 const { execSync } = require('child_process');
@@ -41,6 +43,18 @@ const testCases = [
     expected: 'BLOCKED'
   },
 
+  // Subfolder blocking (THE BUG FIX)
+  {
+    name: '[BUG FIX] Bash: ls packages/web/node_modules',
+    input: { tool_name: 'Bash', tool_input: { command: 'ls packages/web/node_modules' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[BUG FIX] Read: subfolder node_modules',
+    input: { tool_name: 'Read', tool_input: { file_path: 'apps/api/node_modules/pkg/index.js' } },
+    expected: 'BLOCKED'
+  },
+
   // Build commands - should be ALLOWED
   {
     name: 'Bash: npm build',
@@ -67,6 +81,16 @@ const testCases = [
     input: { tool_name: 'Bash', tool_input: { command: 'pnpm --filter web run build 2>&1 | tail -100' } },
     expected: 'ALLOWED'
   },
+  {
+    name: 'Bash: npm install',
+    input: { tool_name: 'Bash', tool_input: { command: 'npm install' } },
+    expected: 'ALLOWED'
+  },
+  {
+    name: 'Bash: npx tsc',
+    input: { tool_name: 'Bash', tool_input: { command: 'npx tsc' } },
+    expected: 'ALLOWED'
+  },
 
   // Safe operations - should be ALLOWED
   {
@@ -78,19 +102,97 @@ const testCases = [
     name: 'Read with safe file_path',
     input: { tool_name: 'Read', tool_input: { file_path: 'src/index.js' } },
     expected: 'ALLOWED'
+  },
+  {
+    name: 'Glob with scoped pattern',
+    input: { tool_name: 'Glob', tool_input: { pattern: 'src/**/*.ts' } },
+    expected: 'ALLOWED'
+  },
+  // Broad pattern detection (NEW)
+  {
+    name: '[NEW] Glob with broad pattern (should block)',
+    input: { tool_name: 'Glob', tool_input: { pattern: '**/*.ts' } },
+    expected: 'BLOCKED'
+  },
+
+  // Venv executable paths - should be ALLOWED (Issue #265)
+  // .venv (with dot)
+  {
+    name: '[#265] Bash: Unix .venv python executable',
+    input: { tool_name: 'Bash', tool_input: { command: '~/.claude/skills/.venv/bin/python3 script.py' } },
+    expected: 'ALLOWED'
+  },
+  {
+    name: '[#265] Bash: Windows .venv python executable',
+    input: { tool_name: 'Bash', tool_input: { command: '.venv/Scripts/python.exe script.py' } },
+    expected: 'ALLOWED'
+  },
+  {
+    name: '[#265] Bash: project .venv pip',
+    input: { tool_name: 'Bash', tool_input: { command: './project/.venv/bin/pip install requests' } },
+    expected: 'ALLOWED'
+  },
+  // venv (without dot)
+  {
+    name: '[#265] Bash: Unix venv python executable',
+    input: { tool_name: 'Bash', tool_input: { command: 'venv/bin/python3 script.py' } },
+    expected: 'ALLOWED'
+  },
+  {
+    name: '[#265] Bash: Windows venv python executable',
+    input: { tool_name: 'Bash', tool_input: { command: 'venv/Scripts/python.exe script.py' } },
+    expected: 'ALLOWED'
+  },
+  {
+    name: '[#265] Bash: project venv pip',
+    input: { tool_name: 'Bash', tool_input: { command: './myproject/venv/bin/pip install flask' } },
+    expected: 'ALLOWED'
+  },
+
+  // Venv exploration - should be BLOCKED
+  {
+    name: '[#265] Bash: cat .venv lib (blocked)',
+    input: { tool_name: 'Bash', tool_input: { command: 'cat .venv/lib/python3.11/site.py' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[#265] Bash: ls .venv (blocked)',
+    input: { tool_name: 'Bash', tool_input: { command: 'ls -la .venv/' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[#265] Read: .venv file (blocked)',
+    input: { tool_name: 'Read', tool_input: { file_path: '.venv/pyvenv.cfg' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[#265] Bash: cat venv lib (blocked)',
+    input: { tool_name: 'Bash', tool_input: { command: 'cat venv/lib/python3.11/site.py' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[#265] Bash: ls venv (blocked)',
+    input: { tool_name: 'Bash', tool_input: { command: 'ls -la venv/' } },
+    expected: 'BLOCKED'
+  },
+  {
+    name: '[#265] Read: venv file (blocked)',
+    input: { tool_name: 'Read', tool_input: { file_path: 'venv/pyvenv.cfg' } },
+    expected: 'BLOCKED'
   }
 ];
 
-console.log('Testing scout-block.sh hook...\n');
+console.log('Testing scout-block.cjs hook...\n');
 
-const scriptPath = path.join(__dirname, '..', 'scout-block.sh');
+// Test Node.js dispatcher directly
+const scriptPath = path.join(__dirname, '..', 'scout-block.cjs');
 let passed = 0;
 let failed = 0;
 
 for (const test of testCases) {
   try {
     const input = JSON.stringify(test.input);
-    const result = execSync(`bash "${scriptPath}"`, {
+    const result = execSync(`node "${scriptPath}"`, {
       input,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe']
@@ -100,10 +202,10 @@ for (const test of testCases) {
     const success = actual === test.expected;
 
     if (success) {
-      console.log(`✓ ${test.name}: ${actual}`);
+      console.log(`\x1b[32m✓\x1b[0m ${test.name}: ${actual}`);
       passed++;
     } else {
-      console.log(`✗ ${test.name}: expected ${test.expected}, got ${actual}`);
+      console.log(`\x1b[31m✗\x1b[0m ${test.name}: expected ${test.expected}, got ${actual}`);
       failed++;
     }
   } catch (error) {
@@ -111,11 +213,13 @@ for (const test of testCases) {
     const success = actual === test.expected;
 
     if (success) {
-      console.log(`✓ ${test.name}: ${actual}`);
+      console.log(`\x1b[32m✓\x1b[0m ${test.name}: ${actual}`);
       passed++;
     } else {
-      console.log(`✗ ${test.name}: expected ${test.expected}, got ${actual}`);
-      console.log(`  Error: ${error.stderr.toString().trim()}`);
+      console.log(`\x1b[31m✗\x1b[0m ${test.name}: expected ${test.expected}, got ${actual}`);
+      if (error.stderr) {
+        console.log(`  Error: ${error.stderr.toString().trim().split('\n')[0]}`);
+      }
       failed++;
     }
   }
