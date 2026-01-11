@@ -4,6 +4,8 @@ import { ErrorCode } from "@/shared/types";
 import { ApiKeyService } from "@/infrastructure/services/api-key.service";
 import { unwrapOrThrow } from "@/shared/lib/utils/server";
 import { ApiKeyDtoMapper } from "@/shared/dto/api-key.dto";
+import { logger } from "@/shared/lib/utils/logger";
+import { getApiKeyRepository } from "@/infrastructure/di/container";
 import {
   createApiKeySchema,
   listApiKeysSchema,
@@ -16,11 +18,16 @@ import {
  */
 export const GET = ApiWrapper.create<ListApiKeysInput>(
   async (input, context) => {
-    // Build params with validation (adminOnly ensures user is defined)
+    // Build params with validation (adminOnly ensures user or apiKey is defined)
+    const userId = context.user?.id || context.apiKey?.userId;
+    if (!userId) {
+      throw new Error("User ID not found in context");
+    }
+
     const params = ApiKeyService.buildListParams(
       {
         ...input.query,
-        userId: context.user!.id, // List only current admin's keys
+        userId, // List only current admin's keys
       },
       context
     );
@@ -42,10 +49,11 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
     );
 
     // Map to paginated DTO response
-    console.log(
-      "[GET /api/admin/api-keys] Better Auth keys:",
-      JSON.stringify(betterAuthKeys, null, 2)
-    );
+    logger.debug("Admin API keys list retrieved from Better Auth", {
+      count: betterAuthKeys.length,
+      page: input.query?.page || 1,
+      limit: params.limit
+    });
     return ApiKeyDtoMapper.toPaginatedResponseDto(
       betterAuthKeys,
       input.query?.page || 1,
@@ -69,17 +77,15 @@ export const GET = ApiWrapper.create<ListApiKeysInput>(
  */
 export const POST = ApiWrapper.create<CreateApiKeyInput>(
   async (input, context) => {
-    // Delegate to service layer (adminOnly ensures user is defined)
-    const result = await ApiKeyService.create(
-      {
-        userId: context.user!.id,
-        name: input.body.name,
-        permissions: input.body.permissions,
-        expiresIn: input.body.expiresIn,
-        metadata: input.body.metadata,
-      },
-      auth.api
-    );
+    // Use application use case (adminOnly ensures user is defined)
+    const useCase = new CreateApiKeyUseCase(getApiKeyRepository());
+    const apiKey = await useCase.execute({
+      userId: context.user!.id,
+      name: input.body.name,
+      permissions: input.body.permissions,
+      expiresIn: input.body.expiresIn,
+      metadata: input.body.metadata,
+    });
 
     const apiKey = unwrapOrThrow(result);
 

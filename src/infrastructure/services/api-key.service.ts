@@ -13,6 +13,7 @@ import type { BetterAuthOptions } from "better-auth";
 import { ApiError } from "@/shared/lib/api/api-handler";
 import { ErrorCode } from "@/shared/types";
 import { tryCatch, type TryCatchResult } from "@/shared/lib/utils/server";
+import { logger } from "@/shared/lib/utils/logger";
 
 // Type for Better Auth API (inferred from auth.api)
 type BetterAuthApi = typeof auth.api;
@@ -247,7 +248,11 @@ export class ApiKeyService {
   > {
     return tryCatch(
       async () => {
-        console.log("[ApiKeyService.create] Input:", JSON.stringify(input, null, 2));
+        logger.debug("ApiKeyService: Creating API key", {
+          userId: input.userId,
+          name: input.name,
+          expiresIn: input.expiresIn
+        });
 
         const result = await betterAuthApi.createApiKey({
           body: {
@@ -259,7 +264,10 @@ export class ApiKeyService {
           },
         });
 
-        console.log("[ApiKeyService.create] Better Auth result:", JSON.stringify(result, null, 2));
+        logger.debug("ApiKeyService: Better Auth API key created", {
+          id: result?.id,
+          hasKey: !!result?.key
+        });
 
         if (!result || !result.id) {
           throw new ApiError(

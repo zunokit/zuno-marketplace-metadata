@@ -294,6 +294,20 @@ curl -X GET "https://your-domain.com/api/metadata?page=1&limit=20&search=Awesome
 **Required Fields**: `name`, `image`
 **Creator Shares**: Must sum to exactly 100
 
+## 📖 Documentation
+
+Comprehensive documentation is available in the `docs/` folder:
+
+- **[Project Overview & PDR](docs/project-overview-pdr.md)** - Vision, features, roadmap
+- **[Codebase Summary](docs/codebase-summary.md)** - Architecture, directory structure, file inventory
+- **[Code Standards](docs/code-standards.md)** - TypeScript, Clean Architecture, patterns
+- **[System Architecture](docs/system-architecture.md)** - Detailed technical architecture
+- **[CLAUDE.md](CLAUDE.md)** - Development workflows and guidelines
+
+New developers should start with [Codebase Summary](docs/codebase-summary.md).
+
+---
+
 ## 🛠️ Development
 
 ### Available Commands

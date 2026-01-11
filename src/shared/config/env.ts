@@ -1,5 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 dotenv.config();
 
@@ -34,13 +35,33 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  CORS_ORIGINS: z.string().default("http://localhost:3000"),
+  CORS_ORIGINS: z.string().default(getCurrentUrl()),
 
   //
   CRON_SECRET: z.string().min(1, "CRON_SECRET is required"),
 
+  // Public API Key (for home page guest access)
+  ENABLE_PUBLIC_KEY: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((val) => val !== "false")
+    .default(() => true),
+
+  // Hardcoded Admin API Keys (comma-separated, no rate limiting)
+  // Format: API_KEYS=zuno_xxx_admin_01,zuno_xxx_admin_02
+  // NOTE: These keys must be seeded into the database using the seeder script before they can be used.
+  //       Run `pnpm db:seed-api-keys` to initialize the keys.
+  API_KEYS: z.string().optional(),
+
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
+  // Sentry
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  SENTRY_ORG: z.string().optional(),
+  SENTRY_PROJECT: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.string().default("0.1"),
 });
 
 export type Env = z.infer<typeof envSchema>;

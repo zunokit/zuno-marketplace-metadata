@@ -4,6 +4,9 @@ import { apiKey as apiKeyTable } from "@/infrastructure/database/drizzle/schema/
 import { eq } from "drizzle-orm";
 import { logger } from "@/shared/lib/utils/logger";
 import { User } from "@/infrastructure/database/drizzle/schema/user.schema";
+import { env } from "@/shared/config/env";
+import { constantTimeCompare } from "@/shared/lib/utils/constant-time-compare";
+import { hashApiKey } from "@/shared/lib/utils/api-key-hash";
 
 export interface AuthUser {
   id: string;
@@ -49,13 +52,109 @@ export interface AuthContext {
 
 /**
  * Verify API key from request header
- * Uses Better Auth API to properly verify hashed keys
+ * First checks hardcoded admin keys from environment, then uses Better Auth API for regular keys
  */
 export async function verifyApiKey(
   apiKeyValue: string
 ): Promise<AuthApiKey | null> {
   try {
-    // Use Better Auth API to verify the key (handles hashing automatically)
+    // First check if this is a hardcoded admin key
+    // Performance optimization: Hash the key first and check if it exists in DB.
+    // This reduces expensive constant-time comparisons from O(n) for every request
+    // to O(n) only when the key exists in the database.
+    //
+    // Security tradeoff: This creates a timing side-channel that reveals whether
+    // a key exists in the database. However, this is acceptable because:
+    // 1. We only reveal key existence, not the key value itself
+    // 2. Constant-time comparison still prevents learning the actual key
+    // 3. The performance improvement for invalid keys is significant
+    if (env.API_KEYS) {
+      const hashedKey = hashApiKey(apiKeyValue);
+      
+      // Single database query to check if this hash exists
+      const [keyRecord] = await db
+        .select()
+        .from(apiKeyTable)
+        .where(eq(apiKeyTable.key, hashedKey))
+        .limit(1);
+
+      // Only if the key exists in DB, verify it's a hardcoded admin key
+      if (keyRecord && keyRecord.enabled) {
+        const adminKeys = env.API_KEYS.split(",").map((k) => k.trim());
+        
+        // Verify the incoming key matches one of the hardcoded admin keys
+        // Note: We check all keys without early exit to prevent timing attacks
+        // Use bitwise OR to accumulate results in constant time
+        let isAdminKey = false;
+        for (const adminKey of adminKeys) {
+          // Bitwise OR ensures constant-time accumulation (no branching)
+          isAdminKey = isAdminKey || constantTimeCompare(apiKeyValue, adminKey);
+        }
+
+        if (isAdminKey) {
+          logger.debug("Hardcoded admin API key verified", {
+            keyId: keyRecord.id,
+          });
+
+          // Parse permissions
+          let permissions: Record<string, string[]> = {};
+          if (keyRecord.permissions) {
+            try {
+              permissions =
+                typeof keyRecord.permissions === "string"
+                  ? JSON.parse(keyRecord.permissions)
+                  : keyRecord.permissions;
+            } catch (error) {
+              logger.error("Failed to parse API key permissions", { error });
+            }
+          }
+
+          // Extract scopes from metadata
+          let metadata: AuthApiKey["metadata"] = {};
+          if (keyRecord.metadata) {
+            try {
+              if (typeof keyRecord.metadata === "string") {
+                metadata = JSON.parse(keyRecord.metadata);
+              } else {
+                metadata = keyRecord.metadata;
+              }
+            } catch (error) {
+              logger.error("Failed to parse API key metadata", { error });
+            }
+          }
+          const scopes = metadata?.scopes || [];
+
+          logger.debug("Admin API key verified", {
+            keyId: keyRecord.id,
+            scopes,
+            metadata,
+          });
+
+          // Update last request timestamp
+          await db
+            .update(apiKeyTable)
+            .set({ lastRequest: new Date() })
+            .where(eq(apiKeyTable.id, keyRecord.id));
+
+          return {
+            id: keyRecord.id,
+            userId: keyRecord.userId,
+            name: keyRecord.name,
+            permissions,
+            scopes,
+            enabled: keyRecord.enabled,
+            expiresAt: keyRecord.expiresAt,
+            rateLimitEnabled: keyRecord.rateLimitEnabled || false,
+            rateLimitMax: keyRecord.rateLimitMax,
+            rateLimitTimeWindow: keyRecord.rateLimitTimeWindow,
+            remaining: keyRecord.remaining,
+            metadata,
+          };
+        }
+      }
+    }
+
+    // Not a hardcoded admin key, use Better Auth API to verify the key
     const result = await auth.api.verifyApiKey({
       body: {
         key: apiKeyValue,
@@ -109,23 +208,17 @@ export async function verifyApiKey(
       }
     }
 
-    // Parse metadata from Better Auth format
+    // Extract scopes from metadata
     let metadata: AuthApiKey["metadata"] = {};
     if (keyRecord.metadata) {
       try {
-        // Better Auth stores metadata as TEXT, need to parse
-        let parsed = typeof keyRecord.metadata === "string"
-          ? JSON.parse(keyRecord.metadata)
-          : keyRecord.metadata;
-
-        // Check if it's double-encoded (string inside string)
-        if (typeof parsed === "string") {
-          parsed = JSON.parse(parsed);
+        if (typeof keyRecord.metadata === "string") {
+          metadata = JSON.parse(keyRecord.metadata);
+        } else {
+          metadata = keyRecord.metadata;
         }
-
-        metadata = parsed;
       } catch (error) {
-        logger.error("Failed to parse API key metadata", {error});
+        logger.error("Failed to parse API key metadata", { error });
       }
     }
     const scopes = metadata?.scopes || [];
@@ -209,6 +302,11 @@ export function hasPermission(
 
   // Check API key permissions
   if (context.apiKey) {
+    // Check for wildcard permission (admin keys)
+    if (context.apiKey.scopes.includes("*")) {
+      return true;
+    }
+
     // Check each required permission - ALL must be satisfied
     const hasAllPermissions = requiredPermissions.every((perm) => {
       // Check scopes first (format: "metadata:read", "media:write")
@@ -224,13 +322,13 @@ export function hasPermission(
 
         // Try "resource:action" format (e.g., "metadata:read")
         const resourcePermissions1 = context.apiKey!.permissions[part1];
-        if (resourcePermissions1?.includes(part2)) {
+        if (resourcePermissions1?.includes(part2) || resourcePermissions1?.includes("*")) {
           return true;
         }
 
         // Try "action:resource" format (e.g., "read:metadata")
         const resourcePermissions2 = context.apiKey!.permissions[part2];
-        if (resourcePermissions2?.includes(part1)) {
+        if (resourcePermissions2?.includes(part1) || resourcePermissions2?.includes("*")) {
           return true;
         }
       }

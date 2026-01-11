@@ -4,30 +4,10 @@ import { useState } from "react";
 import * as React from "react";
 import { apiClient } from "@/lib/api-client";
 import { UploadedItemCard } from "@/components/UploadedItemCard";
-
-const METADATA_SAMPLE = {
-  name: "Cool NFT #1",
-  description: "An awesome NFT for your collection",
-  image: "ipfs://QmYourImageHashHere/image.png",
-  symbol: "COOL",
-  attributes: [
-    { traitType: "Background", value: "Blue" },
-    { traitType: "Rarity", value: "Legendary" },
-  ],
-};
-
-const BATCH_METADATA_SAMPLE = [
-  {
-    name: "Cool NFT #1",
-    image: "ipfs://QmYourImageHash1/nft1.png",
-    description: "First NFT in collection",
-  },
-  {
-    name: "Cool NFT #2",
-    image: "ipfs://QmYourImageHash2/nft2.png",
-    description: "Second NFT in collection",
-  },
-];
+import {
+  METADATA_SAMPLE,
+  BATCH_METADATA_SAMPLE,
+} from "@/shared/constants/sample";
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<"metadata" | "media">("metadata");
@@ -39,11 +19,33 @@ export default function HomePage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [uploadedItems, setUploadedItems] = useState<any[]>([]);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+
+  // Prefetch API key on mount
+  React.useEffect(() => {
+    const fetchApiKey = async () => {
+      try {
+        await apiClient.prefetchApiKey();
+        // Get the key for polling usage
+        const response = await fetch("/api/public-key", {
+          headers: { "x-api-version": "v1" },
+        });
+        const data = await response.json();
+        if (data.data?.apiKey) {
+          setApiKey(data.data.apiKey);
+        }
+      } catch (error) {
+        console.error("Failed to fetch API key:", error);
+      }
+    };
+
+    fetchApiKey();
+  }, []);
 
   // Auto-refresh IPFS status every 5 seconds for unpinned items (senior pattern)
   React.useEffect(() => {
-    // Early return if no items to track
-    if (uploadedItems.length === 0) return;
+    // Early return if no items to track or no API key
+    if (uploadedItems.length === 0 || !apiKey) return;
 
     // Identify unpinned metadata items that need polling
     const unpinnedIds = uploadedItems
@@ -61,7 +63,7 @@ export default function HomePage() {
           try {
             const response = await fetch(`/api/metadata/${id}`, {
               headers: {
-                "x-api-key": process.env.NEXT_PUBLIC_API_KEY || "",
+                "x-api-key": apiKey,
                 "x-api-version": "v1",
               },
               cache: "no-store", // Force bypass Next.js cache
@@ -96,7 +98,7 @@ export default function HomePage() {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(refreshInterval);
-  }, [uploadedItems]); // Stable dependency - full array
+  }, [uploadedItems, apiKey]); // Stable dependency - full array + apiKey
 
   const handleCopySample = () => {
     navigator.clipboard.writeText(metadataInput);

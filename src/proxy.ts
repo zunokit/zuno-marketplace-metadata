@@ -3,6 +3,7 @@ import {
   validateApiVersion,
   getCurrentApiVersion,
 } from "@/shared/lib/utils/api-version";
+import { getCurrentUrl } from "@/shared/lib/utils/url";
 
 /**
  * Global Middleware
@@ -69,7 +70,7 @@ export async function proxy(request: NextRequest) {
 
     // Add CORS headers
     const origin = request.headers.get("origin");
-    const corsOrigins = process.env.CORS_ORIGINS || "http://localhost:3000";
+    const corsOrigins = process.env.CORS_ORIGINS || getCurrentUrl();
     const allowedOrigins = corsOrigins.split(",").map((o) => o.trim());
 
     if (

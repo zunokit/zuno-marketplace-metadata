@@ -1,0 +1,53 @@
+name: Keepalive Services
+
+on:
+  schedule:
+    # Run every 12 hours at 6 AM and 6 PM UTC
+    - cron: '0 6,18 * * *'
+  workflow_dispatch: # Manual trigger for testing
+
+jobs:
+  keepalive:
+    name: Ping Health Endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Health Check
+        run: |
+          max_retries=3
+          retry_delay=30
+
+          for attempt in $(seq 1 $max_retries); do
+            echo "Attempt $attempt of $max_retries..."
+
+            response=$(curl -sf --max-time 30 -A "GitHub-Actions-Keepalive" \
+              -w "\n%{http_code}" "${{ secrets.NEXT_PUBLIC_APP_URL }}/api/health" 2>&1) || true
+
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+
+            echo "HTTP Code: $http_code"
+
+            # Only log status field, not full response
+            status=$(echo "$body" | jq -r '.status // "unknown"' 2>/dev/null)
+            echo "Status: $status"
+
+            if [ "$http_code" = "200" ] && [ "$status" != "unhealthy" ]; then
+              echo "✅ All services responding"
+              exit 0
+            fi
+
+            if [ "$attempt" -lt "$max_retries" ]; then
+              echo "Retrying in ${retry_delay}s..."
+              sleep $retry_delay
+            fi
+          done
+
+          echo "::error::Health check failed after $max_retries attempts (HTTP: $http_code, Status: $status)"
+          exit 1
+
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "::warning::Keepalive health check failed. Check service status."
