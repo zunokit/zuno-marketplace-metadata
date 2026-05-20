@@ -1,0 +1,101 @@
+# Local development infrastructure for zuno-marketplace-metadata.
+#
+# Brings up:
+#   * postgres            - Postgres backing for Drizzle (zuno_metadata DB)
+#   * redis               - real Redis used by the Upstash-compatible HTTP proxy
+#   * upstash-redis-http  - hiett/serverless-redis-http acts as a drop-in
+#                           replacement for the Upstash REST API so the
+#                           @upstash/redis client works locally unchanged
+#
+# Next.js app stays on the host (`pnpm dev` / `pnpm dev:local`) for fast HMR.
+# Opt-in `app` service is included for full-container runs.
+#
+# Usage:
+#   docker compose up -d                       # postgres + redis + upstash-redis-http
+#   docker compose --profile app up -d         # also run the Next.js app in a container
+#   docker compose down                        # stop
+#   docker compose down -v                     # stop AND wipe volumes
+#
+# NOTE: BullMQ workers in src/infrastructure/queue/workers/* connect to Redis
+# directly over TCP with TLS hardcoded against port 6379. They will NOT work
+# against this compose stack without code changes (the local Redis here has
+# no TLS). The HTTP cache layer (`@upstash/redis`) does work locally via the
+# proxy on :8080.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: metadata-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zuno_user
+      POSTGRES_PASSWORD: zuno_pass
+      POSTGRES_DB: zuno_metadata
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zuno_user -d zuno_metadata"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: metadata-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Upstash-compatible REST API in front of the local Redis above.
+  # Lets the `@upstash/redis` client work locally with no code changes.
+  upstash-redis-http:
+    image: hiett/serverless-redis-http:latest
+    container_name: metadata-upstash-proxy
+    restart: unless-stopped
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: zuno_local_dev_token
+      SRH_CONNECTION_STRING: redis://redis:6379
+    ports:
+      - "8080:80"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: metadata-app
+    profiles: ["app"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://zuno_user:zuno_pass@postgres:5432/zuno_metadata
+      UPSTASH_REDIS_REST_URL: http://upstash-redis-http:80
+      UPSTASH_REDIS_REST_TOKEN: zuno_local_dev_token
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      upstash-redis-http:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+
+volumes:
+  postgres_data:
+  redis_data:
