@@ -104,6 +104,27 @@ pnpm install
 cp .env.example .env.local
 ```
 
+### Local Docker Dev Stack
+
+A `docker-compose.yml` is included that brings up:
+
+| Service | Host port | Purpose |
+|---|---|---|
+| `metadata-postgres` | `5435` | Postgres 16 (db `zuno_metadata`, user/pass `zuno_user`/`zuno_pass`) |
+| `metadata-redis` | `6381` | Plain Redis 7 backing the proxy below |
+| `metadata-upstash-proxy` | `8080` | `hiett/serverless-redis-http` — drop-in Upstash REST replacement, so `@upstash/redis` works locally with no code changes |
+
+```bash
+docker compose up -d                   # postgres + redis + upstash proxy
+docker compose --profile app up -d     # ALSO run the Next.js app in a container
+docker compose down                    # stop
+docker compose down -v                 # also wipe volumes
+```
+
+`.env.example` already points `DATABASE_URL`, `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` at the local stack. Use `pnpm dev:local` (no Infisical) once you have a `.env`/`.env.local` populated.
+
+> **Note:** The BullMQ workers in `src/infrastructure/queue/workers/*` connect to Redis directly over TCP with TLS hardcoded against port `6379` (against Upstash). They will **not** work against the local plain Redis without code changes. The HTTP cache layer (via `@upstash/redis` → the proxy) works locally as-is.
+
 ### Environment Configuration
 
 Edit `.env.local` with your credentials:

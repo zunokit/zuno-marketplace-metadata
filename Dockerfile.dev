@@ -1,0 +1,19 @@
+# Development Dockerfile for zuno-marketplace-metadata (Next.js).
+# Used by the opt-in `app` service in docker-compose.yml.
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --no-frozen-lockfile
+
+COPY . .
+
+EXPOSE 3000
+
+# Use dev:local so we don't pull secrets from Infisical inside the
+# container - the env_file in docker-compose provides the values.
+CMD ["pnpm", "dev:local"]
